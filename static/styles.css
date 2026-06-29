@@ -566,24 +566,76 @@ tr:hover td {
 @media (max-width: 768px) {
     .dashboard-layout {
         flex-direction: column;
-        padding: 0.8rem;
+        padding: 0.6rem;
+        gap: 0.8rem;
     }
     
     .sidebar {
         width: 100%;
-        padding: 0.8rem;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
+        padding: 1rem;
+        flex-direction: column; /* Stack logo, nav, button */
+        align-items: stretch;
+        gap: 1rem;
+    }
+    
+    .logo h1 {
+        font-size: 1.8rem;
+        margin-bottom: 1rem;
+    }
+    
+    .sidebar .logo.small h1 {
+        font-size: 1.4rem;
+        text-align: center;
     }
     
     .sidebar nav {
         flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .nav-item {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.85rem;
+        flex: 1;
+        text-align: center;
+        white-space: nowrap;
     }
     
     .sidebar .btn {
-        width: auto;
-        padding: 0.5rem 0.8rem;
-        margin: 0;
+        width: 100%;
+        padding: 0.7rem;
+        margin-top: 0.5rem;
+    }
+    
+    .header-flex {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1.2rem;
+    }
+    
+    .header-flex .btn {
+        width: 100%;
+    }
+
+    .flex-row {
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+
+    th, td {
+        padding: 0.8rem 0.6rem;
+        font-size: 0.85rem;
+    }
+
+    .actions-cell {
+        flex-wrap: wrap;
+        gap: 0.3rem;
+    }
+    
+    .modal {
+        padding: 1.5rem;
     }
 }
