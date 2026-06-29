@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Funko Stop | Личный кабинет</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background"></div>
+
+    <!-- Login Screen -->
+    <div id="login-view" class="glass-panel active fade-in">
+        <div class="logo">
+            <h1>FUNKO <span>STOP</span></h1>
+        </div>
+        <h2>Вход в Личный Кабинет</h2>
+        <form id="login-form">
+            <div class="input-group">
+                <input type="text" id="username" placeholder="Логин или ID Клиента" required autocomplete="off">
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="Пароль" required>
+            </div>
+            <p id="login-error" class="error-msg"></p>
+            <button type="submit" class="btn primary">Войти</button>
+        </form>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-view" class="dashboard-layout hidden fade-in">
+        <aside class="sidebar glass-panel">
+            <div class="logo small">
+                <h1>FUNKO <span>STOP</span></h1>
+            </div>
+            <nav>
+                <a href="#" class="nav-item active" data-tab="orders">Заказы</a>
+                <a href="#" class="nav-item" data-tab="archived">Архив</a>
+                <a href="#" class="nav-item admin-only hidden" data-tab="clients">Клиенты</a>
+            </nav>
+            <button id="logout-btn" class="btn secondary outline mt-auto">Выйти</button>
+        </aside>
+
+        <main class="content">
+            <!-- Orders Tab -->
+            <section id="orders-tab" class="tab-content active">
+                <div class="header-flex">
+                    <h2>Активные заказы</h2>
+                    <button id="new-order-btn" class="btn primary admin-only hidden">+ Новый заказ</button>
+                </div>
+                <div class="glass-panel table-container">
+                    <table id="orders-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th class="admin-only hidden">Клиент</th>
+                                <th>Фото</th>
+                                <th>Товары</th>
+                                <th>Сумма</th>
+                                <th>Оплачено</th>
+                                <th>Статус</th>
+                                <th class="admin-only hidden"></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <p id="no-orders" class="empty-msg hidden">Нет активных заказов</p>
+                </div>
+            </section>
+
+            <!-- Archived Orders Tab -->
+            <section id="archived-tab" class="tab-content hidden">
+                <div class="header-flex">
+                    <h2>Архив заказов</h2>
+                </div>
+                <div class="glass-panel table-container">
+                    <table id="archived-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th class="admin-only hidden">Клиент</th>
+                                <th>Фото</th>
+                                <th>Товары</th>
+                                <th>Сумма</th>
+                                <th>Оплачено</th>
+                                <th>Статус</th>
+                                <th class="admin-only hidden"></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <p id="no-archived" class="empty-msg hidden">Архив пуст</p>
+                </div>
+            </section>
+
+            <!-- Clients Tab -->
+            <section id="clients-tab" class="tab-content hidden admin-only">
+                <div class="header-flex">
+                    <h2>База клиентов</h2>
+                    <button id="new-client-btn" class="btn primary">+ Новый клиент</button>
+                </div>
+                <div class="glass-panel table-container">
+                    <table id="clients-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Пароль</th>
+                                <th>Telegram ID</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        
+        <!-- Create Client Modal -->
+        <div id="create-client-modal" class="glass-panel modal hidden">
+            <h3>Новый клиент</h3>
+            <form id="create-client-form">
+                <div class="input-group">
+                    <input type="text" id="new-client-password" placeholder="Пароль для клиента" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                    <button type="submit" class="btn primary">Создать</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Create Order Modal -->
+        <div id="create-order-modal" class="glass-panel modal hidden">
+            <h3>Новый заказ</h3>
+            <form id="create-order-form">
+                <div class="input-group">
+                    <input type="number" id="order-client-id" placeholder="ID Клиента" required>
+                </div>
+                <div class="input-group">
+                    <textarea id="order-items" placeholder="Список товаров" required></textarea>
+                </div>
+                <div class="input-group flex-row">
+                    <input type="number" id="order-price" placeholder="Сумма" required>
+                    <input type="number" id="order-paid" placeholder="Оплачено" required>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="order-photo-id" placeholder="Telegram Photo ID (необязательно)">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                    <button type="submit" class="btn primary">Создать</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Edit Order Modal -->
+        <div id="edit-order-modal" class="glass-panel modal hidden">
+            <h3>Редактирование заказа #<span id="edit-order-id-display"></span></h3>
+            <form id="edit-order-form">
+                <input type="hidden" id="edit-order-id">
+                <div class="input-group">
+                    <label>Товары</label>
+                    <textarea id="edit-order-items" required></textarea>
+                </div>
+                <div class="input-group flex-row">
+                    <div style="width: 100%;">
+                        <label>Сумма</label>
+                        <input type="number" id="edit-order-price" required>
+                    </div>
+                    <div style="width: 100%;">
+                        <label>Оплачено</label>
+                        <input type="number" id="edit-order-paid" required>
+                    </div>
+                </div>
+                <div class="input-group flex-row">
+                    <div style="width: 100%;">
+                        <label>Статус</label>
+                        <select id="edit-order-status" required>
+                            <option value="Заказ принят в обработку">Заказ принят в обработку</option>
+                            <option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option>
+                            <option value="Заказ едет на склад США">Заказ едет на склад США</option>
+                            <option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option>
+                            <option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option>
+                            <option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option>
+                            <option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option>
+                            <option value="Выдано">Выдано</option>
+                        </select>
+                    </div>
+                    <div style="width: 100%;">
+                        <label>Photo ID</label>
+                        <input type="text" id="edit-order-photo-id">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                    <button type="submit" class="btn primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Photo Viewer Modal -->
+        <div id="photo-viewer-modal" class="glass-panel modal hidden">
+            <h3>Фото заказа</h3>
+            <div id="photo-loading">Загрузка...</div>
+            <img id="photo-viewer-image" class="hidden" src="" alt="Фото заказа">
+            <div class="modal-actions">
+                <button type="button" class="btn secondary outline close-modal mt-auto">Закрыть</button>
+            </div>
+        </div>
+
+        <!-- Confirm Delete Modal -->
+        <div id="confirm-delete-modal" class="glass-panel modal hidden">
+            <h3>Удалить заказ #<span id="delete-order-id-display"></span>?</h3>
+            <p style="color: var(--gray); margin-bottom: 1rem;">Заказ будет удален навсегда. Это действие нельзя отменить.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                <button type="button" id="confirm-delete-btn" class="btn danger">Удалить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
