@@ -36,6 +36,9 @@ async def startup():
     # Add archived column if it doesn't exist yet
     async with pool.acquire() as db:
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_date TEXT")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cost_price INTEGER DEFAULT 0")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_cost INTEGER DEFAULT 0")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -88,6 +91,9 @@ class OrderCreate(BaseModel):
     total_price: int
     paid_amount: int
     photo_id: str = ""
+    order_date: str = ""
+    cost_price: int = 0
+    delivery_cost: int = 0
 
 class OrderUpdate(BaseModel):
     items: str
@@ -95,6 +101,9 @@ class OrderUpdate(BaseModel):
     paid_amount: int
     status: str
     photo_id: str = ""
+    order_date: str = ""
+    cost_price: int = 0
+    delivery_cost: int = 0
 
 # --- API Routes ---
 @app.post("/api/login")
@@ -129,10 +138,10 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
         if user["role"] == "admin":
             clients = await db.fetch("SELECT id, password, user_tg_id FROM clients ORDER BY id DESC")
             orders = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived FROM orders WHERE archived = FALSE ORDER BY id DESC"
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = FALSE ORDER BY id DESC"
             )
             archived = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived FROM orders WHERE archived = TRUE ORDER BY id DESC"
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = TRUE ORDER BY id DESC"
             )
             return {
                 "role": "admin",
@@ -143,11 +152,11 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
         else:
             client_id = user["id"]
             orders = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived FROM orders WHERE client_id = $1 AND archived = FALSE ORDER BY id DESC",
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = FALSE ORDER BY id DESC",
                 client_id
             )
             archived = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived FROM orders WHERE client_id = $1 AND archived = TRUE ORDER BY id DESC",
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = TRUE ORDER BY id DESC",
                 client_id
             )
             return {
@@ -165,14 +174,33 @@ async def create_client(client: ClientCreate, admin: dict = Depends(require_admi
 @app.post("/api/orders")
 async def create_order(order: OrderCreate, admin: dict = Depends(require_admin)):
     async with pool.acquire() as db:
-        client = await db.fetchrow("SELECT id FROM clients WHERE id = $1", order.client_id)
+        client = await db.fetchrow("SELECT id, user_tg_id FROM clients WHERE id = $1", order.client_id)
         if not client:
             raise HTTPException(status_code=404, detail="Client not found")
             
         new_id = await db.fetchval(
-            "INSERT INTO orders (client_id, items, total_price, paid_amount, status, photo_id, archived) VALUES ($1, $2, $3, $4, $5, $6, FALSE) RETURNING id",
-            order.client_id, order.items, order.total_price, order.paid_amount, "Заказ принят в обработку", order.photo_id
+            "INSERT INTO orders (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost) VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9) RETURNING id",
+            order.client_id, order.items, order.total_price, order.paid_amount, "Заказ принят в обработку", order.photo_id, order.order_date, order.cost_price, order.delivery_cost
         )
+        
+        # Send Telegram notification if client is linked to TG
+        if client["user_tg_id"] and BOT_TOKEN:
+            try:
+                msg = f"🎉 **У вас новый заказ!**\n\n🆔 Заказ #{new_id}\n🛒 Позиции:\n{order.items}\n\n💰 Стоимость: {order.total_price}\n✅ Оплачено: {order.paid_amount}"
+                async with httpx.AsyncClient() as http_client:
+                    if order.photo_id:
+                        await http_client.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                            data={"chat_id": client["user_tg_id"], "photo": order.photo_id, "caption": msg, "parse_mode": "Markdown"}
+                        )
+                    else:
+                        await http_client.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            json={"chat_id": client["user_tg_id"], "text": msg, "parse_mode": "Markdown"}
+                        )
+            except Exception as e:
+                print(f"Error sending TG notification: {e}")
+                
         return {"success": True, "id": new_id}
 
 @app.put("/api/orders/{order_id}")
@@ -181,8 +209,8 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
         # Auto-archive when status is "Выдано"
         archived = order.status == "Выдано"
         res = await db.execute(
-            "UPDATE orders SET items = $1, total_price = $2, paid_amount = $3, status = $4, photo_id = $5, archived = $6 WHERE id = $7",
-            order.items, order.total_price, order.paid_amount, order.status, order.photo_id, archived, order_id
+            "UPDATE orders SET items = $1, total_price = $2, paid_amount = $3, status = $4, photo_id = $5, archived = $6, order_date = $7, cost_price = $8, delivery_cost = $9 WHERE id = $10",
+            order.items, order.total_price, order.paid_amount, order.status, order.photo_id, archived, order.order_date, order.cost_price, order.delivery_cost, order_id
         )
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Order not found")

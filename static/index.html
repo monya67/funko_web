@@ -39,6 +39,7 @@
             <nav>
                 <a href="#" class="nav-item active" data-tab="orders">Заказы</a>
                 <a href="#" class="nav-item" data-tab="archived">Архив</a>
+                <a href="#" class="nav-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
                 <a href="#" class="nav-item admin-only hidden" data-tab="clients">Клиенты</a>
             </nav>
             <button id="logout-btn" class="btn secondary outline mt-auto">Выйти</button>
@@ -115,6 +116,31 @@
                     </table>
                 </div>
             </section>
+
+            <!-- Accounting Tab -->
+            <section id="accounting-tab" class="tab-content hidden admin-only">
+                <div class="header-flex">
+                    <h2>Бухгалтерия</h2>
+                    <input type="text" id="accounting-search" placeholder="Поиск по ID или товару..." style="max-width: 300px; margin-left: auto;">
+                </div>
+                <div class="glass-panel table-container">
+                    <table id="accounting-table">
+                        <thead>
+                            <tr>
+                                <th data-sort="id" style="cursor:pointer">ID ↕</th>
+                                <th data-sort="date" style="cursor:pointer">Дата ↕</th>
+                                <th>Товары</th>
+                                <th data-sort="price" style="cursor:pointer">Сумма ↕</th>
+                                <th data-sort="cost" style="cursor:pointer">Себест. ↕</th>
+                                <th data-sort="delivery" style="cursor:pointer">Доставка ↕</th>
+                                <th data-sort="margin" style="cursor:pointer; color: #ffb400;">Маржа ↕</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <p id="no-accounting" class="empty-msg hidden">Нет данных</p>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -139,8 +165,15 @@
         <div id="create-order-modal" class="glass-panel modal hidden">
             <h3>Новый заказ</h3>
             <form id="create-order-form">
-                <div class="input-group">
-                    <input type="number" id="order-client-id" placeholder="ID Клиента" required>
+                <div class="input-group flex-row">
+                    <div style="width: 100%;">
+                        <label>ID Клиента</label>
+                        <input type="number" id="order-client-id" required>
+                    </div>
+                    <div style="width: 100%;">
+                        <label>Дата оформления</label>
+                        <input type="date" id="order-date" required>
+                    </div>
                 </div>
                 <div class="input-group">
                     <textarea id="order-items" placeholder="Список товаров" required></textarea>
@@ -170,6 +203,20 @@
                 </div>
                 <div class="input-group flex-row">
                     <div style="width: 100%;">
+                        <label>Дата оформления</label>
+                        <input type="date" id="edit-order-date">
+                    </div>
+                    <div style="width: 100%;">
+                        <label>Себестоимость</label>
+                        <input type="number" id="edit-order-cost-price">
+                    </div>
+                    <div style="width: 100%;">
+                        <label>Доставка (себест.)</label>
+                        <input type="number" id="edit-order-delivery-cost">
+                    </div>
+                </div>
+                <div class="input-group flex-row">
+                    <div style="width: 100%;">
                         <label>Сумма</label>
                         <input type="number" id="edit-order-price" required>
                     </div>
@@ -187,6 +234,7 @@
                             <option value="Заказ едет на склад США">Заказ едет на склад США</option>
                             <option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option>
                             <option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option>
+                            <option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option>
                             <option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option>
                             <option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option>
                             <option value="Выдано">Выдано</option>

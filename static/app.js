@@ -26,6 +26,10 @@ const closeBtns = document.querySelectorAll('.close-modal');
 const ordersTableBody = document.querySelector('#orders-table tbody');
 const archivedTableBody = document.querySelector('#archived-table tbody');
 const clientsTableBody = document.querySelector('#clients-table tbody');
+const accountingTableBody = document.querySelector('#accounting-table tbody');
+
+const accountingSearch = document.getElementById('accounting-search');
+let accountingSort = { key: 'id', desc: true };
 
 // Forms
 const createClientForm = document.getElementById('create-client-form');
@@ -117,6 +121,7 @@ logoutBtn.addEventListener('click', () => {
     ordersTableBody.innerHTML = '';
     archivedTableBody.innerHTML = '';
     clientsTableBody.innerHTML = '';
+    if (accountingTableBody) accountingTableBody.innerHTML = '';
     allOrders = [];
     showLogin();
 });
@@ -167,6 +172,7 @@ async function loadDashboardData() {
         
         if (data.role === 'admin') {
             renderClients(data.clients);
+            renderAccounting();
         }
     } catch (err) {
         console.error(err);
@@ -282,6 +288,87 @@ function renderClients(clients) {
     });
 }
 
+// Render Accounting
+function renderAccounting() {
+    if (!accountingTableBody) return;
+    accountingTableBody.innerHTML = '';
+    const emptyMsg = document.getElementById('no-accounting');
+    
+    let filteredOrders = allOrders;
+    
+    // Search
+    if (accountingSearch && accountingSearch.value) {
+        const q = accountingSearch.value.toLowerCase();
+        filteredOrders = filteredOrders.filter(o => 
+            o.id.toString().includes(q) || o.items.toLowerCase().includes(q)
+        );
+    }
+    
+    if (filteredOrders.length === 0) {
+        emptyMsg.classList.remove('hidden');
+        return;
+    }
+    emptyMsg.classList.add('hidden');
+    
+    // Sort
+    filteredOrders.sort((a, b) => {
+        let valA, valB;
+        if (accountingSort.key === 'id') { valA = a.id; valB = b.id; }
+        else if (accountingSort.key === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (accountingSort.key === 'price') { valA = a.total_price; valB = b.total_price; }
+        else if (accountingSort.key === 'cost') { valA = a.cost_price; valB = b.cost_price; }
+        else if (accountingSort.key === 'delivery') { valA = a.delivery_cost; valB = b.delivery_cost; }
+        else if (accountingSort.key === 'margin') { 
+            valA = a.total_price - (a.cost_price || 0) - (a.delivery_cost || 0); 
+            valB = b.total_price - (b.cost_price || 0) - (b.delivery_cost || 0); 
+        }
+        
+        if (valA < valB) return accountingSort.desc ? 1 : -1;
+        if (valA > valB) return accountingSort.desc ? -1 : 1;
+        return 0;
+    });
+
+    filteredOrders.forEach((order, i) => {
+        const tr = document.createElement('tr');
+        tr.className = 'row-animate';
+        tr.style.animationDelay = `${i * 0.04}s`;
+        
+        const cost = order.cost_price || 0;
+        const delivery = order.delivery_cost || 0;
+        const margin = order.total_price - cost - delivery;
+        
+        tr.innerHTML = `
+            <td>${order.id}</td>
+            <td>${order.order_date || '—'}</td>
+            <td>${order.items.replace(/\n/g, '<br>')}</td>
+            <td>${order.total_price.toLocaleString('ru')}</td>
+            <td>${cost.toLocaleString('ru')}</td>
+            <td>${delivery.toLocaleString('ru')}</td>
+            <td style="color: ${margin >= 0 ? '#00ff88' : '#ff4d4d'}; font-weight: bold;">
+                ${margin.toLocaleString('ru')}
+            </td>
+        `;
+        accountingTableBody.appendChild(tr);
+    });
+}
+
+if (accountingSearch) {
+    accountingSearch.addEventListener('input', renderAccounting);
+}
+
+document.querySelectorAll('#accounting-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+        const key = th.getAttribute('data-sort');
+        if (accountingSort.key === key) {
+            accountingSort.desc = !accountingSort.desc;
+        } else {
+            accountingSort.key = key;
+            accountingSort.desc = true;
+        }
+        renderAccounting();
+    });
+});
+
 // Modals
 function openModal(modal) {
     modalOverlay.classList.remove('hidden');
@@ -375,6 +462,10 @@ window.openEditModal = function(orderId) {
     document.getElementById('edit-order-status').value = order.status;
     document.getElementById('edit-order-photo-id').value = order.photo_id || '';
     
+    document.getElementById('edit-order-date').value = order.order_date || '';
+    document.getElementById('edit-order-cost-price').value = order.cost_price || 0;
+    document.getElementById('edit-order-delivery-cost').value = order.delivery_cost || 0;
+    
     openModal(editOrderModal);
 };
 
@@ -386,7 +477,10 @@ editOrderForm.addEventListener('submit', async (e) => {
         total_price: parseInt(document.getElementById('edit-order-price').value),
         paid_amount: parseInt(document.getElementById('edit-order-paid').value),
         status: document.getElementById('edit-order-status').value,
-        photo_id: document.getElementById('edit-order-photo-id').value
+        photo_id: document.getElementById('edit-order-photo-id').value,
+        order_date: document.getElementById('edit-order-date').value,
+        cost_price: parseInt(document.getElementById('edit-order-cost-price').value) || 0,
+        delivery_cost: parseInt(document.getElementById('edit-order-delivery-cost').value) || 0
     };
     
     try {
@@ -426,7 +520,10 @@ createOrderForm.addEventListener('submit', async (e) => {
         items: document.getElementById('order-items').value,
         total_price: parseInt(document.getElementById('order-price').value),
         paid_amount: parseInt(document.getElementById('order-paid').value),
-        photo_id: document.getElementById('order-photo-id').value
+        photo_id: document.getElementById('order-photo-id').value,
+        order_date: document.getElementById('order-date').value,
+        cost_price: 0,
+        delivery_cost: 0
     };
     
     try {

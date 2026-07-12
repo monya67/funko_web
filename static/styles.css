@@ -236,6 +236,25 @@ select option {
     color: var(--light);
 }
 
+input[type="date"] {
+    color-scheme: dark;
+}
+
+.search-input {
+    width: 100%;
+    max-width: 300px;
+    padding: 0.7rem 1.1rem;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    color: var(--light);
+}
+
+.search-input:focus {
+    border-color: rgba(229, 9, 20, 0.4);
+    background: rgba(255, 255, 255, 0.08);
+}
+
 /* Buttons */
 .btn {
     width: 100%;
