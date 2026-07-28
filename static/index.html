@@ -80,12 +80,12 @@
                     <table id="orders-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Дата</th>
+                                <th data-sort="id" style="cursor:pointer">ID ↕</th>
+                                <th data-sort="date" style="cursor:pointer">Дата ↕</th>
                                 <th class="admin-only hidden">Клиент</th>
                                 <th>Фото</th>
                                 <th>Товары</th>
-                                <th>Сумма</th>
+                                <th data-sort="price" style="cursor:pointer">Сумма ↕</th>
                                 <th>Оплачено</th>
                                 <th>Статус</th>
                                 <th class="admin-only hidden"></th>
@@ -102,16 +102,36 @@
                 <div class="header-flex">
                     <h2>Архив заказов</h2>
                 </div>
+                <div class="filters-flex" style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                    <select id="archived-month-filter" style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                        <option value="" style="background:#111;">Все месяцы</option>
+                        <option value="01" style="background:#111;">Январь</option>
+                        <option value="02" style="background:#111;">Февраль</option>
+                        <option value="03" style="background:#111;">Март</option>
+                        <option value="04" style="background:#111;">Апрель</option>
+                        <option value="05" style="background:#111;">Май</option>
+                        <option value="06" style="background:#111;">Июнь</option>
+                        <option value="07" style="background:#111;">Июль</option>
+                        <option value="08" style="background:#111;">Август</option>
+                        <option value="09" style="background:#111;">Сентябрь</option>
+                        <option value="10" style="background:#111;">Октябрь</option>
+                        <option value="11" style="background:#111;">Ноябрь</option>
+                        <option value="12" style="background:#111;">Декабрь</option>
+                    </select>
+                    <input type="number" id="archived-price-min" placeholder="Сумма от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="archived-price-max" placeholder="Сумма до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="text" id="archived-search" placeholder="Поиск по ID или товару..." style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
+                </div>
                 <div class="glass-panel table-container">
                     <table id="archived-table">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Дата</th>
+                                <th data-sort="id" style="cursor:pointer">ID ↕</th>
+                                <th data-sort="date" style="cursor:pointer">Дата ↕</th>
                                 <th class="admin-only hidden">Клиент</th>
                                 <th>Фото</th>
                                 <th>Товары</th>
-                                <th>Сумма</th>
+                                <th data-sort="price" style="cursor:pointer">Сумма ↕</th>
                                 <th>Оплачено</th>
                                 <th>Статус</th>
                                 <th class="admin-only hidden"></th>
