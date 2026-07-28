@@ -42,6 +42,8 @@ let currentRole = null;
 let allOrders = []; // active + archived combined for lookups
 let rawActiveOrders = [];
 let rawArchivedOrders = [];
+let ordersSort = { key: 'id', desc: true };
+let archivedSort = { key: 'id', desc: true };
 let deleteTargetId = null;
 
 // Init
@@ -237,13 +239,13 @@ function formatDisplayDate(dateStr) {
     return dateStr;
 }
 
-// Render active orders with filter support
+// Render active orders with filter & sort support
 function renderOrders() {
     ordersTableBody.innerHTML = '';
     const emptyMsg = document.getElementById('no-orders');
     const role = currentRole;
     
-    let orders = rawActiveOrders;
+    let orders = [...rawActiveOrders];
 
     // Filters
     const monthVal = document.getElementById('orders-month-filter')?.value;
@@ -278,6 +280,17 @@ function renderOrders() {
         );
     }
     
+    // Sorting
+    orders.sort((a, b) => {
+        let valA, valB;
+        if (ordersSort.key === 'id') { valA = a.id; valB = b.id; }
+        else if (ordersSort.key === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (ordersSort.key === 'price') { valA = a.total_price; valB = b.total_price; }
+        if (valA < valB) return ordersSort.desc ? 1 : -1;
+        if (valA > valB) return ordersSort.desc ? -1 : 1;
+        return 0;
+    });
+
     if (orders.length === 0) {
         emptyMsg.classList.remove('hidden');
         return;
@@ -326,8 +339,52 @@ function renderArchivedOrders() {
     archivedTableBody.innerHTML = '';
     const emptyMsg = document.getElementById('no-archived');
     const role = currentRole;
-    const orders = rawArchivedOrders;
-    
+    let orders = [...rawArchivedOrders];
+
+    // Filters
+    const monthVal = document.getElementById('archived-month-filter')?.value;
+    if (monthVal) {
+        orders = orders.filter(o => {
+            if (!o.order_date) return false;
+            const formatted = formatDisplayDate(o.order_date);
+            if (formatted.includes('.')) {
+                const parts = formatted.split('.');
+                return parts[1] === monthVal;
+            }
+            return false;
+        });
+    }
+
+    const priceMin = parseFloat(document.getElementById('archived-price-min')?.value);
+    if (!isNaN(priceMin)) {
+        orders = orders.filter(o => o.total_price >= priceMin);
+    }
+
+    const priceMax = parseFloat(document.getElementById('archived-price-max')?.value);
+    if (!isNaN(priceMax)) {
+        orders = orders.filter(o => o.total_price <= priceMax);
+    }
+
+    const q = document.getElementById('archived-search')?.value.toLowerCase().trim();
+    if (q) {
+        orders = orders.filter(o => 
+            o.id.toString().includes(q) || 
+            (o.client_id && o.client_id.toString().includes(q)) || 
+            o.items.toLowerCase().includes(q)
+        );
+    }
+
+    // Sorting
+    orders.sort((a, b) => {
+        let valA, valB;
+        if (archivedSort.key === 'id') { valA = a.id; valB = b.id; }
+        else if (archivedSort.key === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (archivedSort.key === 'price') { valA = a.total_price; valB = b.total_price; }
+        if (valA < valB) return archivedSort.desc ? 1 : -1;
+        if (valA > valB) return archivedSort.desc ? -1 : 1;
+        return 0;
+    });
+
     if (orders.length === 0) {
         emptyMsg.classList.remove('hidden');
         return;
@@ -460,6 +517,40 @@ if (accountingSearch) {
         el.addEventListener('input', renderOrders);
         el.addEventListener('change', renderOrders);
     }
+});
+
+['archived-month-filter', 'archived-price-min', 'archived-price-max', 'archived-search'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', renderArchivedOrders);
+        el.addEventListener('change', renderArchivedOrders);
+    }
+});
+
+document.querySelectorAll('#orders-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+        const key = th.getAttribute('data-sort');
+        if (ordersSort.key === key) {
+            ordersSort.desc = !ordersSort.desc;
+        } else {
+            ordersSort.key = key;
+            ordersSort.desc = true;
+        }
+        renderOrders();
+    });
+});
+
+document.querySelectorAll('#archived-table th[data-sort]').forEach(th => {
+    th.addEventListener('click', () => {
+        const key = th.getAttribute('data-sort');
+        if (archivedSort.key === key) {
+            archivedSort.desc = !archivedSort.desc;
+        } else {
+            archivedSort.key = key;
+            archivedSort.desc = true;
+        }
+        renderArchivedOrders();
+    });
 });
 
 document.querySelectorAll('#accounting-table th[data-sort]').forEach(th => {
