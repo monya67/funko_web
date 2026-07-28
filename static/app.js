@@ -167,6 +167,15 @@ navItems.forEach(item => {
     });
 });
 
+function getDeviceId() {
+    let devId = sessionStorage.getItem('funko_device_id');
+    if (!devId) {
+        devId = 'dev_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        sessionStorage.setItem('funko_device_id', devId);
+    }
+    return devId;
+}
+
 // API
 async function fetchAPI(endpoint, options = {}) {
     if (!token) return logoutBtn.click();
@@ -174,6 +183,7 @@ async function fetchAPI(endpoint, options = {}) {
     const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'X-Device-ID': getDeviceId(),
         ...options.headers
     };
     
