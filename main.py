@@ -20,9 +20,24 @@ SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-me")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 1 day
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365  # 1 year (persistent login)
 
 app = FastAPI(title="Funko Stop Admin Panel")
+
+# Active Users Tracking (Heartbeat)
+active_sessions = {}
+
+def update_user_session(user: dict):
+    sid = f"{user['role']}_{user['id']}"
+    active_sessions[sid] = datetime.utcnow()
+
+def get_online_count():
+    now = datetime.utcnow()
+    cutoff = now - timedelta(seconds=60)
+    for sid, last_seen in list(active_sessions.items()):
+        if last_seen < cutoff:
+            del active_sessions[sid]
+    return max(1, len(active_sessions))
 
 # Security
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
@@ -67,12 +82,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             user = await db.fetchrow("SELECT * FROM users WHERE login_id = $1 AND role = 'admin'", sub)
             if not user:
                 raise HTTPException(status_code=401, detail="Admin not found")
-            return {"role": "admin", "id": user["id"], "login": sub}
+            res_user = {"role": "admin", "id": user["id"], "login": sub}
+            update_user_session(res_user)
+            return res_user
         elif role == "client":
             client = await db.fetchrow("SELECT * FROM clients WHERE id = $1", int(sub))
             if not client:
                 raise HTTPException(status_code=401, detail="Client not found")
-            return {"role": "client", "id": client["id"]}
+            res_user = {"role": "client", "id": client["id"]}
+            update_user_session(res_user)
+            return res_user
         else:
             raise HTTPException(status_code=401, detail="Invalid role")
 
@@ -106,6 +125,11 @@ class OrderUpdate(BaseModel):
     delivery_cost: int = 0
 
 # --- API Routes ---
+@app.post("/api/ping")
+async def ping_user(user: dict = Depends(get_current_user)):
+    update_user_session(user)
+    return {"online_count": get_online_count()}
+
 @app.post("/api/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     username = form_data.username
@@ -134,6 +158,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @app.get("/api/dashboard")
 async def get_dashboard(user: dict = Depends(get_current_user)):
+    online = get_online_count()
     async with pool.acquire() as db:
         if user["role"] == "admin":
             clients = await db.fetch("SELECT id, password, user_tg_id FROM clients ORDER BY id DESC")
@@ -145,6 +170,7 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             )
             return {
                 "role": "admin",
+                "online_count": online,
                 "clients": [dict(c) for c in clients],
                 "orders": [dict(o) for o in orders],
                 "archived": [dict(o) for o in archived]
@@ -161,6 +187,7 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             )
             return {
                 "role": "client",
+                "online_count": online,
                 "orders": [dict(o) for o in orders],
                 "archived": [dict(o) for o in archived]
             }
@@ -173,6 +200,10 @@ async def create_client(client: ClientCreate, admin: dict = Depends(require_admi
 
 @app.post("/api/orders")
 async def create_order(order: OrderCreate, admin: dict = Depends(require_admin)):
+    order_date = (order.order_date or "").strip()
+    if not order_date:
+        order_date = datetime.now().strftime("%d.%m.%Y %H:%M")
+        
     async with pool.acquire() as db:
         client = await db.fetchrow("SELECT id, user_tg_id FROM clients WHERE id = $1", order.client_id)
         if not client:
@@ -180,7 +211,7 @@ async def create_order(order: OrderCreate, admin: dict = Depends(require_admin))
             
         new_id = await db.fetchval(
             "INSERT INTO orders (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost) VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9) RETURNING id",
-            order.client_id, order.items, order.total_price, order.paid_amount, "Заказ принят в обработку", order.photo_id, order.order_date, order.cost_price, order.delivery_cost
+            order.client_id, order.items, order.total_price, order.paid_amount, "Заказ принят в обработку", order.photo_id, order_date, order.cost_price, order.delivery_cost
         )
         
         # Send Telegram notification if client is linked to TG
