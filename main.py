@@ -202,7 +202,7 @@ async def create_client(client: ClientCreate, admin: dict = Depends(require_admi
 async def create_order(order: OrderCreate, admin: dict = Depends(require_admin)):
     order_date = (order.order_date or "").strip()
     if not order_date:
-        order_date = datetime.now().strftime("%d.%m.%Y %H:%M")
+        order_date = datetime.now().strftime("%d.%m.%Y")
         
     async with pool.acquire() as db:
         client = await db.fetchrow("SELECT id, user_tg_id FROM clients WHERE id = $1", order.client_id)
