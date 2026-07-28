@@ -210,6 +210,23 @@ async function loadDashboardData() {
     }
 }
 
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return '—';
+    dateStr = dateStr.trim();
+    if (!dateStr) return '—';
+
+    // If YYYY-MM-DD or YYYY-MM-DD HH:MM
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+        const parts = dateStr.split(' ')[0].split('-');
+        return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    // If DD.MM.YYYY HH:MM -> strip time
+    if (/^\d{2}\.\d{2}\.\d{4}/.test(dateStr)) {
+        return dateStr.split(' ')[0];
+    }
+    return dateStr;
+}
+
 // Render active orders with filter support
 function renderOrders() {
     ordersTableBody.innerHTML = '';
@@ -223,11 +240,9 @@ function renderOrders() {
     if (monthVal) {
         orders = orders.filter(o => {
             if (!o.order_date) return false;
-            if (o.order_date.includes('.')) {
-                const parts = o.order_date.split('.');
-                return parts[1] === monthVal;
-            } else if (o.order_date.includes('-')) {
-                const parts = o.order_date.split('-');
+            const formatted = formatDisplayDate(o.order_date);
+            if (formatted.includes('.')) {
+                const parts = formatted.split('.');
                 return parts[1] === monthVal;
             }
             return false;
@@ -265,7 +280,7 @@ function renderOrders() {
         tr.style.animationDelay = `${i * 0.04}s`;
         
         let html = `<td>${order.id}</td>`;
-        html += `<td style="white-space: nowrap; font-size: 0.85rem; color: var(--gray-light);">${order.order_date || '—'}</td>`;
+        html += `<td style="white-space: nowrap; font-size: 0.85rem; color: var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
         if (role === 'admin') {
             html += `<td class="admin-only">${order.client_id}</td>`;
         }
@@ -315,7 +330,7 @@ function renderArchivedOrders() {
         tr.style.animationDelay = `${i * 0.04}s`;
         
         let html = `<td>${order.id}</td>`;
-        html += `<td style="white-space: nowrap; font-size: 0.85rem; color: var(--gray-light);">${order.order_date || '—'}</td>`;
+        html += `<td style="white-space: nowrap; font-size: 0.85rem; color: var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
         if (role === 'admin') {
             html += `<td class="admin-only">${order.client_id}</td>`;
         }
@@ -412,7 +427,7 @@ function renderAccounting() {
         
         tr.innerHTML = `
             <td>${order.id}</td>
-            <td>${order.order_date || '—'}</td>
+            <td>${formatDisplayDate(order.order_date)}</td>
             <td>${order.items.replace(/\n/g, '<br>')}</td>
             <td>${order.total_price.toLocaleString('ru')}</td>
             <td>${cost.toLocaleString('ru')}</td>
