@@ -40,6 +40,8 @@ const editOrderForm = document.getElementById('edit-order-form');
 let token = localStorage.getItem('funko_token');
 let currentRole = null;
 let allOrders = []; // active + archived combined for lookups
+let rawActiveOrders = [];
+let rawArchivedOrders = [];
 let deleteTargetId = null;
 
 // Init
@@ -63,6 +65,7 @@ function showDashboard() {
         loginView.classList.add('hidden');
         dashboardView.classList.remove('hidden');
         loadDashboardData();
+        startHeartbeat();
     }, 400);
 }
 
@@ -74,6 +77,27 @@ function updateRoleUI(role) {
     } else {
         adminElements.forEach(el => el.classList.add('hidden'));
     }
+}
+
+function updateOnlineBadge(count) {
+    const el = document.getElementById('online-count');
+    if (el) el.textContent = count || 1;
+}
+
+let heartbeatInterval = null;
+function startHeartbeat() {
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    heartbeatInterval = setInterval(async () => {
+        if (!token) return;
+        try {
+            const data = await fetchAPI('/ping', { method: 'POST' });
+            if (data && data.online_count) {
+                updateOnlineBadge(data.online_count);
+            }
+        } catch (e) {
+            // Ignore heartbeat errors
+        }
+    }, 20000);
 }
 
 // Auth
@@ -116,6 +140,7 @@ loginForm.addEventListener('submit', async (e) => {
 logoutBtn.addEventListener('click', () => {
     token = null;
     currentRole = null;
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
     localStorage.removeItem('funko_token');
     // Clear all rendered data so nothing flashes on next login
     ordersTableBody.innerHTML = '';
@@ -123,6 +148,8 @@ logoutBtn.addEventListener('click', () => {
     clientsTableBody.innerHTML = '';
     if (accountingTableBody) accountingTableBody.innerHTML = '';
     allOrders = [];
+    rawActiveOrders = [];
+    rawArchivedOrders = [];
     showLogin();
 });
 
@@ -166,9 +193,13 @@ async function loadDashboardData() {
     try {
         const data = await fetchAPI('/dashboard');
         updateRoleUI(data.role);
-        allOrders = [...data.orders, ...(data.archived || [])];
-        renderOrders(data.orders, data.role);
-        renderArchivedOrders(data.archived || [], data.role);
+        if (data.online_count) updateOnlineBadge(data.online_count);
+        rawActiveOrders = data.orders || [];
+        rawArchivedOrders = data.archived || [];
+        allOrders = [...rawActiveOrders, ...rawArchivedOrders];
+        
+        renderOrders();
+        renderArchivedOrders();
         
         if (data.role === 'admin') {
             renderClients(data.clients);
@@ -179,10 +210,48 @@ async function loadDashboardData() {
     }
 }
 
-// Render active orders
-function renderOrders(orders, role) {
+// Render active orders with filter support
+function renderOrders() {
     ordersTableBody.innerHTML = '';
     const emptyMsg = document.getElementById('no-orders');
+    const role = currentRole;
+    
+    let orders = rawActiveOrders;
+
+    // Filters
+    const monthVal = document.getElementById('orders-month-filter')?.value;
+    if (monthVal) {
+        orders = orders.filter(o => {
+            if (!o.order_date) return false;
+            if (o.order_date.includes('.')) {
+                const parts = o.order_date.split('.');
+                return parts[1] === monthVal;
+            } else if (o.order_date.includes('-')) {
+                const parts = o.order_date.split('-');
+                return parts[1] === monthVal;
+            }
+            return false;
+        });
+    }
+
+    const priceMin = parseFloat(document.getElementById('orders-price-min')?.value);
+    if (!isNaN(priceMin)) {
+        orders = orders.filter(o => o.total_price >= priceMin);
+    }
+
+    const priceMax = parseFloat(document.getElementById('orders-price-max')?.value);
+    if (!isNaN(priceMax)) {
+        orders = orders.filter(o => o.total_price <= priceMax);
+    }
+
+    const q = document.getElementById('orders-search')?.value.toLowerCase().trim();
+    if (q) {
+        orders = orders.filter(o => 
+            o.id.toString().includes(q) || 
+            (o.client_id && o.client_id.toString().includes(q)) || 
+            o.items.toLowerCase().includes(q)
+        );
+    }
     
     if (orders.length === 0) {
         emptyMsg.classList.remove('hidden');
@@ -196,6 +265,7 @@ function renderOrders(orders, role) {
         tr.style.animationDelay = `${i * 0.04}s`;
         
         let html = `<td>${order.id}</td>`;
+        html += `<td style="white-space: nowrap; font-size: 0.85rem; color: var(--gray-light);">${order.order_date || '—'}</td>`;
         if (role === 'admin') {
             html += `<td class="admin-only">${order.client_id}</td>`;
         }
@@ -227,9 +297,11 @@ function renderOrders(orders, role) {
 }
 
 // Render archived orders
-function renderArchivedOrders(orders, role) {
+function renderArchivedOrders() {
     archivedTableBody.innerHTML = '';
     const emptyMsg = document.getElementById('no-archived');
+    const role = currentRole;
+    const orders = rawArchivedOrders;
     
     if (orders.length === 0) {
         emptyMsg.classList.remove('hidden');
@@ -243,6 +315,7 @@ function renderArchivedOrders(orders, role) {
         tr.style.animationDelay = `${i * 0.04}s`;
         
         let html = `<td>${order.id}</td>`;
+        html += `<td style="white-space: nowrap; font-size: 0.85rem; color: var(--gray-light);">${order.order_date || '—'}</td>`;
         if (role === 'admin') {
             html += `<td class="admin-only">${order.client_id}</td>`;
         }
@@ -356,6 +429,14 @@ if (accountingSearch) {
     accountingSearch.addEventListener('input', renderAccounting);
 }
 
+['orders-month-filter', 'orders-price-min', 'orders-price-max', 'orders-search'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', renderOrders);
+        el.addEventListener('change', renderOrders);
+    }
+});
+
 document.querySelectorAll('#accounting-table th[data-sort]').forEach(th => {
     th.addEventListener('click', () => {
         const key = th.getAttribute('data-sort');
@@ -381,7 +462,17 @@ function closeModals() {
 }
 
 createClientBtn.addEventListener('click', () => openModal(createClientModal));
-createOrderBtn.addEventListener('click', () => openModal(createOrderModal));
+createOrderBtn.addEventListener('click', () => {
+    openModal(createOrderModal);
+    const dateInput = document.getElementById('order-date');
+    if (dateInput && !dateInput.value) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+    }
+});
 closeBtns.forEach(btn => btn.addEventListener('click', closeModals));
 
 // Photo Viewer
