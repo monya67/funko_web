@@ -3,7 +3,7 @@ import asyncpg
 import jwt
 import httpx
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
@@ -27,9 +27,14 @@ app = FastAPI(title="Funko Stop Admin Panel")
 # Active Users Tracking (Heartbeat)
 active_sessions = {}
 
-def update_user_session(user: dict):
-    sid = f"{user['role']}_{user['id']}"
-    active_sessions[sid] = datetime.utcnow()
+def update_user_session(request: Request, user: dict = None):
+    dev_id = request.headers.get("x-device-id")
+    if not dev_id:
+        if user:
+            dev_id = f"{user['role']}_{user['id']}"
+        else:
+            dev_id = request.client.host if (request and request.client) else "unknown"
+    active_sessions[dev_id] = datetime.utcnow()
 
 def get_online_count():
     now = datetime.utcnow()
@@ -67,7 +72,7 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         role: str = payload.get("role")
@@ -83,14 +88,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
             if not user:
                 raise HTTPException(status_code=401, detail="Admin not found")
             res_user = {"role": "admin", "id": user["id"], "login": sub}
-            update_user_session(res_user)
+            update_user_session(request, res_user)
             return res_user
         elif role == "client":
             client = await db.fetchrow("SELECT * FROM clients WHERE id = $1", int(sub))
             if not client:
                 raise HTTPException(status_code=401, detail="Client not found")
             res_user = {"role": "client", "id": client["id"]}
-            update_user_session(res_user)
+            update_user_session(request, res_user)
             return res_user
         else:
             raise HTTPException(status_code=401, detail="Invalid role")
@@ -126,8 +131,8 @@ class OrderUpdate(BaseModel):
 
 # --- API Routes ---
 @app.post("/api/ping")
-async def ping_user(user: dict = Depends(get_current_user)):
-    update_user_session(user)
+async def ping_user(request: Request, user: dict = Depends(get_current_user)):
+    update_user_session(request, user)
     return {"online_count": get_online_count()}
 
 @app.post("/api/login")
