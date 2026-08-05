@@ -242,6 +242,12 @@ async def create_order(order: OrderCreate, admin: dict = Depends(require_admin))
 @app.put("/api/orders/{order_id}")
 async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(require_admin)):
     async with pool.acquire() as db:
+        # Grab old status and TG ID to check if it changed
+        old_data = await db.fetchrow(
+            "SELECT o.status, c.user_tg_id FROM orders o JOIN clients c ON o.client_id = c.id WHERE o.id = $1", 
+            order_id
+        )
+        
         # Auto-archive when status is "Выдано"
         archived = order.status == "Выдано"
         res = await db.execute(
@@ -250,6 +256,32 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
         )
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Order not found")
+            
+        # If status changed, send notification to client
+        if old_data and old_data["user_tg_id"] and BOT_TOKEN and old_data["status"] != order.status:
+            debt = order.total_price - order.paid_amount
+            msg = f"📦 **Обновление по заказу #{order_id}**\n\n"
+            msg += f"🛒 **Позиции:**\n{order.items}\n\n"
+            msg += f"💵 **Общая стоимость:** {order.total_price}\n"
+            msg += f"✅ **Оплачено:** {order.paid_amount}\n"
+            msg += f"❗️ **Осталось доплатить:** {debt if debt > 0 else 0}\n\n"
+            msg += f"🚚 **Текущий статус:**\n_{order.status}_"
+            
+            try:
+                async with httpx.AsyncClient() as http_client:
+                    if order.photo_id:
+                        await http_client.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                            data={"chat_id": old_data["user_tg_id"], "photo": order.photo_id, "caption": msg, "parse_mode": "Markdown"}
+                        )
+                    else:
+                        await http_client.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            json={"chat_id": old_data["user_tg_id"], "text": msg, "parse_mode": "Markdown"}
+                        )
+            except Exception as e:
+                print(f"Error sending TG notification for status update: {e}")
+                
         return {"success": True}
 
 @app.post("/api/orders/{order_id}/archive")
