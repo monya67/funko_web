@@ -72,9 +72,23 @@
                         <option value="11" style="background:#111;">Ноябрь</option>
                         <option value="12" style="background:#111;">Декабрь</option>
                     </select>
+                    <select id="orders-status-filter" style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                        <option value="" style="background:#111;">Все статусы</option>
+                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода в продажу</option>
+                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в обработку</option>
+                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на склад США</option>
+                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">Заказ ожидает отправки из магазина</option>
+                        <option value="Заказ начал сортировку на складе США" style="background:#111;">Заказ начал сортировку на складе США</option>
+                        <option value="Заказ отправлен из США на наш склад в Россию" style="background:#111;">Заказ отправлен из США на наш склад в Россию</option>
+                        <option value="Заказ проходит таможенное оформление" style="background:#111;">Заказ проходит таможенное оформление</option>
+                        <option value="Заказ прибыл в магазин и готов к выдаче" style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
+                        <option value="Выдано" style="background:#111;">Выдано</option>
+                    </select>
                     <input type="number" id="orders-price-min" placeholder="Сумма от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                     <input type="number" id="orders-price-max" placeholder="Сумма до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="text" id="orders-search" placeholder="Поиск по ID или товару..." style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
+                    <input type="number" id="orders-paid-min" placeholder="Оплачено от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="orders-paid-max" placeholder="Оплачено до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="text" id="orders-search" placeholder="Поиск (Заказ, Клиент, Товар)..." style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
                 </div>
                 <div class="glass-panel table-container">
                     <table id="orders-table">
@@ -118,9 +132,23 @@
                         <option value="11" style="background:#111;">Ноябрь</option>
                         <option value="12" style="background:#111;">Декабрь</option>
                     </select>
+                    <select id="archived-status-filter" style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                        <option value="" style="background:#111;">Все статусы</option>
+                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода в продажу</option>
+                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в обработку</option>
+                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на склад США</option>
+                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">Заказ ожидает отправки из магазина</option>
+                        <option value="Заказ начал сортировку на складе США" style="background:#111;">Заказ начал сортировку на складе США</option>
+                        <option value="Заказ отправлен из США на наш склад в Россию" style="background:#111;">Заказ отправлен из США на наш склад в Россию</option>
+                        <option value="Заказ проходит таможенное оформление" style="background:#111;">Заказ проходит таможенное оформление</option>
+                        <option value="Заказ прибыл в магазин и готов к выдаче" style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
+                        <option value="Выдано" style="background:#111;">Выдано</option>
+                    </select>
                     <input type="number" id="archived-price-min" placeholder="Сумма от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                     <input type="number" id="archived-price-max" placeholder="Сумма до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="text" id="archived-search" placeholder="Поиск по ID или товару..." style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
+                    <input type="number" id="archived-paid-min" placeholder="Оплачено от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="archived-paid-max" placeholder="Оплачено до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="text" id="archived-search" placeholder="Поиск (Заказ, Клиент, Товар)..." style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
                 </div>
                 <div class="glass-panel table-container">
                     <table id="archived-table">
@@ -218,7 +246,7 @@
                     </div>
                     <div style="width: 100%;">
                         <label>Дата оформления</label>
-                        <input type="date" id="order-date" required>
+                        <input type="date" id="order-date">
                     </div>
                 </div>
                 <div class="input-group">
