@@ -266,6 +266,11 @@ function renderOrders() {
         orders = orders.filter(o => o.status === statusVal);
     }
 
+    const clientVal = parseInt(document.getElementById('orders-client-filter')?.value);
+    if (!isNaN(clientVal)) {
+        orders = orders.filter(o => o.client_id === clientVal);
+    }
+
     const priceMin = parseFloat(document.getElementById('orders-price-min')?.value);
     if (!isNaN(priceMin)) {
         orders = orders.filter(o => o.total_price >= priceMin);
@@ -373,6 +378,11 @@ function renderArchivedOrders() {
     const statusVal = document.getElementById('archived-status-filter')?.value;
     if (statusVal) {
         orders = orders.filter(o => o.status === statusVal);
+    }
+
+    const clientVal = parseInt(document.getElementById('archived-client-filter')?.value);
+    if (!isNaN(clientVal)) {
+        orders = orders.filter(o => o.client_id === clientVal);
     }
 
     const priceMin = parseFloat(document.getElementById('archived-price-min')?.value);
@@ -541,7 +551,7 @@ if (accountingSearch) {
     accountingSearch.addEventListener('input', renderAccounting);
 }
 
-['orders-status-filter', 'orders-month-filter', 'orders-price-min', 'orders-price-max', 'orders-paid-min', 'orders-paid-max', 'orders-search'].forEach(id => {
+['orders-status-filter', 'orders-client-filter', 'orders-month-filter', 'orders-price-min', 'orders-price-max', 'orders-paid-min', 'orders-paid-max', 'orders-search'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
         el.addEventListener('input', renderOrders);
@@ -549,7 +559,7 @@ if (accountingSearch) {
     }
 });
 
-['archived-status-filter', 'archived-month-filter', 'archived-price-min', 'archived-price-max', 'archived-paid-min', 'archived-paid-max', 'archived-search'].forEach(id => {
+['archived-status-filter', 'archived-client-filter', 'archived-month-filter', 'archived-price-min', 'archived-price-max', 'archived-paid-min', 'archived-paid-max', 'archived-search'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
         el.addEventListener('input', renderArchivedOrders);
