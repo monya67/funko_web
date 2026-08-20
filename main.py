@@ -310,7 +310,7 @@ async def delete_order(order_id: int, admin: dict = Depends(require_admin)):
 
 # --- Telegram Photo Proxy ---
 @app.get("/api/photos/{photo_id}")
-async def get_telegram_photo(photo_id: str, user: dict = Depends(get_current_user)):
+async def get_telegram_photo(photo_id: str):
     if not BOT_TOKEN:
         raise HTTPException(status_code=500, detail="BOT_TOKEN not configured")
         
