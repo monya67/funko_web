@@ -305,7 +305,10 @@ function renderOrders() {
         let valA, valB;
         if (ordersSort.key === 'id') { valA = a.id; valB = b.id; }
         else if (ordersSort.key === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (ordersSort.key === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
         else if (ordersSort.key === 'price') { valA = a.total_price; valB = b.total_price; }
+        else if (ordersSort.key === 'paid') { valA = a.paid_amount || 0; valB = b.paid_amount || 0; }
+        else if (ordersSort.key === 'status') { valA = a.status || ''; valB = b.status || ''; }
         if (valA < valB) return ordersSort.desc ? 1 : -1;
         if (valA > valB) return ordersSort.desc ? -1 : 1;
         return 0;
@@ -419,7 +422,10 @@ function renderArchivedOrders() {
         let valA, valB;
         if (archivedSort.key === 'id') { valA = a.id; valB = b.id; }
         else if (archivedSort.key === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (archivedSort.key === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
         else if (archivedSort.key === 'price') { valA = a.total_price; valB = b.total_price; }
+        else if (archivedSort.key === 'paid') { valA = a.paid_amount || 0; valB = b.paid_amount || 0; }
+        else if (archivedSort.key === 'status') { valA = a.status || ''; valB = b.status || ''; }
         if (valA < valB) return archivedSort.desc ? 1 : -1;
         if (valA > valB) return archivedSort.desc ? -1 : 1;
         return 0;
