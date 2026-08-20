@@ -261,6 +261,11 @@ function renderOrders() {
         });
     }
 
+    const statusVal = document.getElementById('orders-status-filter')?.value;
+    if (statusVal) {
+        orders = orders.filter(o => o.status === statusVal);
+    }
+
     const priceMin = parseFloat(document.getElementById('orders-price-min')?.value);
     if (!isNaN(priceMin)) {
         orders = orders.filter(o => o.total_price >= priceMin);
@@ -269,6 +274,16 @@ function renderOrders() {
     const priceMax = parseFloat(document.getElementById('orders-price-max')?.value);
     if (!isNaN(priceMax)) {
         orders = orders.filter(o => o.total_price <= priceMax);
+    }
+
+    const paidMin = parseFloat(document.getElementById('orders-paid-min')?.value);
+    if (!isNaN(paidMin)) {
+        orders = orders.filter(o => o.paid_amount >= paidMin);
+    }
+
+    const paidMax = parseFloat(document.getElementById('orders-paid-max')?.value);
+    if (!isNaN(paidMax)) {
+        orders = orders.filter(o => o.paid_amount <= paidMax);
     }
 
     const q = document.getElementById('orders-search')?.value.toLowerCase().trim();
@@ -309,7 +324,7 @@ function renderOrders() {
         }
         
         html += order.photo_id
-            ? `<td><button class="photo-btn" onclick="viewPhoto('${order.photo_id}')">Смотреть</button></td>`
+            ? `<td><img src="/api/photos/${order.photo_id}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer; transition: transform 0.2s;" onclick="viewPhoto('${order.photo_id}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></td>`
             : `<td style="color: var(--gray-light);">—</td>`;
         
         html += `
@@ -355,6 +370,11 @@ function renderArchivedOrders() {
         });
     }
 
+    const statusVal = document.getElementById('archived-status-filter')?.value;
+    if (statusVal) {
+        orders = orders.filter(o => o.status === statusVal);
+    }
+
     const priceMin = parseFloat(document.getElementById('archived-price-min')?.value);
     if (!isNaN(priceMin)) {
         orders = orders.filter(o => o.total_price >= priceMin);
@@ -363,6 +383,16 @@ function renderArchivedOrders() {
     const priceMax = parseFloat(document.getElementById('archived-price-max')?.value);
     if (!isNaN(priceMax)) {
         orders = orders.filter(o => o.total_price <= priceMax);
+    }
+
+    const paidMin = parseFloat(document.getElementById('archived-paid-min')?.value);
+    if (!isNaN(paidMin)) {
+        orders = orders.filter(o => o.paid_amount >= paidMin);
+    }
+
+    const paidMax = parseFloat(document.getElementById('archived-paid-max')?.value);
+    if (!isNaN(paidMax)) {
+        orders = orders.filter(o => o.paid_amount <= paidMax);
     }
 
     const q = document.getElementById('archived-search')?.value.toLowerCase().trim();
@@ -403,7 +433,7 @@ function renderArchivedOrders() {
         }
         
         html += order.photo_id
-            ? `<td><button class="photo-btn" onclick="viewPhoto('${order.photo_id}')">Смотреть</button></td>`
+            ? `<td><img src="/api/photos/${order.photo_id}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer; transition: transform 0.2s;" onclick="viewPhoto('${order.photo_id}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></td>`
             : `<td style="color: var(--gray-light);">—</td>`;
         
         html += `
@@ -511,7 +541,7 @@ if (accountingSearch) {
     accountingSearch.addEventListener('input', renderAccounting);
 }
 
-['orders-month-filter', 'orders-price-min', 'orders-price-max', 'orders-search'].forEach(id => {
+['orders-status-filter', 'orders-month-filter', 'orders-price-min', 'orders-price-max', 'orders-paid-min', 'orders-paid-max', 'orders-search'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
         el.addEventListener('input', renderOrders);
@@ -519,7 +549,7 @@ if (accountingSearch) {
     }
 });
 
-['archived-month-filter', 'archived-price-min', 'archived-price-max', 'archived-search'].forEach(id => {
+['archived-status-filter', 'archived-month-filter', 'archived-price-min', 'archived-price-max', 'archived-paid-min', 'archived-paid-max', 'archived-search'].forEach(id => {
     const el = document.getElementById(id);
     if (el) {
         el.addEventListener('input', renderArchivedOrders);
