@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="background"></div>
 
@@ -42,8 +44,10 @@
                 <a href="#" class="nav-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
                 <a href="#" class="nav-item admin-only hidden" data-tab="clients">Клиенты</a>
             </nav>
-            <div id="online-badge" class="online-status admin-only hidden" style="margin-top: 15px; font-size: 0.85rem; color: #40c057; display: flex; align-items: center; gap: 6px; padding: 0 10px;">
-                <span class="dot" style="width: 8px; height: 8px; background: #40c057; border-radius: 50%; display: inline-block;"></span> 
+            <div id="online-badge" class="online-status admin-only hidden"
+                style="margin-top: 15px; font-size: 0.85rem; color: #40c057; display: flex; align-items: center; gap: 6px; padding: 0 10px;">
+                <span class="dot"
+                    style="width: 8px; height: 8px; background: #40c057; border-radius: 50%; display: inline-block;"></span>
                 Сейчас на сайте: <strong id="online-count">1</strong> чел.
             </div>
             <button id="logout-btn" class="btn secondary outline mt-auto">Выйти</button>
@@ -56,8 +60,10 @@
                     <h2>Активные заказы</h2>
                     <button id="new-order-btn" class="btn primary admin-only hidden">+ Новый заказ</button>
                 </div>
-                <div class="filters-flex" style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
-                    <select id="orders-month-filter" style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                <div class="filters-flex"
+                    style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                    <select id="orders-month-filter"
+                        style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                         <option value="" style="background:#111;">Все месяцы</option>
                         <option value="01" style="background:#111;">Январь</option>
                         <option value="02" style="background:#111;">Февраль</option>
@@ -72,24 +78,19 @@
                         <option value="11" style="background:#111;">Ноябрь</option>
                         <option value="12" style="background:#111;">Декабрь</option>
                     </select>
-                    <select id="orders-status-filter" style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                        <option value="" style="background:#111;">Все статусы</option>
-                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода в продажу</option>
-                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в обработку</option>
-                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на склад США</option>
-                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">Заказ ожидает отправки из магазина</option>
-                        <option value="Заказ начал сортировку на складе США" style="background:#111;">Заказ начал сортировку на складе США</option>
-                        <option value="Заказ отправлен из США на наш склад в Россию" style="background:#111;">Заказ отправлен из США на наш склад в Россию</option>
-                        <option value="Заказ проходит таможенное оформление" style="background:#111;">Заказ проходит таможенное оформление</option>
-                        <option value="Заказ прибыл в магазин и готов к выдаче" style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
-                        <option value="Выдано" style="background:#111;">Выдано</option>
-                    </select>
-                    <input type="number" id="orders-client-filter" placeholder="ID Клиента" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="number" id="orders-price-min" placeholder="Сумма от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="number" id="orders-price-max" placeholder="Сумма до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="number" id="orders-paid-min" placeholder="Оплачено от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="number" id="orders-paid-max" placeholder="Оплачено до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="text" id="orders-search" placeholder="Поиск (Заказ, Клиент, Товар)..." style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
+
+                    <input type="number" id="orders-client-filter" placeholder="ID Клиента"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="orders-price-min" placeholder="Сумма от ₽"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="orders-price-max" placeholder="Сумма до ₽"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="orders-paid-min" placeholder="Оплачено от ₽"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="orders-paid-max" placeholder="Оплачено до ₽"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="text" id="orders-search" placeholder="Поиск (Заказ, Клиент, Товар)..."
+                        style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
                 </div>
                 <div class="glass-panel table-container">
                     <table id="orders-table">
@@ -102,7 +103,21 @@
                                 <th>Товары</th>
                                 <th data-sort="price" style="cursor:pointer">Сумма ↕</th>
                                 <th data-sort="paid" style="cursor:pointer">Оплачено ↕</th>
-                                <th data-sort="status" style="cursor:pointer">Статус ↕</th>
+                                <th data-sort="status" style="cursor:pointer">
+                                    Статус ↕<br>
+                                    <select id="orders-status-filter" onclick="event.stopPropagation()" style="margin-top: 4px; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 12px; font-weight: normal; max-width: 150px;">
+                                        <option value="" style="background:#111;">Все статусы</option>
+                                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода в продажу</option>
+                                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в обработку</option>
+                                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на склад США</option>
+                                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">Заказ ожидает отправки из магазина</option>
+                                        <option value="Заказ начал сортировку на складе США" style="background:#111;">Заказ начал сортировку на складе США</option>
+                                        <option value="Заказ отправлен из США на наш склад в Россию" style="background:#111;">Заказ отправлен из США на наш склад в Россию</option>
+                                        <option value="Заказ проходит таможенное оформление" style="background:#111;">Заказ проходит таможенное оформление</option>
+                                        <option value="Заказ прибыл в магазин и готов к выдаче" style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
+                                        <option value="Выдано" style="background:#111;">Выдано</option>
+                                    </select>
+                                </th>
                                 <th class="admin-only hidden"></th>
                             </tr>
                         </thead>
@@ -117,8 +132,10 @@
                 <div class="header-flex">
                     <h2>Архив заказов</h2>
                 </div>
-                <div class="filters-flex" style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
-                    <select id="archived-month-filter" style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                <div class="filters-flex"
+                    style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                    <select id="archived-month-filter"
+                        style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                         <option value="" style="background:#111;">Все месяцы</option>
                         <option value="01" style="background:#111;">Январь</option>
                         <option value="02" style="background:#111;">Февраль</option>
@@ -133,24 +150,19 @@
                         <option value="11" style="background:#111;">Ноябрь</option>
                         <option value="12" style="background:#111;">Декабрь</option>
                     </select>
-                    <select id="archived-status-filter" style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                        <option value="" style="background:#111;">Все статусы</option>
-                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода в продажу</option>
-                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в обработку</option>
-                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на склад США</option>
-                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">Заказ ожидает отправки из магазина</option>
-                        <option value="Заказ начал сортировку на складе США" style="background:#111;">Заказ начал сортировку на складе США</option>
-                        <option value="Заказ отправлен из США на наш склад в Россию" style="background:#111;">Заказ отправлен из США на наш склад в Россию</option>
-                        <option value="Заказ проходит таможенное оформление" style="background:#111;">Заказ проходит таможенное оформление</option>
-                        <option value="Заказ прибыл в магазин и готов к выдаче" style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
-                        <option value="Выдано" style="background:#111;">Выдано</option>
-                    </select>
-                    <input type="number" id="archived-client-filter" placeholder="ID Клиента" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="number" id="archived-price-min" placeholder="Сумма от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="number" id="archived-price-max" placeholder="Сумма до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="number" id="archived-paid-min" placeholder="Оплачено от ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="number" id="archived-paid-max" placeholder="Оплачено до ₽" style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
-                    <input type="text" id="archived-search" placeholder="Поиск (Заказ, Клиент, Товар)..." style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
+
+                    <input type="number" id="archived-client-filter" placeholder="ID Клиента"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="archived-price-min" placeholder="Сумма от ₽"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="archived-price-max" placeholder="Сумма до ₽"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="archived-paid-min" placeholder="Оплачено от ₽"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="number" id="archived-paid-max" placeholder="Оплачено до ₽"
+                        style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <input type="text" id="archived-search" placeholder="Поиск (Заказ, Клиент, Товар)..."
+                        style="padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; flex-grow: 1;">
                 </div>
                 <div class="glass-panel table-container">
                     <table id="archived-table">
@@ -163,7 +175,21 @@
                                 <th>Товары</th>
                                 <th data-sort="price" style="cursor:pointer">Сумма ↕</th>
                                 <th data-sort="paid" style="cursor:pointer">Оплачено ↕</th>
-                                <th data-sort="status" style="cursor:pointer">Статус ↕</th>
+                                <th data-sort="status" style="cursor:pointer">
+                                    Статус ↕<br>
+                                    <select id="archived-status-filter" onclick="event.stopPropagation()" style="margin-top: 4px; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 12px; font-weight: normal; max-width: 150px;">
+                                        <option value="" style="background:#111;">Все статусы</option>
+                                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода в продажу</option>
+                                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в обработку</option>
+                                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на склад США</option>
+                                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">Заказ ожидает отправки из магазина</option>
+                                        <option value="Заказ начал сортировку на складе США" style="background:#111;">Заказ начал сортировку на складе США</option>
+                                        <option value="Заказ отправлен из США на наш склад в Россию" style="background:#111;">Заказ отправлен из США на наш склад в Россию</option>
+                                        <option value="Заказ проходит таможенное оформление" style="background:#111;">Заказ проходит таможенное оформление</option>
+                                        <option value="Заказ прибыл в магазин и готов к выдаче" style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
+                                        <option value="Выдано" style="background:#111;">Выдано</option>
+                                    </select>
+                                </th>
                                 <th class="admin-only hidden"></th>
                             </tr>
                         </thead>
@@ -197,7 +223,8 @@
             <section id="accounting-tab" class="tab-content hidden admin-only">
                 <div class="header-flex">
                     <h2>Бухгалтерия</h2>
-                    <input type="text" id="accounting-search" placeholder="Поиск по ID или товару..." style="max-width: 300px; margin-left: auto;">
+                    <input type="text" id="accounting-search" placeholder="Поиск по ID или товару..."
+                        style="max-width: 300px; margin-left: auto;">
                 </div>
                 <div class="glass-panel table-container">
                     <table id="accounting-table">
@@ -222,7 +249,7 @@
 
     <!-- Modals -->
     <div id="modal-overlay" class="modal-overlay hidden">
-        
+
         <!-- Create Client Modal -->
         <div id="create-client-modal" class="glass-panel modal hidden">
             <h3>Новый клиент</h3>
@@ -306,13 +333,18 @@
                         <label>Статус</label>
                         <select id="edit-order-status" required>
                             <option value="Заказ принят в обработку">Заказ принят в обработку</option>
-                            <option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option>
+                            <option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина
+                            </option>
                             <option value="Заказ едет на склад США">Заказ едет на склад США</option>
-                            <option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option>
-                            <option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option>
+                            <option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США
+                            </option>
+                            <option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш
+                                склад в Россию</option>
                             <option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option>
-                            <option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option>
-                            <option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option>
+                            <option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление
+                            </option>
+                            <option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к
+                                выдаче</option>
                             <option value="Выдано">Выдано</option>
                         </select>
                     </div>
@@ -341,7 +373,8 @@
         <!-- Confirm Delete Modal -->
         <div id="confirm-delete-modal" class="glass-panel modal hidden">
             <h3>Удалить заказ #<span id="delete-order-id-display"></span>?</h3>
-            <p style="color: var(--gray); margin-bottom: 1rem;">Заказ будет удален навсегда. Это действие нельзя отменить.</p>
+            <p style="color: var(--gray); margin-bottom: 1rem;">Заказ будет удален навсегда. Это действие нельзя
+                отменить.</p>
             <div class="modal-actions">
                 <button type="button" class="btn secondary outline close-modal">Отмена</button>
                 <button type="button" id="confirm-delete-btn" class="btn danger">Удалить</button>
@@ -351,4 +384,5 @@
 
     <script src="/static/app.js?v=3"></script>
 </body>
+
 </html>
