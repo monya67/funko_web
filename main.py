@@ -7,8 +7,11 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
+from fastapi import UploadFile, File, Form
 from pydantic import BaseModel
 from dotenv import load_dotenv
+import io
+from PIL import Image
 
 load_dotenv()
 
@@ -18,11 +21,15 @@ if not DATABASE_URL:
 
 SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-me")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365  # 1 year (persistent login)
 
 app = FastAPI(title="Funko Stop Admin Panel")
+
+IMAGE_CACHE = {}
+CACHE_LIMIT = 500
 
 # Active Users Tracking (Heartbeat)
 active_sessions = {}
@@ -311,6 +318,9 @@ async def delete_order(order_id: int, admin: dict = Depends(require_admin)):
 # --- Telegram Photo Proxy ---
 @app.get("/api/photos/{photo_id}")
 async def get_telegram_photo(photo_id: str):
+    if photo_id in IMAGE_CACHE:
+        return Response(content=IMAGE_CACHE[photo_id], media_type="image/webp", headers={"Content-Disposition": f'inline; filename="{photo_id}.webp"'})
+
     if not BOT_TOKEN:
         raise HTTPException(status_code=500, detail="BOT_TOKEN not configured")
         
@@ -326,7 +336,50 @@ async def get_telegram_photo(photo_id: str):
         if photo_res.status_code != 200:
             raise HTTPException(status_code=404, detail="Failed to download photo")
             
-        return Response(content=photo_res.content, media_type="image/jpeg")
+        try:
+            img = Image.open(io.BytesIO(photo_res.content))
+            out_io = io.BytesIO()
+            img.save(out_io, format="WEBP", quality=80)
+            webp_bytes = out_io.getvalue()
+            
+            if len(IMAGE_CACHE) >= CACHE_LIMIT:
+                IMAGE_CACHE.clear()
+            IMAGE_CACHE[photo_id] = webp_bytes
+            
+            return Response(content=webp_bytes, media_type="image/webp", headers={"Content-Disposition": f'inline; filename="{photo_id}.webp"'})
+        except Exception as e:
+            return Response(content=photo_res.content, media_type="image/jpeg", headers={"Content-Disposition": f'inline; filename="{photo_id}.jpg"'})
+
+@app.post("/api/upload_photo")
+async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(require_admin)):
+    if not BOT_TOKEN or not ADMIN_IDS:
+        raise HTTPException(status_code=500, detail="BOT_TOKEN or ADMIN_IDS not configured")
+        
+    content = await file.read()
+    
+    try:
+        img = Image.open(io.BytesIO(content))
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        out_io = io.BytesIO()
+        img.save(out_io, format="JPEG", quality=85)
+        content = out_io.getvalue()
+    except:
+        pass
+        
+    async with httpx.AsyncClient() as client:
+        files = {"photo": ("image.jpg", content, "image/jpeg")}
+        data = {"chat_id": ADMIN_IDS[0], "caption": f"Uploaded from web panel by {admin['role']}"}
+        res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=data, files=files)
+        res_data = res.json()
+        
+        if not res_data.get("ok"):
+            raise HTTPException(status_code=500, detail="Failed to upload to Telegram")
+            
+        photos = res_data["result"]["photo"]
+        largest_photo = max(photos, key=lambda x: x["file_size"])
+        
+        return {"photo_id": largest_photo["file_id"]}
 
 # --- Static Files ---
 app.mount("/static", StaticFiles(directory="static"), name="static")
