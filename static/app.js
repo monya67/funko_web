@@ -793,4 +793,49 @@ createOrderForm.addEventListener('submit', async (e) => {
     }
 });
 
+// Photo Upload Logic
+async function handlePhotoUpload(e, targetInputId) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const label = e.target.previousElementSibling;
+    const originalText = label.textContent;
+    label.textContent = 'Загрузка...';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const res = await fetch(`${API_BASE}/upload_photo`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Ошибка загрузки');
+        }
+        
+        const data = await res.json();
+        document.getElementById(targetInputId).value = data.photo_id;
+        label.textContent = 'Загружено ✓';
+        setTimeout(() => label.textContent = originalText, 2000);
+    } catch (err) {
+        alert(err.message);
+        label.textContent = 'Ошибка ✕';
+        setTimeout(() => label.textContent = originalText, 2000);
+    }
+    
+    e.target.value = ''; // Reset input
+}
+
+const orderPhotoUpload = document.getElementById('order-photo-upload');
+if (orderPhotoUpload) orderPhotoUpload.addEventListener('change', (e) => handlePhotoUpload(e, 'order-photo-id'));
+
+const editOrderPhotoUpload = document.getElementById('edit-order-photo-upload');
+if (editOrderPhotoUpload) editOrderPhotoUpload.addEventListener('change', (e) => handlePhotoUpload(e, 'edit-order-photo-id'));
+
 init();
