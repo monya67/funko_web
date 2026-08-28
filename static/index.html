@@ -285,8 +285,10 @@
                     <input type="number" id="order-price" placeholder="Сумма" required>
                     <input type="number" id="order-paid" placeholder="Оплачено" required>
                 </div>
-                <div class="input-group">
-                    <input type="text" id="order-photo-id" placeholder="Telegram Photo ID (необязательно)">
+                <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="order-photo-id" placeholder="Telegram Photo ID (необязательно)" style="flex-grow: 1;">
+                    <label for="order-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 15px; cursor: pointer; white-space: nowrap;">Загрузить фото</label>
+                    <input type="file" id="order-photo-upload" accept="image/*" style="display: none;">
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline close-modal">Отмена</button>
@@ -350,7 +352,11 @@
                     </div>
                     <div style="width: 100%;">
                         <label>Photo ID</label>
-                        <input type="text" id="edit-order-photo-id">
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="edit-order-photo-id" style="flex-grow: 1;">
+                            <label for="edit-order-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 15px; cursor: pointer; white-space: nowrap;">Загрузить фото</label>
+                            <input type="file" id="edit-order-photo-upload" accept="image/*" style="display: none;">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-actions">
