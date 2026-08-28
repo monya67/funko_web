@@ -315,6 +315,12 @@ async def delete_order(order_id: int, admin: dict = Depends(require_admin)):
             raise HTTPException(status_code=404, detail="Order not found")
         return {"success": True}
 
+def convert_to_webp(content):
+    img = Image.open(io.BytesIO(content))
+    out_io = io.BytesIO()
+    img.save(out_io, format="WEBP", quality=80)
+    return out_io.getvalue()
+
 # --- Telegram Photo Proxy ---
 @app.get("/api/photos/{photo_id}")
 async def get_telegram_photo(photo_id: str):
@@ -337,10 +343,8 @@ async def get_telegram_photo(photo_id: str):
             raise HTTPException(status_code=404, detail="Failed to download photo")
             
         try:
-            img = Image.open(io.BytesIO(photo_res.content))
-            out_io = io.BytesIO()
-            img.save(out_io, format="WEBP", quality=80)
-            webp_bytes = out_io.getvalue()
+            import asyncio
+            webp_bytes = await asyncio.to_thread(convert_to_webp, photo_res.content)
             
             if len(IMAGE_CACHE) >= CACHE_LIMIT:
                 IMAGE_CACHE.clear()
