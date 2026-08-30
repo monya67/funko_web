@@ -48,6 +48,72 @@ let deleteTargetId = null;
 window.marginMode = 'rub';
 window.taxesExpanded = false;
 
+// Global Mass Edit Functions (defined early so they are available immediately)
+window.updateMassEditPanel = function(tab) {
+    const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
+    const countSpan = document.getElementById(`${tab}-mass-edit-count`);
+    const btn = document.getElementById(`${tab}-mass-edit-btn`);
+    const count = checkboxes.length;
+    
+    if (countSpan) {
+        countSpan.textContent = `Выбрано заказов: ${count} шт.`;
+        countSpan.style.color = count > 0 ? '#00ff88' : '#fff';
+    }
+    if (btn) {
+        if (count > 0) {
+            btn.textContent = `⚡ Применить статус ко всем (${count})`;
+            btn.style.opacity = '1';
+        } else {
+            btn.textContent = '⚡ Применить статус';
+            btn.style.opacity = '0.7';
+        }
+    }
+};
+
+window.clearMassSelection = function(tab) {
+    document.querySelectorAll(`.${tab}-row-checkbox`).forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById(`${tab}-select-all`);
+    if (selectAll) selectAll.checked = false;
+    window.updateMassEditPanel(tab);
+};
+
+// 1-Click Fast Inline Status Save
+window.saveInlineStatus = async function(orderId, newStatus) {
+    const order = allOrders.find(o => o.id === orderId);
+    if (!order) return;
+    if (order.status === newStatus) return;
+
+    const sel = document.querySelector(`.inline-status-select[data-order-id="${orderId}"]`);
+    if (sel) {
+        sel.classList.add('saving');
+    }
+    const payload = {
+        items: order.items,
+        total_price: order.total_price,
+        paid_amount: order.paid_amount,
+        status: newStatus,
+        photo_id: order.photo_id,
+        order_date: order.order_date,
+        cost_price: order.cost_price,
+        delivery_cost: order.delivery_cost
+    };
+    try {
+        await fetchAPI(`/orders/${orderId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        if (sel) {
+            sel.classList.remove('saving');
+            sel.classList.add('saved');
+            setTimeout(() => sel.classList.remove('saved'), 1500);
+        }
+        await loadDashboardData();
+    } catch (err) {
+        alert('Ошибка при смене статуса: ' + err.message);
+        if (sel) {
+            sel.classList.remove('saving');
+            sel.value = order.status;
+        }
+    }
+};
+
 // Init
 function init() {
     if (token) showDashboard();
@@ -318,43 +384,6 @@ function makeInlineStatusCell(order) {
     </td>`;
 }
 
-// 1-Click Fast Inline Status Save
-window.saveInlineStatus = async function(orderId, newStatus) {
-    const order = allOrders.find(o => o.id === orderId);
-    if (!order) return;
-    if (order.status === newStatus) return;
-
-    const sel = document.querySelector(`.inline-status-select[data-order-id="${orderId}"]`);
-    if (sel) {
-        sel.classList.add('saving');
-    }
-    const payload = {
-        items: order.items,
-        total_price: order.total_price,
-        paid_amount: order.paid_amount,
-        status: newStatus,
-        photo_id: order.photo_id,
-        order_date: order.order_date,
-        cost_price: order.cost_price,
-        delivery_cost: order.delivery_cost
-    };
-    try {
-        await fetchAPI(`/orders/${orderId}`, { method: 'PUT', body: JSON.stringify(payload) });
-        if (sel) {
-            sel.classList.remove('saving');
-            sel.classList.add('saved');
-            setTimeout(() => sel.classList.remove('saved'), 1500);
-        }
-        await loadDashboardData();
-    } catch (err) {
-        alert('Ошибка при смене статуса: ' + err.message);
-        if (sel) {
-            sel.classList.remove('saving');
-            sel.value = order.status;
-        }
-    }
-};
-
 // Sort helper
 function sortOrders(orders, sortState) {
     return [...orders].sort((a, b) => {
@@ -420,7 +449,7 @@ function renderOrders() {
 
         let html = '';
         if (role === 'admin') {
-            html += `<td style="text-align:center;"><input type="checkbox" class="order-row-checkbox" value="${order.id}" onchange="window.updateMassEditPanel('orders')"></td>`;
+            html += `<td style="text-align:center;"><input type="checkbox" class="orders-row-checkbox" value="${order.id}" onchange="window.updateMassEditPanel('orders')"></td>`;
         }
         html += `<td>${order.id}</td>`;
         html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
@@ -701,6 +730,35 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Global Event Delegation for Row Checkboxes (handles Click, Change, Input immediately)
+document.addEventListener('change', (e) => {
+    if (e.target.classList.contains('orders-row-checkbox')) {
+        window.updateMassEditPanel('orders');
+    }
+    if (e.target.classList.contains('archived-row-checkbox')) {
+        window.updateMassEditPanel('archived');
+    }
+});
+
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('orders-row-checkbox')) {
+        window.updateMassEditPanel('orders');
+    }
+    if (e.target.classList.contains('archived-row-checkbox')) {
+        window.updateMassEditPanel('archived');
+    }
+});
+
+// Select All Checkboxes
+document.getElementById('orders-select-all')?.addEventListener('change', (e) => {
+    document.querySelectorAll('.orders-row-checkbox').forEach(cb => cb.checked = e.target.checked);
+    window.updateMassEditPanel('orders');
+});
+document.getElementById('archived-select-all')?.addEventListener('change', (e) => {
+    document.querySelectorAll('.archived-row-checkbox').forEach(cb => cb.checked = e.target.checked);
+    window.updateMassEditPanel('archived');
+});
+
 // Modals
 function openModal(modal) {
     modalOverlay.classList.remove('hidden');
@@ -863,36 +921,6 @@ const orderPhotoUpload = document.getElementById('order-photo-upload');
 if (orderPhotoUpload) orderPhotoUpload.addEventListener('change', (e) => handlePhotoUpload(e, 'order-photo-id'));
 const editOrderPhotoUpload = document.getElementById('edit-order-photo-upload');
 if (editOrderPhotoUpload) editOrderPhotoUpload.addEventListener('change', (e) => handlePhotoUpload(e, 'edit-order-photo-id'));
-
-// Mass edit logic
-window.updateMassEditPanel = function(tab) {
-    const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
-    const countSpan = document.getElementById(`${tab}-mass-edit-count`);
-    const btn = document.getElementById(`${tab}-mass-edit-btn`);
-    if (countSpan) {
-        countSpan.textContent = `Выбрано заказов: ${checkboxes.length} шт.`;
-        countSpan.style.color = checkboxes.length > 0 ? '#00ff88' : '#fff';
-    }
-    if (btn) {
-        btn.textContent = checkboxes.length > 0 ? `⚡ Применить статус ко всем (${checkboxes.length})` : '⚡ Применить статус';
-    }
-};
-
-window.clearMassSelection = function(tab) {
-    document.querySelectorAll(`.${tab}-row-checkbox`).forEach(cb => cb.checked = false);
-    const selectAll = document.getElementById(`${tab}-select-all`);
-    if (selectAll) selectAll.checked = false;
-    window.updateMassEditPanel(tab);
-};
-
-document.getElementById('orders-select-all')?.addEventListener('change', (e) => {
-    document.querySelectorAll('.order-row-checkbox').forEach(cb => cb.checked = e.target.checked);
-    window.updateMassEditPanel('orders');
-});
-document.getElementById('archived-select-all')?.addEventListener('change', (e) => {
-    document.querySelectorAll('.archived-row-checkbox').forEach(cb => cb.checked = e.target.checked);
-    window.updateMassEditPanel('archived');
-});
 
 // Mass status change apply
 ['orders', 'archived'].forEach(tab => {
