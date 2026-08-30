@@ -270,12 +270,12 @@ function updateStatusBtn(btnId, selectedStatuses) {
     const btn = document.getElementById(btnId);
     if (!btn) return;
     if (selectedStatuses.length === 0) {
-        btn.firstChild.nodeValue = 'Все статусы ';
+        btn.innerHTML = 'Все статусы <span class="arrow">&#9660;</span>';
     } else if (selectedStatuses.length === 1) {
-        const short = selectedStatuses[0].length > 20 ? selectedStatuses[0].substring(0, 20) + '…' : selectedStatuses[0];
-        btn.firstChild.nodeValue = short + ' ';
+        const short = selectedStatuses[0].length > 18 ? selectedStatuses[0].substring(0, 18) + '…' : selectedStatuses[0];
+        btn.innerHTML = `${short} <span class="arrow">&#9660;</span>`;
     } else {
-        btn.firstChild.nodeValue = `Выбрано: ${selectedStatuses.length} `;
+        btn.innerHTML = `Выбрано: ${selectedStatuses.length} <span class="arrow">&#9660;</span>`;
     }
 }
 
@@ -300,31 +300,25 @@ const ALL_STATUSES_LIST = [
 
 function makeInlineStatusCell(order) {
     const opts = ALL_STATUSES_LIST.map(s =>
-        `<option value="${s}" ${order.status === s ? 'selected' : ''}>${s}</option>`
+        `<option value="${s}" ${order.status === s ? 'selected' : ''}>${s}${s === 'Выдано' ? ' (→ архив)' : ''}</option>`
     ).join('');
     return `<td>
-        <div class="inline-status-form">
-            <select class="inline-status-select" data-order-id="${order.id}" onchange="onInlineStatusChange(this)">
-                ${opts}
-            </select>
-            <button class="inline-save-btn" id="save-btn-${order.id}" onclick="saveInlineStatus(${order.id})">&#10003; Сохранить</button>
-        </div>
+        <select class="inline-status-select" data-order-id="${order.id}" onchange="window.saveInlineStatus(${order.id}, this.value)" title="Нажмите, чтобы мгновенно сменить статус">
+            ${opts}
+        </select>
     </td>`;
 }
 
-window.onInlineStatusChange = function(sel) {
-    const orderId = sel.getAttribute('data-order-id');
-    const btn = document.getElementById(`save-btn-${orderId}`);
-    if (btn) btn.classList.add('show');
-};
-
-window.saveInlineStatus = async function(orderId) {
-    const sel = document.querySelector(`.inline-status-select[data-order-id="${orderId}"]`);
-    const btn = document.getElementById(`save-btn-${orderId}`);
-    if (!sel) return;
-    const newStatus = sel.value;
+// 1-Click Fast Inline Status Save
+window.saveInlineStatus = async function(orderId, newStatus) {
     const order = allOrders.find(o => o.id === orderId);
     if (!order) return;
+    if (order.status === newStatus) return;
+
+    const sel = document.querySelector(`.inline-status-select[data-order-id="${orderId}"]`);
+    if (sel) {
+        sel.classList.add('saving');
+    }
     const payload = {
         items: order.items,
         total_price: order.total_price,
@@ -335,13 +329,20 @@ window.saveInlineStatus = async function(orderId) {
         cost_price: order.cost_price,
         delivery_cost: order.delivery_cost
     };
-    if (btn) { btn.textContent = '...'; btn.disabled = true; }
     try {
         await fetchAPI(`/orders/${orderId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        if (sel) {
+            sel.classList.remove('saving');
+            sel.classList.add('saved');
+            setTimeout(() => sel.classList.remove('saved'), 1500);
+        }
         await loadDashboardData();
     } catch (err) {
-        alert('Ошибка: ' + err.message);
-        if (btn) { btn.textContent = '\u2713 Сохранить'; btn.disabled = false; }
+        alert('Ошибка при смене статуса: ' + err.message);
+        if (sel) {
+            sel.classList.remove('saving');
+            sel.value = order.status;
+        }
     }
 };
 
@@ -353,7 +354,7 @@ function sortOrders(orders, sortState) {
         if (k === 'id') { valA = a.id; valB = b.id; }
         else if (k === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
         else if (k === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
-        else if (k === 'price') { valA = a.total_price; valB = b.total_price; }
+        else if (k === 'price') { valA = a.total_price || 0; valB = b.total_price || 0; }
         else if (k === 'paid') { valA = a.paid_amount || 0; valB = b.paid_amount || 0; }
         else if (k === 'status') { valA = a.status || ''; valB = b.status || ''; }
         else { valA = a.id; valB = b.id; }
@@ -380,12 +381,21 @@ function renderOrders() {
     const clientVal = parseInt(document.getElementById('orders-client-filter')?.value);
     if (!isNaN(clientVal)) orders = orders.filter(o => o.client_id === clientVal);
 
+    const priceMin = parseFloat(document.getElementById('orders-price-min')?.value);
+    if (!isNaN(priceMin)) orders = orders.filter(o => (o.total_price || 0) >= priceMin);
+    const priceMax = parseFloat(document.getElementById('orders-price-max')?.value);
+    if (!isNaN(priceMax)) orders = orders.filter(o => (o.total_price || 0) <= priceMax);
+    const paidMin = parseFloat(document.getElementById('orders-paid-min')?.value);
+    if (!isNaN(paidMin)) orders = orders.filter(o => (o.paid_amount || 0) >= paidMin);
+    const paidMax = parseFloat(document.getElementById('orders-paid-max')?.value);
+    if (!isNaN(paidMax)) orders = orders.filter(o => (o.paid_amount || 0) <= paidMax);
+
     const q = document.getElementById('orders-search')?.value.toLowerCase().trim();
     if (q) {
         orders = orders.filter(o =>
             o.id.toString().includes(q) ||
             (o.client_id && o.client_id.toString().includes(q)) ||
-            o.items.toLowerCase().includes(q)
+            (o.items && o.items.toLowerCase().includes(q))
         );
     }
 
@@ -397,26 +407,26 @@ function renderOrders() {
     orders.forEach((order, i) => {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
-        tr.style.animationDelay = `${i * 0.04}s`;
+        tr.style.animationDelay = `${i * 0.03}s`;
 
         let html = '';
         if (role === 'admin') {
-            html += `<td><input type="checkbox" class="order-row-checkbox" value="${order.id}" style="cursor:pointer;" onchange="updateMassEditPanel('orders')"></td>`;
+            html += `<td style="text-align:center;"><input type="checkbox" class="order-row-checkbox" value="${order.id}" onchange="window.updateMassEditPanel('orders')"></td>`;
         }
         html += `<td>${order.id}</td>`;
         html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
         if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
         html += makePhotoCell(order.photo_id);
         html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
-        html += `<td>${order.total_price.toLocaleString('ru')}</td>`;
-        html += `<td>${(order.paid_amount || 0).toLocaleString('ru')}</td>`;
+        html += `<td style="white-space:nowrap;font-weight:500;">${(order.total_price || 0).toLocaleString('ru')} &#8381;</td>`;
+        html += `<td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>`;
 
         if (role === 'admin') {
             html += makeInlineStatusCell(order);
             html += `<td class="admin-only actions-cell">
-                <button class="edit-btn" onclick="openEditModal(${order.id})">Ред.</button>
-                <button class="archive-btn" onclick="archiveOrder(${order.id})">Архив</button>
-                <button class="delete-btn" onclick="confirmDelete(${order.id})">Удалить</button>
+                <button class="edit-btn" onclick="openEditModal(${order.id})" title="Полное редактирование">Ред.</button>
+                <button class="archive-btn" onclick="archiveOrder(${order.id})" title="Перенести в архив">Архив</button>
+                <button class="delete-btn" onclick="confirmDelete(${order.id})" title="Удалить заказ">&#10005;</button>
             </td>`;
         } else {
             html += `<td><span class="status-badge">${order.status}</span></td>`;
@@ -425,6 +435,8 @@ function renderOrders() {
         tr.innerHTML = html;
         ordersTableBody.appendChild(tr);
     });
+
+    window.updateMassEditPanel('orders');
 }
 
 // Render archived orders
@@ -439,12 +451,21 @@ function renderArchivedOrders() {
     const clientVal = parseInt(document.getElementById('archived-client-filter')?.value);
     if (!isNaN(clientVal)) orders = orders.filter(o => o.client_id === clientVal);
 
+    const priceMin = parseFloat(document.getElementById('archived-price-min')?.value);
+    if (!isNaN(priceMin)) orders = orders.filter(o => (o.total_price || 0) >= priceMin);
+    const priceMax = parseFloat(document.getElementById('archived-price-max')?.value);
+    if (!isNaN(priceMax)) orders = orders.filter(o => (o.total_price || 0) <= priceMax);
+    const paidMin = parseFloat(document.getElementById('archived-paid-min')?.value);
+    if (!isNaN(paidMin)) orders = orders.filter(o => (o.paid_amount || 0) >= paidMin);
+    const paidMax = parseFloat(document.getElementById('archived-paid-max')?.value);
+    if (!isNaN(paidMax)) orders = orders.filter(o => (o.paid_amount || 0) <= paidMax);
+
     const q = document.getElementById('archived-search')?.value.toLowerCase().trim();
     if (q) {
         orders = orders.filter(o =>
             o.id.toString().includes(q) ||
             (o.client_id && o.client_id.toString().includes(q)) ||
-            o.items.toLowerCase().includes(q)
+            (o.items && o.items.toLowerCase().includes(q))
         );
     }
 
@@ -456,31 +477,33 @@ function renderArchivedOrders() {
     orders.forEach((order, i) => {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
-        tr.style.animationDelay = `${i * 0.04}s`;
+        tr.style.animationDelay = `${i * 0.03}s`;
 
         let html = '';
         if (role === 'admin') {
-            html += `<td><input type="checkbox" class="archived-row-checkbox" value="${order.id}" style="cursor:pointer;" onchange="updateMassEditPanel('archived')"></td>`;
+            html += `<td style="text-align:center;"><input type="checkbox" class="archived-row-checkbox" value="${order.id}" onchange="window.updateMassEditPanel('archived')"></td>`;
         }
         html += `<td>${order.id}</td>`;
         html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
         if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
         html += makePhotoCell(order.photo_id);
         html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
-        html += `<td>${order.total_price.toLocaleString('ru')}</td>`;
-        html += `<td>${(order.paid_amount || 0).toLocaleString('ru')}</td>`;
-        html += `<td><span class="status-badge">${order.status}</span></td>`;
+        html += `<td style="white-space:nowrap;font-weight:500;">${(order.total_price || 0).toLocaleString('ru')} &#8381;</td>`;
+        html += `<td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>`;
+        html += `<td><span class="status-badge" style="background:rgba(0,200,80,0.15);color:#40e07a;">${order.status}</span></td>`;
 
         if (role === 'admin') {
             html += `<td class="admin-only actions-cell">
-                <button class="edit-btn" onclick="unarchiveOrder(${order.id})">Восстановить</button>
-                <button class="delete-btn" onclick="confirmDelete(${order.id})">Удалить</button>
+                <button class="edit-btn" onclick="unarchiveOrder(${order.id})" title="Восстановить в активные">В работу</button>
+                <button class="delete-btn" onclick="confirmDelete(${order.id})" title="Удалить навсегда">&#10005;</button>
             </td>`;
         }
 
         tr.innerHTML = html;
         archivedTableBody.appendChild(tr);
     });
+
+    window.updateMassEditPanel('archived');
 }
 
 // Render clients
@@ -499,7 +522,7 @@ function renderClients(clients) {
 window.toggleMarginMode = function() {
     window.marginMode = window.marginMode === 'rub' ? 'percent' : 'rub';
     const ind = document.getElementById('margin-mode-indicator');
-    if (ind) ind.textContent = window.marginMode === 'rub' ? '\u20BD' : '%';
+    if (ind) ind.textContent = window.marginMode === 'rub' ? '₽' : '%';
     renderAccounting();
 };
 
@@ -523,8 +546,8 @@ function renderAccounting() {
 
     const accountingSearch = document.getElementById('accounting-search');
     if (accountingSearch && accountingSearch.value) {
-        const q = accountingSearch.value.toLowerCase();
-        orders = orders.filter(o => o.id.toString().includes(q) || o.items.toLowerCase().includes(q));
+        const q = accountingSearch.value.toLowerCase().trim();
+        orders = orders.filter(o => o.id.toString().includes(q) || (o.items && o.items.toLowerCase().includes(q)));
     }
 
     if (orders.length === 0) { emptyMsg.classList.remove('hidden'); return; }
@@ -545,7 +568,7 @@ function renderAccounting() {
             marginDisplay = pct.toFixed(1) + '%';
             marginVal = pct;
         } else {
-            marginDisplay = marginVal.toLocaleString('ru', {maximumFractionDigits: 0}) + ' \u20BD';
+            marginDisplay = marginVal.toLocaleString('ru', {maximumFractionDigits: 0}) + ' ₽';
         }
         return { ...o, cost, delivery, usn, checks, acquiring, totalTax, marginVal, marginDisplay, price };
     });
@@ -569,7 +592,7 @@ function renderAccounting() {
     processed.forEach((order, i) => {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
-        tr.style.animationDelay = `${i * 0.04}s`;
+        tr.style.animationDelay = `${i * 0.03}s`;
         const photoHtml = order.photo_id
             ? `<img src="/api/photos/${order.photo_id}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer;flex-shrink:0;" onclick="viewPhoto('${order.photo_id}')">`
             : `<div style="width:44px;height:44px;border-radius:5px;background:#222;flex-shrink:0;"></div>`;
@@ -583,15 +606,15 @@ function renderAccounting() {
                     <div style="font-size:0.85rem;">${order.items.replace(/\n/g, '<br>')}</div>
                 </div>
             </td>
-            <td>${order.price.toLocaleString('ru')}</td>
-            <td>${order.cost.toLocaleString('ru')}</td>
-            <td>${order.delivery.toLocaleString('ru')}</td>
-            <td>${(order.paid_amount || 0).toLocaleString('ru')}</td>
-            <td style="color:#ff9999;font-weight:bold;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})}</td>
-            <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}">${order.usn.toLocaleString('ru', {maximumFractionDigits:0})}</td>
-            <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}">${order.checks.toLocaleString('ru', {maximumFractionDigits:0})}</td>
-            <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}">${order.acquiring.toLocaleString('ru', {maximumFractionDigits:0})}</td>
-            <td style="color:${order.marginVal >= 0 ? '#00ff88' : '#ff4d4d'};font-weight:bold;">${order.marginDisplay}</td>
+            <td style="white-space:nowrap;">${order.price.toLocaleString('ru')} &#8381;</td>
+            <td style="white-space:nowrap;">${order.cost.toLocaleString('ru')} &#8381;</td>
+            <td style="white-space:nowrap;">${order.delivery.toLocaleString('ru')} &#8381;</td>
+            <td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>
+            <td style="color:#ff9999;font-weight:bold;white-space:nowrap;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
+            <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.usn.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
+            <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.checks.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
+            <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.acquiring.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
+            <td style="color:${order.marginVal >= 0 ? '#00ff88' : '#ff4d4d'};font-weight:bold;white-space:nowrap;">${order.marginDisplay}</td>
         `;
         accountingTableBody.appendChild(tr);
     });
@@ -612,12 +635,12 @@ bindSortListeners('orders-table', ordersSort, renderOrders);
 bindSortListeners('archived-table', archivedSort, renderArchivedOrders);
 bindSortListeners('accounting-table', accountingSort, renderAccounting);
 
-// Filter listeners
-['orders-year-filter', 'orders-month-filter', 'orders-client-filter', 'orders-search'].forEach(id => {
+// Filter listeners with ALL filters included
+['orders-year-filter', 'orders-month-filter', 'orders-client-filter', 'orders-price-min', 'orders-price-max', 'orders-paid-min', 'orders-paid-max', 'orders-search'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.addEventListener('input', renderOrders); el.addEventListener('change', renderOrders); }
 });
-['archived-year-filter', 'archived-month-filter', 'archived-client-filter', 'archived-search'].forEach(id => {
+['archived-year-filter', 'archived-month-filter', 'archived-client-filter', 'archived-price-min', 'archived-price-max', 'archived-paid-min', 'archived-paid-max', 'archived-search'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { el.addEventListener('input', renderArchivedOrders); el.addEventListener('change', renderArchivedOrders); }
 });
@@ -832,16 +855,7 @@ if (orderPhotoUpload) orderPhotoUpload.addEventListener('change', (e) => handleP
 const editOrderPhotoUpload = document.getElementById('edit-order-photo-upload');
 if (editOrderPhotoUpload) editOrderPhotoUpload.addEventListener('change', (e) => handlePhotoUpload(e, 'edit-order-photo-id'));
 
-// Mass edit
-document.getElementById('orders-select-all')?.addEventListener('change', (e) => {
-    document.querySelectorAll('.order-row-checkbox').forEach(cb => cb.checked = e.target.checked);
-    updateMassEditPanel('orders');
-});
-document.getElementById('archived-select-all')?.addEventListener('change', (e) => {
-    document.querySelectorAll('.archived-row-checkbox').forEach(cb => cb.checked = e.target.checked);
-    updateMassEditPanel('archived');
-});
-
+// Mass edit logic
 window.updateMassEditPanel = function(tab) {
     const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
     const panel = document.getElementById(`${tab}-mass-edit-panel`);
@@ -849,48 +863,66 @@ window.updateMassEditPanel = function(tab) {
     if (!panel) return;
     if (checkboxes.length > 0) {
         panel.classList.add('visible');
-        if (countSpan) countSpan.textContent = `Выбрано: ${checkboxes.length}`;
+        if (countSpan) countSpan.textContent = `Выбрано заказов: ${checkboxes.length} шт.`;
     } else {
         panel.classList.remove('visible');
     }
 };
 
-document.getElementById('orders-mass-cancel-btn')?.addEventListener('click', () => {
-    document.querySelectorAll('.order-row-checkbox').forEach(cb => cb.checked = false);
-    const selectAll = document.getElementById('orders-select-all');
+window.clearMassSelection = function(tab) {
+    document.querySelectorAll(`.${tab}-row-checkbox`).forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById(`${tab}-select-all`);
     if (selectAll) selectAll.checked = false;
-    updateMassEditPanel('orders');
+    window.updateMassEditPanel(tab);
+};
+
+document.getElementById('orders-select-all')?.addEventListener('change', (e) => {
+    document.querySelectorAll('.order-row-checkbox').forEach(cb => cb.checked = e.target.checked);
+    window.updateMassEditPanel('orders');
+});
+document.getElementById('archived-select-all')?.addEventListener('change', (e) => {
+    document.querySelectorAll('.archived-row-checkbox').forEach(cb => cb.checked = e.target.checked);
+    window.updateMassEditPanel('archived');
 });
 
-document.getElementById('orders-mass-edit-btn')?.addEventListener('click', async () => {
-    const checkboxes = document.querySelectorAll('.order-row-checkbox:checked');
-    const select = document.getElementById('orders-mass-edit-status');
-    const newStatus = select ? select.value : null;
-    if (!newStatus) { alert('Выберите статус!'); return; }
-    const orderIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
-    if (orderIds.length === 0) return;
-    const btn = document.getElementById('orders-mass-edit-btn');
-    btn.textContent = 'Загрузка...'; btn.disabled = true;
-    try {
-        await Promise.all(orderIds.map(async id => {
-            const order = allOrders.find(o => o.id === id);
-            if (!order) return;
-            const payload = {
-                items: order.items, total_price: order.total_price,
-                paid_amount: order.paid_amount, status: newStatus,
-                photo_id: order.photo_id, order_date: order.order_date,
-                cost_price: order.cost_price, delivery_cost: order.delivery_cost
-            };
-            await fetchAPI(`/orders/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
-        }));
-        const selectAll = document.getElementById('orders-select-all');
-        if (selectAll) selectAll.checked = false;
-        await loadDashboardData();
-    } catch (err) {
-        alert('Ошибка при массовом редактировании: ' + err.message);
-    } finally {
-        btn.textContent = 'Применить'; btn.disabled = false;
-    }
+// Mass status change apply
+['orders', 'archived'].forEach(tab => {
+    document.getElementById(`${tab}-mass-edit-btn`)?.addEventListener('click', async () => {
+        const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
+        const select = document.getElementById(`${tab}-mass-edit-status`);
+        const newStatus = select ? select.value : null;
+        if (!newStatus) { alert('Пожалуйста, выберите новый статус из выпадающего списка!'); return; }
+        const orderIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        if (orderIds.length === 0) return;
+        const btn = document.getElementById(`${tab}-mass-edit-btn`);
+        const originalText = btn.textContent;
+        btn.textContent = 'Применение...';
+        btn.disabled = true;
+        try {
+            await Promise.all(orderIds.map(async id => {
+                const order = allOrders.find(o => o.id === id);
+                if (!order) return;
+                const payload = {
+                    items: order.items,
+                    total_price: order.total_price,
+                    paid_amount: order.paid_amount,
+                    status: newStatus,
+                    photo_id: order.photo_id,
+                    order_date: order.order_date,
+                    cost_price: order.cost_price,
+                    delivery_cost: order.delivery_cost
+                };
+                await fetchAPI(`/orders/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+            }));
+            window.clearMassSelection(tab);
+            await loadDashboardData();
+        } catch (err) {
+            alert('Ошибка при массовом изменении: ' + err.message);
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    });
 });
 
 init();
