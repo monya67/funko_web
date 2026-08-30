@@ -58,6 +58,7 @@
             <section id="orders-tab" class="tab-content active">
                 <div class="header-flex">
                     <h2>Активные заказы</h2>
+                    <button id="orders-mass-edit-btn" class="btn-primary" style="padding: 8px 15px;">Изменить статус</button>
                     <button id="new-order-btn" class="btn primary admin-only hidden">+ Новый заказ</button>
                 </div>
                 <div class="filters-flex"
@@ -85,6 +86,12 @@
                         style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                     <input type="number" id="orders-price-max" placeholder="Сумма до ₽"
                         style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
+                    <div class="glass-panel hidden" id="orders-mass-edit-panel" style="margin-top: 15px; padding: 15px; display: flex; gap: 15px; align-items: center; background: rgba(255, 30, 30, 0.1); border: 1px solid rgba(255, 30, 30, 0.3);">
+                        <span id="orders-mass-edit-count" style="font-weight: bold;">Выбрано заказов: 0</span>
+                        <select id="orders-mass-edit-status" style="padding: 8px 12px; border-radius: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff;">
+                            <option value="Выдано">Выдано</option>
+                        </select>
+                    </div>
                     <input type="number" id="orders-paid-min" placeholder="Оплачено от ₽"
                         style="width: 120px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff;">
                     <input type="number" id="orders-paid-max" placeholder="Оплачено до ₽"
@@ -105,16 +112,26 @@
                                 <th data-sort="paid" style="cursor:pointer">Оплачено ↕</th>
                                 <th data-sort="status" style="cursor:pointer">
                                     Статус ↕<br>
-                                    <select id="orders-status-filter" onclick="event.stopPropagation()" style="margin-top: 4px; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 12px; font-weight: normal; max-width: 150px;">
+                                    <select id="orders-status-filter" onclick="event.stopPropagation()"
+                                        style="margin-top: 4px; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 12px; font-weight: normal; max-width: 150px;">
                                         <option value="" style="background:#111;">Все статусы</option>
-                                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода в продажу</option>
-                                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в обработку</option>
-                                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на склад США</option>
-                                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">Заказ ожидает отправки из магазина</option>
-                                        <option value="Заказ начал сортировку на складе США" style="background:#111;">Заказ начал сортировку на складе США</option>
-                                        <option value="Заказ отправлен из США на наш склад в Россию" style="background:#111;">Заказ отправлен из США на наш склад в Россию</option>
-                                        <option value="Заказ проходит таможенное оформление" style="background:#111;">Заказ проходит таможенное оформление</option>
-                                        <option value="Заказ прибыл в магазин и готов к выдаче" style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
+                                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода
+                                            в продажу</option>
+                                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в
+                                            обработку</option>
+                                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на
+                                            склад США</option>
+                                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">
+                                            Заказ ожидает отправки из магазина</option>
+                                        <option value="Заказ начал сортировку на складе США" style="background:#111;">
+                                            Заказ начал сортировку на складе США</option>
+                                        <option value="Заказ отправлен из США на наш склад в Россию"
+                                            style="background:#111;">Заказ отправлен из США на наш склад в Россию
+                                        </option>
+                                        <option value="Заказ проходит таможенное оформление" style="background:#111;">
+                                            Заказ проходит таможенное оформление</option>
+                                        <option value="Заказ прибыл в магазин и готов к выдаче"
+                                            style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
                                         <option value="Выдано" style="background:#111;">Выдано</option>
                                     </select>
                                 </th>
@@ -177,16 +194,26 @@
                                 <th data-sort="paid" style="cursor:pointer">Оплачено ↕</th>
                                 <th data-sort="status" style="cursor:pointer">
                                     Статус ↕<br>
-                                    <select id="archived-status-filter" onclick="event.stopPropagation()" style="margin-top: 4px; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 12px; font-weight: normal; max-width: 150px;">
+                                    <select id="archived-status-filter" onclick="event.stopPropagation()"
+                                        style="margin-top: 4px; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); color: #fff; font-size: 12px; font-weight: normal; max-width: 150px;">
                                         <option value="" style="background:#111;">Все статусы</option>
-                                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода в продажу</option>
-                                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в обработку</option>
-                                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на склад США</option>
-                                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">Заказ ожидает отправки из магазина</option>
-                                        <option value="Заказ начал сортировку на складе США" style="background:#111;">Заказ начал сортировку на складе США</option>
-                                        <option value="Заказ отправлен из США на наш склад в Россию" style="background:#111;">Заказ отправлен из США на наш склад в Россию</option>
-                                        <option value="Заказ проходит таможенное оформление" style="background:#111;">Заказ проходит таможенное оформление</option>
-                                        <option value="Заказ прибыл в магазин и готов к выдаче" style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
+                                        <option value="Ожидает выхода в продажу" style="background:#111;">Ожидает выхода
+                                            в продажу</option>
+                                        <option value="Заказ принят в обработку" style="background:#111;">Заказ принят в
+                                            обработку</option>
+                                        <option value="Заказ едет на склад США" style="background:#111;">Заказ едет на
+                                            склад США</option>
+                                        <option value="Заказ ожидает отправки из магазина" style="background:#111;">
+                                            Заказ ожидает отправки из магазина</option>
+                                        <option value="Заказ начал сортировку на складе США" style="background:#111;">
+                                            Заказ начал сортировку на складе США</option>
+                                        <option value="Заказ отправлен из США на наш склад в Россию"
+                                            style="background:#111;">Заказ отправлен из США на наш склад в Россию
+                                        </option>
+                                        <option value="Заказ проходит таможенное оформление" style="background:#111;">
+                                            Заказ проходит таможенное оформление</option>
+                                        <option value="Заказ прибыл в магазин и готов к выдаче"
+                                            style="background:#111;">Заказ прибыл в магазин и готов к выдаче</option>
                                         <option value="Выдано" style="background:#111;">Выдано</option>
                                     </select>
                                 </th>
@@ -286,8 +313,11 @@
                     <input type="number" id="order-paid" placeholder="Оплачено" required>
                 </div>
                 <div class="input-group" style="display: flex; gap: 10px; align-items: center;">
-                    <input type="text" id="order-photo-id" placeholder="Telegram Photo ID (необязательно)" style="flex-grow: 1;">
-                    <label for="order-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 15px; cursor: pointer; white-space: nowrap;">Загрузить фото</label>
+                    <input type="text" id="order-photo-id" placeholder="Telegram Photo ID (необязательно)"
+                        style="flex-grow: 1;">
+                    <label for="order-photo-upload" class="btn secondary outline"
+                        style="margin: 0; padding: 10px 15px; cursor: pointer; white-space: nowrap;">Загрузить
+                        фото</label>
                     <input type="file" id="order-photo-upload" accept="image/*" style="display: none;">
                 </div>
                 <div class="modal-actions">
@@ -354,7 +384,9 @@
                         <label>Photo ID</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <input type="text" id="edit-order-photo-id" style="flex-grow: 1;">
-                            <label for="edit-order-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 15px; cursor: pointer; white-space: nowrap;">Загрузить фото</label>
+                            <label for="edit-order-photo-upload" class="btn secondary outline"
+                                style="margin: 0; padding: 10px 15px; cursor: pointer; white-space: nowrap;">Загрузить
+                                фото</label>
                             <input type="file" id="edit-order-photo-upload" accept="image/*" style="display: none;">
                         </div>
                     </div>
