@@ -28,9 +28,6 @@ const archivedTableBody = document.querySelector('#archived-table tbody');
 const clientsTableBody = document.querySelector('#clients-table tbody');
 const accountingTableBody = document.querySelector('#accounting-table tbody');
 
-const accountingSearch = document.getElementById('accounting-search');
-let accountingSort = { key: 'id', desc: true };
-
 // Forms
 const createClientForm = document.getElementById('create-client-form');
 const createOrderForm = document.getElementById('create-order-form');
@@ -39,20 +36,22 @@ const editOrderForm = document.getElementById('edit-order-form');
 // State
 let token = localStorage.getItem('funko_token');
 let currentRole = null;
-let allOrders = []; // active + archived combined for lookups
+let allOrders = [];
 let rawActiveOrders = [];
 let rawArchivedOrders = [];
 let ordersSort = { key: 'id', desc: true };
 let archivedSort = { key: 'id', desc: true };
+let accountingSort = { key: 'id', desc: true };
 let deleteTargetId = null;
+
+// Global toggles
+window.marginMode = 'rub';
+window.taxesExpanded = false;
 
 // Init
 function init() {
-    if (token) {
-        showDashboard();
-    } else {
-        showLogin();
-    }
+    if (token) showDashboard();
+    else showLogin();
 }
 
 function showLogin() {
@@ -73,12 +72,9 @@ function showDashboard() {
 
 function updateRoleUI(role) {
     currentRole = role;
-    const adminElements = document.querySelectorAll('.admin-only');
-    if (role === 'admin') {
-        adminElements.forEach(el => el.classList.remove('hidden'));
-    } else {
-        adminElements.forEach(el => el.classList.add('hidden'));
-    }
+    document.querySelectorAll('.admin-only').forEach(el => {
+        role === 'admin' ? el.classList.remove('hidden') : el.classList.add('hidden');
+    });
 }
 
 function updateOnlineBadge(count) {
@@ -93,12 +89,8 @@ function startHeartbeat() {
         if (!token) return;
         try {
             const data = await fetchAPI('/ping', { method: 'POST' });
-            if (data && data.online_count) {
-                updateOnlineBadge(data.online_count);
-            }
-        } catch (e) {
-            // Ignore heartbeat errors
-        }
+            if (data && data.online_count) updateOnlineBadge(data.online_count);
+        } catch (e) {}
     }, 20000);
 }
 
@@ -107,27 +99,22 @@ loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    
     loginError.textContent = '';
     const btn = loginForm.querySelector('button');
     btn.textContent = 'Вход...';
-    
     try {
         const formData = new URLSearchParams();
         formData.append('username', username);
         formData.append('password', password);
-
         const res = await fetch(`${API_BASE}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: formData
         });
-
         if (!res.ok) {
             const errData = await res.json();
             throw new Error(errData.detail || 'Неверный логин или пароль');
         }
-
         const data = await res.json();
         token = data.access_token;
         localStorage.setItem('funko_token', token);
@@ -144,7 +131,6 @@ logoutBtn.addEventListener('click', () => {
     currentRole = null;
     if (heartbeatInterval) clearInterval(heartbeatInterval);
     localStorage.removeItem('funko_token');
-    // Clear all rendered data so nothing flashes on next login
     ordersTableBody.innerHTML = '';
     archivedTableBody.innerHTML = '';
     clientsTableBody.innerHTML = '';
@@ -161,7 +147,6 @@ navItems.forEach(item => {
         e.preventDefault();
         navItems.forEach(nav => nav.classList.remove('active'));
         item.classList.add('active');
-        
         const targetId = item.getAttribute('data-tab') + '-tab';
         tabContents.forEach(tab => {
             tab.id === targetId ? tab.classList.remove('hidden') : tab.classList.add('hidden');
@@ -181,24 +166,48 @@ function getDeviceId() {
 // API
 async function fetchAPI(endpoint, options = {}) {
     if (!token) return logoutBtn.click();
-    
     const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'X-Device-ID': getDeviceId(),
         ...options.headers
     };
-    
     const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
     if (res.status === 401 || res.status === 403) {
         logoutBtn.click();
         throw new Error('Сессия истекла');
     }
     const data = await res.json();
-    if (!res.ok) {
-        throw new Error(data.detail || 'Ошибка');
-    }
+    if (!res.ok) throw new Error(data.detail || 'Ошибка');
     return data;
+}
+
+// Populate year filters from order data
+function populateYearFilters(orders, archived) {
+    const years = new Set();
+    [...orders, ...archived].forEach(o => {
+        if (o.order_date) {
+            const d = formatDisplayDate(o.order_date);
+            if (d.includes('.')) {
+                const y = d.split('.')[2];
+                if (y && y.length === 4) years.add(y);
+            }
+        }
+    });
+    const sortedYears = Array.from(years).sort().reverse();
+    ['orders-year-filter', 'archived-year-filter', 'accounting-year-filter'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">Год</option>';
+        sortedYears.forEach(y => {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = y;
+            sel.appendChild(opt);
+        });
+        if (currentVal) sel.value = currentVal;
+    });
 }
 
 async function loadDashboardData() {
@@ -209,10 +218,9 @@ async function loadDashboardData() {
         rawActiveOrders = data.orders || [];
         rawArchivedOrders = data.archived || [];
         allOrders = [...rawActiveOrders, ...rawArchivedOrders];
-        
+        populateYearFilters(rawActiveOrders, rawArchivedOrders);
         renderOrders();
         renderArchivedOrders();
-        
         if (data.role === 'admin') {
             renderClients(data.clients);
             renderAccounting();
@@ -226,139 +234,194 @@ function formatDisplayDate(dateStr) {
     if (!dateStr) return '—';
     dateStr = dateStr.trim();
     if (!dateStr) return '—';
-
-    // If YYYY-MM-DD or YYYY-MM-DD HH:MM
     if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
         const parts = dateStr.split(' ')[0].split('-');
         return `${parts[2]}.${parts[1]}.${parts[0]}`;
     }
-    // If DD.MM.YYYY HH:MM -> strip time
     if (/^\d{2}\.\d{2}\.\d{4}/.test(dateStr)) {
         return dateStr.split(' ')[0];
     }
     return dateStr;
 }
 
-// Render active orders with filter & sort support
+function filterByDate(orders, yearId, monthId) {
+    const yearVal = document.getElementById(yearId)?.value;
+    const monthVal = document.getElementById(monthId)?.value;
+    if (!yearVal && !monthVal) return orders;
+    return orders.filter(o => {
+        if (!o.order_date) return false;
+        const formatted = formatDisplayDate(o.order_date);
+        if (!formatted.includes('.')) return false;
+        const parts = formatted.split('.');
+        const matchYear = !yearVal || parts[2] === yearVal;
+        const matchMonth = !monthVal || parts[1] === monthVal;
+        return matchYear && matchMonth;
+    });
+}
+
+// Status filter from multi-select checkboxes
+function getSelectedStatuses(menuId) {
+    const menu = document.getElementById(menuId);
+    if (!menu) return [];
+    return Array.from(menu.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+}
+
+function updateStatusBtn(btnId, selectedStatuses) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    if (selectedStatuses.length === 0) {
+        btn.firstChild.nodeValue = 'Все статусы ';
+    } else if (selectedStatuses.length === 1) {
+        const short = selectedStatuses[0].length > 20 ? selectedStatuses[0].substring(0, 20) + '…' : selectedStatuses[0];
+        btn.firstChild.nodeValue = short + ' ';
+    } else {
+        btn.firstChild.nodeValue = `Выбрано: ${selectedStatuses.length} `;
+    }
+}
+
+function makePhotoCell(photoId) {
+    if (photoId) {
+        return `<td><img src="/api/photos/${photoId}" style="width:48px;height:48px;object-fit:cover;border-radius:5px;cursor:pointer;transition:transform 0.2s;" onclick="viewPhoto('${photoId}')" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"></td>`;
+    }
+    return `<td style="color:var(--gray-light);">—</td>`;
+}
+
+const ALL_STATUSES_LIST = [
+    'Заказ принят в обработку',
+    'Заказ ожидает отправки из магазина',
+    'Заказ едет на склад США',
+    'Заказ начал сортировку на складе США',
+    'Заказ отправлен из США на наш склад в Россию',
+    'Ожидает выхода в продажу',
+    'Заказ проходит таможенное оформление',
+    'Заказ прибыл в магазин и готов к выдаче',
+    'Выдано'
+];
+
+function makeInlineStatusCell(order) {
+    const opts = ALL_STATUSES_LIST.map(s =>
+        `<option value="${s}" ${order.status === s ? 'selected' : ''}>${s}</option>`
+    ).join('');
+    return `<td>
+        <div class="inline-status-form">
+            <select class="inline-status-select" data-order-id="${order.id}" onchange="onInlineStatusChange(this)">
+                ${opts}
+            </select>
+            <button class="inline-save-btn" id="save-btn-${order.id}" onclick="saveInlineStatus(${order.id})">&#10003; Сохранить</button>
+        </div>
+    </td>`;
+}
+
+window.onInlineStatusChange = function(sel) {
+    const orderId = sel.getAttribute('data-order-id');
+    const btn = document.getElementById(`save-btn-${orderId}`);
+    if (btn) btn.classList.add('show');
+};
+
+window.saveInlineStatus = async function(orderId) {
+    const sel = document.querySelector(`.inline-status-select[data-order-id="${orderId}"]`);
+    const btn = document.getElementById(`save-btn-${orderId}`);
+    if (!sel) return;
+    const newStatus = sel.value;
+    const order = allOrders.find(o => o.id === orderId);
+    if (!order) return;
+    const payload = {
+        items: order.items,
+        total_price: order.total_price,
+        paid_amount: order.paid_amount,
+        status: newStatus,
+        photo_id: order.photo_id,
+        order_date: order.order_date,
+        cost_price: order.cost_price,
+        delivery_cost: order.delivery_cost
+    };
+    if (btn) { btn.textContent = '...'; btn.disabled = true; }
+    try {
+        await fetchAPI(`/orders/${orderId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        await loadDashboardData();
+    } catch (err) {
+        alert('Ошибка: ' + err.message);
+        if (btn) { btn.textContent = '\u2713 Сохранить'; btn.disabled = false; }
+    }
+};
+
+// Sort helper
+function sortOrders(orders, sortState) {
+    return [...orders].sort((a, b) => {
+        let valA, valB;
+        const k = sortState.key;
+        if (k === 'id') { valA = a.id; valB = b.id; }
+        else if (k === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (k === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
+        else if (k === 'price') { valA = a.total_price; valB = b.total_price; }
+        else if (k === 'paid') { valA = a.paid_amount || 0; valB = b.paid_amount || 0; }
+        else if (k === 'status') { valA = a.status || ''; valB = b.status || ''; }
+        else { valA = a.id; valB = b.id; }
+        if (valA < valB) return sortState.desc ? 1 : -1;
+        if (valA > valB) return sortState.desc ? -1 : 1;
+        return 0;
+    });
+}
+
+// Render active orders
 function renderOrders() {
     ordersTableBody.innerHTML = '';
     const emptyMsg = document.getElementById('no-orders');
     const role = currentRole;
-    
+
     let orders = [...rawActiveOrders];
+    orders = filterByDate(orders, 'orders-year-filter', 'orders-month-filter');
 
-    // Filters
-    const yearVal = document.getElementById('orders-year-filter')?.value;
-    const monthVal = document.getElementById('orders-month-filter')?.value;
-    if (yearVal || monthVal) {
-        orders = orders.filter(o => {
-            if (!o.order_date) return false;
-            const formatted = formatDisplayDate(o.order_date); // DD.MM.YYYY
-            if (formatted.includes('.')) {
-                const parts = formatted.split('.'); // [DD, MM, YYYY]
-                const matchYear = !yearVal || parts[2] === yearVal;
-                const matchMonth = !monthVal || parts[1] === monthVal;
-                return matchYear && matchMonth;
-            }
-            return false;
-        });
-    }
-
-    const statusFilter = document.getElementById('orders-status-filter')?.value;
-    if (statusFilter) {
-        orders = orders.filter(o => o.status === statusFilter);
+    const selectedStatuses = getSelectedStatuses('orders-status-menu');
+    if (selectedStatuses.length > 0) {
+        orders = orders.filter(o => selectedStatuses.includes(o.status));
     }
 
     const clientVal = parseInt(document.getElementById('orders-client-filter')?.value);
-    if (!isNaN(clientVal)) {
-        orders = orders.filter(o => o.client_id === clientVal);
-    }
-
-    const priceMin = parseFloat(document.getElementById('orders-price-min')?.value);
-    if (!isNaN(priceMin)) {
-        orders = orders.filter(o => o.total_price >= priceMin);
-    }
-
-    const priceMax = parseFloat(document.getElementById('orders-price-max')?.value);
-    if (!isNaN(priceMax)) {
-        orders = orders.filter(o => o.total_price <= priceMax);
-    }
-
-    const paidMin = parseFloat(document.getElementById('orders-paid-min')?.value);
-    if (!isNaN(paidMin)) {
-        orders = orders.filter(o => o.paid_amount >= paidMin);
-    }
-
-    const paidMax = parseFloat(document.getElementById('orders-paid-max')?.value);
-    if (!isNaN(paidMax)) {
-        orders = orders.filter(o => o.paid_amount <= paidMax);
-    }
+    if (!isNaN(clientVal)) orders = orders.filter(o => o.client_id === clientVal);
 
     const q = document.getElementById('orders-search')?.value.toLowerCase().trim();
     if (q) {
-        orders = orders.filter(o => 
-            o.id.toString().includes(q) || 
-            (o.client_id && o.client_id.toString().includes(q)) || 
+        orders = orders.filter(o =>
+            o.id.toString().includes(q) ||
+            (o.client_id && o.client_id.toString().includes(q)) ||
             o.items.toLowerCase().includes(q)
         );
     }
-    
-    // Sorting
-    orders.sort((a, b) => {
-        let valA, valB;
-        if (ordersSort.key === 'id') { valA = a.id; valB = b.id; }
-        else if (ordersSort.key === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
-        else if (ordersSort.key === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
-        else if (ordersSort.key === 'price') { valA = a.total_price; valB = b.total_price; }
-        else if (ordersSort.key === 'paid') { valA = a.paid_amount || 0; valB = b.paid_amount || 0; }
-        else if (ordersSort.key === 'status') { valA = a.status || ''; valB = b.status || ''; }
-        if (valA < valB) return ordersSort.desc ? 1 : -1;
-        if (valA > valB) return ordersSort.desc ? -1 : 1;
-        return 0;
-    });
 
-    if (orders.length === 0) {
-        emptyMsg.classList.remove('hidden');
-        return;
-    }
+    orders = sortOrders(orders, ordersSort);
+
+    if (orders.length === 0) { emptyMsg.classList.remove('hidden'); return; }
     emptyMsg.classList.add('hidden');
-    
+
     orders.forEach((order, i) => {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
         tr.style.animationDelay = `${i * 0.04}s`;
-        
+
         let html = '';
         if (role === 'admin') {
-            html += `<td><input type="checkbox" class="order-row-checkbox" value="${order.id}" style="cursor: pointer;" onchange="updateMassEditPanel('orders')"></td>`;
+            html += `<td><input type="checkbox" class="order-row-checkbox" value="${order.id}" style="cursor:pointer;" onchange="updateMassEditPanel('orders')"></td>`;
         }
         html += `<td>${order.id}</td>`;
-        html += `<td style="white-space: nowrap; font-size: 0.85rem; color: var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
+        html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
+        if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
+        html += makePhotoCell(order.photo_id);
+        html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
+        html += `<td>${order.total_price.toLocaleString('ru')}</td>`;
+        html += `<td>${(order.paid_amount || 0).toLocaleString('ru')}</td>`;
+
         if (role === 'admin') {
-            html += `<td class="admin-only">${order.client_id}</td>`;
+            html += makeInlineStatusCell(order);
+            html += `<td class="admin-only actions-cell">
+                <button class="edit-btn" onclick="openEditModal(${order.id})">Ред.</button>
+                <button class="archive-btn" onclick="archiveOrder(${order.id})">Архив</button>
+                <button class="delete-btn" onclick="confirmDelete(${order.id})">Удалить</button>
+            </td>`;
+        } else {
+            html += `<td><span class="status-badge">${order.status}</span></td>`;
         }
-        
-        html += order.photo_id
-            ? `<td><img src="/api/photos/${order.photo_id}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer; transition: transform 0.2s;" onclick="viewPhoto('${order.photo_id}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></td>`
-            : `<td style="color: var(--gray-light);">—</td>`;
-        
-        html += `
-            <td>${order.items.replace(/\n/g, '<br>')}</td>
-            <td>${order.total_price.toLocaleString('ru')}</td>
-            <td>${order.paid_amount.toLocaleString('ru')}</td>
-            <td><span class="status-badge">${order.status}</span></td>
-        `;
-        
-        if (role === 'admin') {
-            html += `
-                <td class="admin-only actions-cell">
-                    <button class="edit-btn" onclick="openEditModal(${order.id})">Редактировать</button>
-                    <button class="archive-btn" onclick="archiveOrder(${order.id})">В архив</button>
-                    <button class="delete-btn" onclick="confirmDelete(${order.id})">Удалить</button>
-                </td>
-            `;
-        }
-        
+
         tr.innerHTML = html;
         ordersTableBody.appendChild(tr);
     });
@@ -371,117 +434,50 @@ function renderArchivedOrders() {
     const role = currentRole;
     let orders = [...rawArchivedOrders];
 
-    // Filters
-    const yearVal = document.getElementById('archived-year-filter')?.value;
-    const monthVal = document.getElementById('archived-month-filter')?.value;
-    if (yearVal || monthVal) {
-        orders = orders.filter(o => {
-            if (!o.order_date) return false;
-            const formatted = formatDisplayDate(o.order_date);
-            if (formatted.includes('.')) {
-                const parts = formatted.split('.');
-                const matchYear = !yearVal || parts[2] === yearVal;
-                const matchMonth = !monthVal || parts[1] === monthVal;
-                return matchYear && matchMonth;
-            }
-            return false;
-        });
-    }
-
-    const statusFilter = document.getElementById('archived-status-filter')?.value;
-    if (statusFilter) {
-        orders = orders.filter(o => o.status === statusFilter);
-    }
+    orders = filterByDate(orders, 'archived-year-filter', 'archived-month-filter');
 
     const clientVal = parseInt(document.getElementById('archived-client-filter')?.value);
-    if (!isNaN(clientVal)) {
-        orders = orders.filter(o => o.client_id === clientVal);
-    }
-
-    const priceMin = parseFloat(document.getElementById('archived-price-min')?.value);
-    if (!isNaN(priceMin)) {
-        orders = orders.filter(o => o.total_price >= priceMin);
-    }
-
-    const priceMax = parseFloat(document.getElementById('archived-price-max')?.value);
-    if (!isNaN(priceMax)) {
-        orders = orders.filter(o => o.total_price <= priceMax);
-    }
-
-    const paidMin = parseFloat(document.getElementById('archived-paid-min')?.value);
-    if (!isNaN(paidMin)) {
-        orders = orders.filter(o => o.paid_amount >= paidMin);
-    }
-
-    const paidMax = parseFloat(document.getElementById('archived-paid-max')?.value);
-    if (!isNaN(paidMax)) {
-        orders = orders.filter(o => o.paid_amount <= paidMax);
-    }
+    if (!isNaN(clientVal)) orders = orders.filter(o => o.client_id === clientVal);
 
     const q = document.getElementById('archived-search')?.value.toLowerCase().trim();
     if (q) {
-        orders = orders.filter(o => 
-            o.id.toString().includes(q) || 
-            (o.client_id && o.client_id.toString().includes(q)) || 
+        orders = orders.filter(o =>
+            o.id.toString().includes(q) ||
+            (o.client_id && o.client_id.toString().includes(q)) ||
             o.items.toLowerCase().includes(q)
         );
     }
 
-    // Sorting
-    orders.sort((a, b) => {
-        let valA, valB;
-        if (archivedSort.key === 'id') { valA = a.id; valB = b.id; }
-        else if (archivedSort.key === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
-        else if (archivedSort.key === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
-        else if (archivedSort.key === 'price') { valA = a.total_price; valB = b.total_price; }
-        else if (archivedSort.key === 'paid') { valA = a.paid_amount || 0; valB = b.paid_amount || 0; }
-        else if (archivedSort.key === 'status') { valA = a.status || ''; valB = b.status || ''; }
-        if (valA < valB) return archivedSort.desc ? 1 : -1;
-        if (valA > valB) return archivedSort.desc ? -1 : 1;
-        return 0;
-    });
+    orders = sortOrders(orders, archivedSort);
 
-    if (orders.length === 0) {
-        emptyMsg.classList.remove('hidden');
-        return;
-    }
+    if (orders.length === 0) { emptyMsg.classList.remove('hidden'); return; }
     emptyMsg.classList.add('hidden');
-    
+
     orders.forEach((order, i) => {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
         tr.style.animationDelay = `${i * 0.04}s`;
-        
+
         let html = '';
         if (role === 'admin') {
-            html += `<td><input type="checkbox" class="archived-row-checkbox" value="${order.id}" style="cursor: pointer;" onchange="updateMassEditPanel('archived')"></td>`;
+            html += `<td><input type="checkbox" class="archived-row-checkbox" value="${order.id}" style="cursor:pointer;" onchange="updateMassEditPanel('archived')"></td>`;
         }
         html += `<td>${order.id}</td>`;
-        html += `<td style="white-space: nowrap; font-size: 0.85rem; color: var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
+        html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
+        if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
+        html += makePhotoCell(order.photo_id);
+        html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
+        html += `<td>${order.total_price.toLocaleString('ru')}</td>`;
+        html += `<td>${(order.paid_amount || 0).toLocaleString('ru')}</td>`;
+        html += `<td><span class="status-badge">${order.status}</span></td>`;
+
         if (role === 'admin') {
-            html += `<td class="admin-only">${order.client_id}</td>`;
+            html += `<td class="admin-only actions-cell">
+                <button class="edit-btn" onclick="unarchiveOrder(${order.id})">Восстановить</button>
+                <button class="delete-btn" onclick="confirmDelete(${order.id})">Удалить</button>
+            </td>`;
         }
-        
-        html += order.photo_id
-            ? `<td><img src="/api/photos/${order.photo_id}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer; transition: transform 0.2s;" onclick="viewPhoto('${order.photo_id}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></td>`
-            : `<td style="color: var(--gray-light);">—</td>`;
-        
-        html += `
-            <td>${order.items.replace(/\n/g, '<br>')}</td>
-            <td>${order.total_price.toLocaleString('ru')}</td>
-            <td>${order.paid_amount.toLocaleString('ru')}</td>
-            <td><span class="status-badge archived-badge">${order.status}</span></td>
-        `;
-        
-        if (role === 'admin') {
-            html += `
-                <td class="admin-only actions-cell">
-                    <button class="edit-btn" onclick="unarchiveOrder(${order.id})">Восстановить</button>
-                    <button class="delete-btn" onclick="confirmDelete(${order.id})">Удалить</button>
-                </td>
-            `;
-        }
-        
+
         tr.innerHTML = html;
         archivedTableBody.appendChild(tr);
     });
@@ -494,35 +490,26 @@ function renderClients(clients) {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
         tr.style.animationDelay = `${i * 0.04}s`;
-        tr.innerHTML = `
-            <td>${client.id}</td>
-            <td>${client.password}</td>
-            <td>${client.user_tg_id || '—'}</td>
-        `;
+        tr.innerHTML = `<td>${client.id}</td><td>${client.password}</td><td>${client.user_tg_id || '—'}</td>`;
         clientsTableBody.appendChild(tr);
     });
 }
 
-// Global state for toggles
-window.marginMode = 'rub'; // 'rub' or 'percent'
-window.taxesExpanded = false;
-
+// Accounting
 window.toggleMarginMode = function() {
     window.marginMode = window.marginMode === 'rub' ? 'percent' : 'rub';
-    document.getElementById('margin-mode-indicator').textContent = window.marginMode === 'rub' ? '(₽)' : '(%)';
+    const ind = document.getElementById('margin-mode-indicator');
+    if (ind) ind.textContent = window.marginMode === 'rub' ? '\u20BD' : '%';
     renderAccounting();
 };
 
 window.toggleTaxes = function(e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     window.taxesExpanded = !window.taxesExpanded;
-    document.getElementById('taxes-toggle-icon').textContent = window.taxesExpanded ? '[-]' : '[+]';
+    const icon = document.getElementById('taxes-toggle-icon');
+    if (icon) icon.textContent = window.taxesExpanded ? '[-]' : '[+]';
     document.querySelectorAll('.tax-column').forEach(el => {
-        if (window.taxesExpanded) {
-            el.classList.remove('hidden');
-        } else {
-            el.classList.add('hidden');
-        }
+        window.taxesExpanded ? el.classList.remove('hidden') : el.classList.add('hidden');
     });
 };
 
@@ -530,55 +517,50 @@ function renderAccounting() {
     if (!accountingTableBody) return;
     accountingTableBody.innerHTML = '';
     const emptyMsg = document.getElementById('no-accounting');
-    
-    let filteredOrders = allOrders;
-    
-    // Search
+
+    let orders = [...allOrders];
+    orders = filterByDate(orders, 'accounting-year-filter', 'accounting-month-filter');
+
+    const accountingSearch = document.getElementById('accounting-search');
     if (accountingSearch && accountingSearch.value) {
         const q = accountingSearch.value.toLowerCase();
-        filteredOrders = filteredOrders.filter(o => 
-            o.id.toString().includes(q) || o.items.toLowerCase().includes(q)
-        );
+        orders = orders.filter(o => o.id.toString().includes(q) || o.items.toLowerCase().includes(q));
     }
-    
-    if (filteredOrders.length === 0) {
-        emptyMsg.classList.remove('hidden');
-        return;
-    }
+
+    if (orders.length === 0) { emptyMsg.classList.remove('hidden'); return; }
     emptyMsg.classList.add('hidden');
-    
-    // Calculate fields and sort
-    const processed = filteredOrders.map(o => {
+
+    const processed = orders.map(o => {
         const cost = o.cost_price || 0;
         const delivery = o.delivery_cost || 0;
-        const usn = o.total_price * 0.06;
-        const checks = o.total_price * 0.015;
-        const acquiring = o.total_price * 0.02;
+        const price = o.total_price || 0;
+        const usn = price * 0.06;
+        const checks = price * 0.015;
+        const acquiring = price * 0.02;
         const totalTax = usn + checks + acquiring;
-        
-        let marginVal = o.total_price - cost - delivery - totalTax;
+        let marginVal = price - cost - delivery - totalTax;
         let marginDisplay = '';
         if (window.marginMode === 'percent') {
-            const pct = o.total_price > 0 ? (marginVal / o.total_price) * 100 : 0;
+            const pct = price > 0 ? (marginVal / price) * 100 : 0;
             marginDisplay = pct.toFixed(1) + '%';
-            marginVal = pct; // for sorting
+            marginVal = pct;
         } else {
-            marginDisplay = marginVal.toLocaleString('ru') + ' ₽';
+            marginDisplay = marginVal.toLocaleString('ru', {maximumFractionDigits: 0}) + ' \u20BD';
         }
-        
-        return { ...o, cost, delivery, usn, checks, acquiring, totalTax, marginVal, marginDisplay };
+        return { ...o, cost, delivery, usn, checks, acquiring, totalTax, marginVal, marginDisplay, price };
     });
-    
+
     processed.sort((a, b) => {
         let valA, valB;
-        if (accountingSort.key === 'id') { valA = a.id; valB = b.id; }
-        else if (accountingSort.key === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
-        else if (accountingSort.key === 'price') { valA = a.total_price; valB = b.total_price; }
-        else if (accountingSort.key === 'cost') { valA = a.cost; valB = b.cost; }
-        else if (accountingSort.key === 'delivery') { valA = a.delivery; valB = b.delivery; }
-        else if (accountingSort.key === 'margin') { valA = a.marginVal; valB = b.marginVal; }
+        const k = accountingSort.key;
+        if (k === 'id') { valA = a.id; valB = b.id; }
+        else if (k === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (k === 'price') { valA = a.price; valB = b.price; }
+        else if (k === 'cost') { valA = a.cost; valB = b.cost; }
+        else if (k === 'delivery') { valA = a.delivery; valB = b.delivery; }
+        else if (k === 'paid') { valA = a.paid_amount || 0; valB = b.paid_amount || 0; }
+        else if (k === 'margin') { valA = a.marginVal; valB = b.marginVal; }
         else { valA = a.id; valB = b.id; }
-        
         if (valA < valB) return accountingSort.desc ? 1 : -1;
         if (valA > valB) return accountingSort.desc ? -1 : 1;
         return 0;
@@ -588,91 +570,103 @@ function renderAccounting() {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
         tr.style.animationDelay = `${i * 0.04}s`;
-        
-        let photoHtml = order.photo_id
-            ? `<img src="/api/photos/${order.photo_id}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer; transition: transform 0.2s; flex-shrink: 0;" onclick="viewPhoto('${order.photo_id}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">`
-            : `<div style="width: 50px; height: 50px; border-radius: 5px; background: #222; display: flex; align-items: center; justify-content: center; color: var(--gray-light); flex-shrink: 0;">—</div>`;
-            
+        const photoHtml = order.photo_id
+            ? `<img src="/api/photos/${order.photo_id}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer;flex-shrink:0;" onclick="viewPhoto('${order.photo_id}')">`
+            : `<div style="width:44px;height:44px;border-radius:5px;background:#222;flex-shrink:0;"></div>`;
+
         tr.innerHTML = `
             <td>${order.id}</td>
-            <td>${formatDisplayDate(order.order_date)}</td>
-            <td style="display: flex; gap: 10px; align-items: center; min-width: 250px;">
-                ${photoHtml}
-                <div>${order.items.replace(/\n/g, '<br>')}</div>
+            <td style="white-space:nowrap;">${formatDisplayDate(order.order_date)}</td>
+            <td>
+                <div style="display:flex;gap:8px;align-items:center;min-width:220px;">
+                    ${photoHtml}
+                    <div style="font-size:0.85rem;">${order.items.replace(/\n/g, '<br>')}</div>
+                </div>
             </td>
-            <td>${(order.total_price || 0).toLocaleString('ru')}</td>
+            <td>${order.price.toLocaleString('ru')}</td>
             <td>${order.cost.toLocaleString('ru')}</td>
             <td>${order.delivery.toLocaleString('ru')}</td>
             <td>${(order.paid_amount || 0).toLocaleString('ru')}</td>
-            <td style="color: #ff9999; font-weight: bold;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})}</td>
+            <td style="color:#ff9999;font-weight:bold;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})}</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}">${order.usn.toLocaleString('ru', {maximumFractionDigits:0})}</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}">${order.checks.toLocaleString('ru', {maximumFractionDigits:0})}</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}">${order.acquiring.toLocaleString('ru', {maximumFractionDigits:0})}</td>
-            <td style="color: ${order.marginVal >= 0 ? '#00ff88' : '#ff4d4d'}; font-weight: bold;">
-                ${order.marginDisplay}
-            </td>
+            <td style="color:${order.marginVal >= 0 ? '#00ff88' : '#ff4d4d'};font-weight:bold;">${order.marginDisplay}</td>
         `;
         accountingTableBody.appendChild(tr);
     });
 }
 
-if (accountingSearch) {
-    accountingSearch.addEventListener('input', renderAccounting);
+// Sort listeners
+function bindSortListeners(tableId, sortState, renderFn) {
+    document.querySelectorAll(`#${tableId} th[data-sort]`).forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.getAttribute('data-sort');
+            if (sortState.key === key) sortState.desc = !sortState.desc;
+            else { sortState.key = key; sortState.desc = true; }
+            renderFn();
+        });
+    });
 }
+bindSortListeners('orders-table', ordersSort, renderOrders);
+bindSortListeners('archived-table', archivedSort, renderArchivedOrders);
+bindSortListeners('accounting-table', accountingSort, renderAccounting);
 
-['orders-status-filter', 'orders-client-filter', 'orders-month-filter', 'orders-price-min', 'orders-price-max', 'orders-paid-min', 'orders-paid-max', 'orders-search'].forEach(id => {
+// Filter listeners
+['orders-year-filter', 'orders-month-filter', 'orders-client-filter', 'orders-search'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) {
-        el.addEventListener('input', renderOrders);
-        el.addEventListener('change', renderOrders);
+    if (el) { el.addEventListener('input', renderOrders); el.addEventListener('change', renderOrders); }
+});
+['archived-year-filter', 'archived-month-filter', 'archived-client-filter', 'archived-search'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.addEventListener('input', renderArchivedOrders); el.addEventListener('change', renderArchivedOrders); }
+});
+['accounting-year-filter', 'accounting-month-filter', 'accounting-search'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.addEventListener('input', renderAccounting); el.addEventListener('change', renderAccounting); }
+});
+
+// Multi-select dropdown
+document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
+    const btn = dropdown.querySelector('.filter-dropdown-btn');
+    const menu = dropdown.querySelector('.filter-dropdown-menu');
+    if (!btn || !menu) return;
+
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = menu.classList.contains('open');
+        document.querySelectorAll('.filter-dropdown-menu').forEach(m => m.classList.remove('open'));
+        document.querySelectorAll('.filter-dropdown-btn').forEach(b => b.classList.remove('open'));
+        if (!isOpen) {
+            menu.classList.add('open');
+            btn.classList.add('open');
+        }
+    });
+
+    menu.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const selected = getSelectedStatuses(menu.id);
+            updateStatusBtn(btn.id, selected);
+            renderOrders();
+        });
+    });
+
+    const clearBtn = menu.querySelector('.filter-clear-all');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
+            updateStatusBtn(btn.id, []);
+            renderOrders();
+        });
     }
 });
 
-['archived-status-filter', 'archived-client-filter', 'archived-month-filter', 'archived-price-min', 'archived-price-max', 'archived-paid-min', 'archived-paid-max', 'archived-search'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-        el.addEventListener('input', renderArchivedOrders);
-        el.addEventListener('change', renderArchivedOrders);
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.filter-dropdown')) {
+        document.querySelectorAll('.filter-dropdown-menu').forEach(m => m.classList.remove('open'));
+        document.querySelectorAll('.filter-dropdown-btn').forEach(b => b.classList.remove('open'));
     }
-});
-
-document.querySelectorAll('#orders-table th[data-sort]').forEach(th => {
-    th.addEventListener('click', () => {
-        const key = th.getAttribute('data-sort');
-        if (ordersSort.key === key) {
-            ordersSort.desc = !ordersSort.desc;
-        } else {
-            ordersSort.key = key;
-            ordersSort.desc = true;
-        }
-        renderOrders();
-    });
-});
-
-document.querySelectorAll('#archived-table th[data-sort]').forEach(th => {
-    th.addEventListener('click', () => {
-        const key = th.getAttribute('data-sort');
-        if (archivedSort.key === key) {
-            archivedSort.desc = !archivedSort.desc;
-        } else {
-            archivedSort.key = key;
-            archivedSort.desc = true;
-        }
-        renderArchivedOrders();
-    });
-});
-
-document.querySelectorAll('#accounting-table th[data-sort]').forEach(th => {
-    th.addEventListener('click', () => {
-        const key = th.getAttribute('data-sort');
-        if (accountingSort.key === key) {
-            accountingSort.desc = !accountingSort.desc;
-        } else {
-            accountingSort.key = key;
-            accountingSort.desc = true;
-        }
-        renderAccounting();
-    });
 });
 
 // Modals
@@ -680,48 +674,34 @@ function openModal(modal) {
     modalOverlay.classList.remove('hidden');
     modal.classList.remove('hidden');
 }
-
 function closeModals() {
     modalOverlay.classList.add('hidden');
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
 }
-
 createClientBtn.addEventListener('click', () => openModal(createClientModal));
 createOrderBtn.addEventListener('click', () => {
     openModal(createOrderModal);
     const dateInput = document.getElementById('order-date');
     if (dateInput && !dateInput.value) {
         const now = new Date();
-        const yyyy = now.getFullYear();
-        const mm = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        dateInput.value = `${yyyy}-${mm}-${dd}`;
+        dateInput.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     }
 });
 closeBtns.forEach(btn => btn.addEventListener('click', closeModals));
 
-// Photo Viewer
+// Photo viewer
 window.viewPhoto = async function(photoId) {
     openModal(photoViewerModal);
     const imgEl = document.getElementById('photo-viewer-image');
     const loadingEl = document.getElementById('photo-loading');
-    
-    imgEl.classList.add('hidden');
-    imgEl.src = '';
-    loadingEl.classList.remove('hidden');
-    loadingEl.textContent = 'Загрузка...';
-
+    imgEl.classList.add('hidden'); imgEl.src = '';
+    loadingEl.classList.remove('hidden'); loadingEl.textContent = 'Загрузка...';
     try {
-        const res = await fetch(`${API_BASE}/photos/${photoId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
+        const res = await fetch(`${API_BASE}/photos/${photoId}`, { headers: { 'Authorization': `Bearer ${token}` }});
         if (!res.ok) throw new Error('Не удалось загрузить фото');
-        
         const blob = await res.blob();
         imgEl.src = URL.createObjectURL(blob);
-        imgEl.classList.remove('hidden');
-        loadingEl.classList.add('hidden');
+        imgEl.classList.remove('hidden'); loadingEl.classList.add('hidden');
     } catch (err) {
         loadingEl.textContent = 'Ошибка загрузки: ' + err.message;
     }
@@ -729,30 +709,20 @@ window.viewPhoto = async function(photoId) {
 
 // Archive / Unarchive
 window.archiveOrder = async function(orderId) {
-    try {
-        await fetchAPI(`/orders/${orderId}/archive`, { method: 'POST' });
-        loadDashboardData();
-    } catch (err) {
-        alert(err.message);
-    }
+    try { await fetchAPI(`/orders/${orderId}/archive`, { method: 'POST' }); loadDashboardData(); }
+    catch (err) { alert(err.message); }
 };
-
 window.unarchiveOrder = async function(orderId) {
-    try {
-        await fetchAPI(`/orders/${orderId}/unarchive`, { method: 'POST' });
-        loadDashboardData();
-    } catch (err) {
-        alert(err.message);
-    }
+    try { await fetchAPI(`/orders/${orderId}/unarchive`, { method: 'POST' }); loadDashboardData(); }
+    catch (err) { alert(err.message); }
 };
 
-// Delete with confirmation
+// Delete
 window.confirmDelete = function(orderId) {
     deleteTargetId = orderId;
     document.getElementById('delete-order-id-display').textContent = orderId;
     openModal(confirmDeleteModal);
 };
-
 document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
     if (!deleteTargetId) return;
     try {
@@ -760,16 +730,13 @@ document.getElementById('confirm-delete-btn').addEventListener('click', async ()
         deleteTargetId = null;
         closeModals();
         loadDashboardData();
-    } catch (err) {
-        alert(err.message);
-    }
+    } catch (err) { alert(err.message); }
 });
 
 // Edit Order
 window.openEditModal = function(orderId) {
     const order = allOrders.find(o => o.id === orderId);
     if (!order) return;
-    
     document.getElementById('edit-order-id-display').textContent = order.id;
     document.getElementById('edit-order-id').value = order.id;
     document.getElementById('edit-order-items').value = order.items;
@@ -777,11 +744,9 @@ window.openEditModal = function(orderId) {
     document.getElementById('edit-order-paid').value = order.paid_amount;
     document.getElementById('edit-order-status').value = order.status;
     document.getElementById('edit-order-photo-id').value = order.photo_id || '';
-    
     document.getElementById('edit-order-date').value = order.order_date || '';
     document.getElementById('edit-order-cost-price').value = order.cost_price || 0;
     document.getElementById('edit-order-delivery-cost').value = order.delivery_cost || 0;
-    
     openModal(editOrderModal);
 };
 
@@ -798,17 +763,10 @@ editOrderForm.addEventListener('submit', async (e) => {
         cost_price: parseInt(document.getElementById('edit-order-cost-price').value) || 0,
         delivery_cost: parseInt(document.getElementById('edit-order-delivery-cost').value) || 0
     };
-    
     try {
-        await fetchAPI(`/orders/${orderId}`, {
-            method: 'PUT',
-            body: JSON.stringify(payload)
-        });
-        closeModals();
-        loadDashboardData();
-    } catch (err) {
-        alert(err.message);
-    }
+        await fetchAPI(`/orders/${orderId}`, { method: 'PUT', body: JSON.stringify(payload) });
+        closeModals(); loadDashboardData();
+    } catch (err) { alert(err.message); }
 });
 
 // Create Client
@@ -816,16 +774,9 @@ createClientForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const pwd = document.getElementById('new-client-password').value;
     try {
-        await fetchAPI('/clients', {
-            method: 'POST',
-            body: JSON.stringify({ password: pwd })
-        });
-        closeModals();
-        createClientForm.reset();
-        loadDashboardData();
-    } catch (err) {
-        alert(err.message);
-    }
+        await fetchAPI('/clients', { method: 'POST', body: JSON.stringify({ password: pwd }) });
+        closeModals(); createClientForm.reset(); loadDashboardData();
+    } catch (err) { alert(err.message); }
 });
 
 // Create Order
@@ -841,189 +792,105 @@ createOrderForm.addEventListener('submit', async (e) => {
         cost_price: 0,
         delivery_cost: 0
     };
-    
     try {
-        await fetchAPI('/orders', {
-            method: 'POST',
-            body: JSON.stringify(payload)
-        });
-        closeModals();
-        createOrderForm.reset();
-        loadDashboardData();
+        await fetchAPI('/orders', { method: 'POST', body: JSON.stringify(payload) });
+        closeModals(); createOrderForm.reset(); loadDashboardData();
         document.querySelector('[data-tab="orders"]').click();
-    } catch (err) {
-        alert(err.message);
-    }
+    } catch (err) { alert(err.message); }
 });
 
-// Photo Upload Logic
+// Photo upload
 async function handlePhotoUpload(e, targetInputId) {
     const file = e.target.files[0];
     if (!file) return;
-    
     const label = e.target.previousElementSibling;
     const originalText = label.textContent;
     label.textContent = 'Загрузка...';
-    
     const formData = new FormData();
     formData.append('file', file);
-    
     try {
         const res = await fetch(`${API_BASE}/upload_photo`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
-        
-        if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.detail || 'Ошибка загрузки');
-        }
-        
+        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Ошибка загрузки'); }
         const data = await res.json();
         document.getElementById(targetInputId).value = data.photo_id;
-        label.textContent = 'Загружено ✓';
+        label.textContent = 'Загружено \u2713';
         setTimeout(() => label.textContent = originalText, 2000);
     } catch (err) {
         alert(err.message);
-        label.textContent = 'Ошибка ✕';
+        label.textContent = 'Ошибка \u2715';
         setTimeout(() => label.textContent = originalText, 2000);
     }
-    
-    e.target.value = ''; // Reset input
+    e.target.value = '';
 }
 
 const orderPhotoUpload = document.getElementById('order-photo-upload');
 if (orderPhotoUpload) orderPhotoUpload.addEventListener('change', (e) => handlePhotoUpload(e, 'order-photo-id'));
-
 const editOrderPhotoUpload = document.getElementById('edit-order-photo-upload');
 if (editOrderPhotoUpload) editOrderPhotoUpload.addEventListener('change', (e) => handlePhotoUpload(e, 'edit-order-photo-id'));
 
-init();
-
-// ====== NEW UI LOGIC ======
-// Dropdowns
-document.querySelectorAll('.multi-select-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const content = btn.nextElementSibling;
-        content.classList.toggle('hidden');
-    });
-});
-
-// Close dropdowns when clicking outside
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.multi-select-dropdown')) {
-        document.querySelectorAll('.multi-select-content').forEach(content => {
-            content.classList.add('hidden');
-        });
-    }
-});
-
-// Re-render when checkboxes in multi-select change
-document.querySelectorAll('.multi-select-content input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => {
-        const btn = cb.closest('.multi-select-dropdown').querySelector('.multi-select-btn');
-        const checked = Array.from(cb.closest('.multi-select-content').querySelectorAll('input[type="checkbox"]:checked')).map(c => c.value);
-        if (checked.length === 0) {
-            btn.textContent = 'Все статусы';
-        } else if (checked.length === 1) {
-            btn.textContent = checked[0];
-        } else {
-            btn.textContent = `Выбрано: ${checked.length}`;
-        }
-        
-        if (cb.closest('#orders-status-dropdown')) {
-            renderOrders();
-        } else if (cb.closest('#archived-status-dropdown')) {
-            renderArchivedOrders();
-        }
-    });
-});
-
-// Select all logic
+// Mass edit
 document.getElementById('orders-select-all')?.addEventListener('change', (e) => {
     document.querySelectorAll('.order-row-checkbox').forEach(cb => cb.checked = e.target.checked);
     updateMassEditPanel('orders');
 });
-
 document.getElementById('archived-select-all')?.addEventListener('change', (e) => {
     document.querySelectorAll('.archived-row-checkbox').forEach(cb => cb.checked = e.target.checked);
     updateMassEditPanel('archived');
 });
 
 window.updateMassEditPanel = function(tab) {
-    let checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
-    let panel = document.getElementById(`${tab}-mass-edit-panel`);
-    let countSpan = document.getElementById(`${tab}-mass-edit-count`);
-    
+    const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
+    const panel = document.getElementById(`${tab}-mass-edit-panel`);
+    const countSpan = document.getElementById(`${tab}-mass-edit-count`);
     if (!panel) return;
-    
     if (checkboxes.length > 0) {
-        panel.classList.remove('hidden');
-        if (countSpan) countSpan.textContent = `Выбрано заказов: ${checkboxes.length}`;
+        panel.classList.add('visible');
+        if (countSpan) countSpan.textContent = `Выбрано: ${checkboxes.length}`;
     } else {
-        panel.classList.add('hidden');
+        panel.classList.remove('visible');
     }
 };
 
-// Mass edit API calls
-['orders', 'archived'].forEach(tab => {
-    const btn = document.getElementById(`${tab}-mass-edit-btn`);
-    if (!btn) return;
-    
-    btn.addEventListener('click', async (e) => {
-        const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
-        const select = document.getElementById(`${tab}-mass-edit-status`);
-        const newStatus = select ? select.value : null;
-        if (!newStatus) {
-            alert('Выберите новый статус!');
-            return;
-        }
-        
-        const orderIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        if (orderIds.length === 0) return;
-        
-        btn.textContent = 'Загрузка...';
-        btn.disabled = true;
-        
-        try {
-            await Promise.all(orderIds.map(async id => {
-                const order = allOrders.find(o => o.id === id);
-                if (!order) return;
-                const payload = {
-                    client_id: order.client_id,
-                    items: order.items,
-                    total_price: order.total_price,
-                    paid_amount: order.paid_amount,
-                    status: newStatus,
-                    photo_id: order.photo_id,
-                    order_date: order.order_date,
-                    cost_price: order.cost_price,
-                    delivery_cost: order.delivery_cost
-                };
-                await fetchAPI(`/orders/${id}`, {
-                    method: 'PUT',
-                    body: JSON.stringify(payload)
-                });
-            }));
-            
-            // Clear selection
-            const selectAll = document.getElementById(`${tab}-select-all`);
-            if (selectAll) selectAll.checked = false;
-            
-            await loadDashboardData();
-        } catch (err) {
-            alert('Ошибка при массовом редактировании: ' + err.message);
-        } finally {
-            btn.textContent = 'Изменить статус';
-            btn.disabled = false;
-        }
-    });
+document.getElementById('orders-mass-cancel-btn')?.addEventListener('click', () => {
+    document.querySelectorAll('.order-row-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('orders-select-all');
+    if (selectAll) selectAll.checked = false;
+    updateMassEditPanel('orders');
 });
 
-// Listeners for year filters
-document.getElementById('orders-year-filter')?.addEventListener('change', renderOrders);
-document.getElementById('archived-year-filter')?.addEventListener('change', renderArchivedOrders);
+document.getElementById('orders-mass-edit-btn')?.addEventListener('click', async () => {
+    const checkboxes = document.querySelectorAll('.order-row-checkbox:checked');
+    const select = document.getElementById('orders-mass-edit-status');
+    const newStatus = select ? select.value : null;
+    if (!newStatus) { alert('Выберите статус!'); return; }
+    const orderIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    if (orderIds.length === 0) return;
+    const btn = document.getElementById('orders-mass-edit-btn');
+    btn.textContent = 'Загрузка...'; btn.disabled = true;
+    try {
+        await Promise.all(orderIds.map(async id => {
+            const order = allOrders.find(o => o.id === id);
+            if (!order) return;
+            const payload = {
+                items: order.items, total_price: order.total_price,
+                paid_amount: order.paid_amount, status: newStatus,
+                photo_id: order.photo_id, order_date: order.order_date,
+                cost_price: order.cost_price, delivery_cost: order.delivery_cost
+            };
+            await fetchAPI(`/orders/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        }));
+        const selectAll = document.getElementById('orders-select-all');
+        if (selectAll) selectAll.checked = false;
+        await loadDashboardData();
+    } catch (err) {
+        alert('Ошибка при массовом редактировании: ' + err.message);
+    } finally {
+        btn.textContent = 'Применить'; btn.disabled = false;
+    }
+});
+
+init();
