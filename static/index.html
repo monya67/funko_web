@@ -4,11 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Funko Stop | Личный кабинет</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=1788126375549">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
     <style>
+        /* Strict Tab Switching */
+        .tab-content {
+            display: none !important;
+        }
+        .tab-content.active {
+            display: block !important;
+        }
+
         .filter-dropdown { position:relative; display:inline-block; }
         .filter-dropdown-btn {
             padding:7px 12px; border-radius:8px; background:rgba(255,255,255,0.05);
@@ -48,46 +56,21 @@
         .filter-input.xnarrow { width:80px; }
         select.filter-input { cursor:pointer; }
         
-        /* Mass edit floating / action bar */
-        .mass-action-bar {
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 12px 18px;
-            background: linear-gradient(90deg, rgba(229, 9, 20, 0.18) 0%, rgba(30, 30, 30, 0.95) 100%);
-            border: 1px solid rgba(229, 9, 20, 0.4);
-            border-radius: 12px;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            animation: fadeIn 0.3s ease;
-        }
-        .mass-action-bar.visible { display: flex; }
-        .mass-action-left { display: flex; align-items: center; gap: 10px; }
-        .mass-action-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .mass-status-select {
-            padding: 8px 12px; border-radius: 8px; background: #141414;
-            border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit; font-size: 0.88rem;
-            min-width: 220px; outline: none; cursor: pointer;
-        }
-        .mass-status-select:focus { border-color: var(--primary); }
-
         .accounting-filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center; }
         .tax-sub-col { font-size:0.78rem; color:#ff9999; }
         
-        /* Inline status select */
+        /* Inline status select in table */
         .inline-status-select {
-            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
-            color: #fff; font-family: inherit; font-size: 0.82rem; cursor: pointer;
-            padding: 5px 8px; border-radius: 6px; outline: none; max-width: 170px;
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+            color: #fff; font-family: inherit; font-size: 0.85rem; cursor: pointer;
+            padding: 6px 10px; border-radius: 8px; outline: none; min-width: 170px;
             transition: all 0.2s ease;
         }
-        .inline-status-select:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); }
+        .inline-status-select:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.3); }
         .inline-status-select:focus { border-color: var(--primary); }
         .inline-status-select option { background: #181818; color: #fff; }
         .inline-status-select.saving { opacity: 0.5; pointer-events: none; }
-        .inline-status-select.saved { border-color: #00ff88; box-shadow: 0 0 8px rgba(0,255,136,0.3); }
+        .inline-status-select.saved { border-color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.4); }
 
         /* Row Checkbox */
         .order-row-checkbox, .archived-row-checkbox {
@@ -139,22 +122,25 @@
                     <button id="new-order-btn" class="btn primary admin-only hidden">+ Новый заказ</button>
                 </div>
                 
-                <!-- Mass Edit Bar (appears automatically when 1 or more rows are selected) -->
-                <div class="mass-action-bar" id="orders-mass-edit-panel">
-                    <div class="mass-action-left">
-                        <span style="font-size: 1.2rem; color: var(--primary);">⚡</span>
-                        <span id="orders-mass-edit-count" style="font-weight:600; color:#fff; font-size:0.95rem;">Выбрано заказов: 0</span>
-                    </div>
-                    <div class="mass-action-right">
-                        <select id="orders-mass-edit-status" class="mass-status-select">
-                            <option value="">— Выберите новый статус —</option>
-                            <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ архив)</option>
-                        </select>
-                        <button id="orders-mass-edit-btn" class="btn primary" style="padding:8px 18px; font-weight:600;">Применить статус</button>
-                        <button type="button" onclick="window.clearMassSelection('orders')" class="btn secondary outline" style="padding:8px 14px;">✕ Снять выбор</button>
-                    </div>
-                </div>
+                <!-- Mass Edit Action Bar -->
+                
+    <div class="mass-action-bar admin-only hidden" id="orders-mass-edit-panel" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.35); border-radius: 12px; margin-bottom: 14px; flex-wrap: wrap;">
+        <div class="mass-action-left" style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.3rem; color: var(--primary);">⚡</span>
+            <span id="orders-mass-edit-count" style="font-weight: 600; color: #fff; font-size: 0.95rem;">Выбрано заказов: 0 шт.</span>
+            <span style="color: var(--gray); font-size: 0.85rem;">(отметьте галочками нужные строки)</span>
+        </div>
+        <div class="mass-action-right" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <select id="orders-mass-edit-status" class="mass-status-select" style="padding: 8px 12px; border-radius: 8px; background: #161616; border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit; font-size: 0.88rem; min-width: 220px; cursor: pointer;">
+                <option value="">— Выберите новый статус —</option>
+                <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
+            </select>
+            <button id="orders-mass-edit-btn" class="btn primary" style="padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">⚡ Применить статус</button>
+            <button type="button" onclick="window.clearMassSelection('orders')" class="btn secondary outline" style="padding: 8px 14px; cursor: pointer;">✕ Снять выбор</button>
+        </div>
+    </div>
 
+                <!-- Filter Bar -->
                 
     <div class="filters-bar">
         <select id="orders-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
@@ -183,7 +169,7 @@
                 <div class="glass-panel table-container">
                     <table id="orders-table">
                         <thead><tr>
-                            <th class="admin-only hidden" style="width:36px; text-align:center;"><input type="checkbox" id="orders-select-all" title="Выбрать все"></th>
+                            <th class="admin-only hidden" style="width:36px; text-align:center;"><input type="checkbox" id="orders-select-all" title="Выбрать все" style="cursor:pointer;"></th>
                             <th data-sort="id" style="cursor:pointer;white-space:nowrap;">ID &#8597;</th>
                             <th data-sort="date" style="cursor:pointer;white-space:nowrap;">Дата &#8597;</th>
                             <th class="admin-only hidden" data-sort="client" style="cursor:pointer;">Клиент &#8597;</th>
@@ -191,7 +177,7 @@
                             <th>Товары</th>
                             <th data-sort="price" style="cursor:pointer;white-space:nowrap;">Сумма &#8597;</th>
                             <th data-sort="paid" style="cursor:pointer;white-space:nowrap;">Оплачено &#8597;</th>
-                            <th data-sort="status" style="cursor:pointer;min-width:170px;">Статус &#8597;</th>
+                            <th data-sort="status" style="cursor:pointer;min-width:180px;">Статус &#8597;</th>
                             <th class="admin-only hidden" style="min-width:80px;"></th>
                         </tr></thead>
                         <tbody></tbody>
@@ -201,25 +187,28 @@
             </section>
 
             <!-- ARCHIVED TAB -->
-            <section id="archived-tab" class="tab-content hidden">
+            <section id="archived-tab" class="tab-content">
                 <div class="header-flex"><h2>Архив заказов</h2></div>
 
-                <!-- Mass Edit Bar for Archive -->
-                <div class="mass-action-bar" id="archived-mass-edit-panel">
-                    <div class="mass-action-left">
-                        <span style="font-size: 1.2rem; color: var(--primary);">⚡</span>
-                        <span id="archived-mass-edit-count" style="font-weight:600; color:#fff; font-size:0.95rem;">Выбрано заказов: 0</span>
-                    </div>
-                    <div class="mass-action-right">
-                        <select id="archived-mass-edit-status" class="mass-status-select">
-                            <option value="">— Выберите новый статус —</option>
-                            <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ архив)</option>
-                        </select>
-                        <button id="archived-mass-edit-btn" class="btn primary" style="padding:8px 18px; font-weight:600;">Применить статус</button>
-                        <button type="button" onclick="window.clearMassSelection('archived')" class="btn secondary outline" style="padding:8px 14px;">✕ Снять выбор</button>
-                    </div>
-                </div>
+                <!-- Mass Edit Action Bar for Archive -->
+                
+    <div class="mass-action-bar admin-only hidden" id="archived-mass-edit-panel" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.35); border-radius: 12px; margin-bottom: 14px; flex-wrap: wrap;">
+        <div class="mass-action-left" style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.3rem; color: var(--primary);">⚡</span>
+            <span id="archived-mass-edit-count" style="font-weight: 600; color: #fff; font-size: 0.95rem;">Выбрано заказов: 0 шт.</span>
+            <span style="color: var(--gray); font-size: 0.85rem;">(отметьте галочками нужные строки)</span>
+        </div>
+        <div class="mass-action-right" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <select id="archived-mass-edit-status" class="mass-status-select" style="padding: 8px 12px; border-radius: 8px; background: #161616; border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit; font-size: 0.88rem; min-width: 220px; cursor: pointer;">
+                <option value="">— Выберите новый статус —</option>
+                <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
+            </select>
+            <button id="archived-mass-edit-btn" class="btn primary" style="padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">⚡ Применить статус</button>
+            <button type="button" onclick="window.clearMassSelection('archived')" class="btn secondary outline" style="padding: 8px 14px; cursor: pointer;">✕ Снять выбор</button>
+        </div>
+    </div>
 
+                <!-- Filter Bar -->
                 
     <div class="filters-bar">
         <select id="archived-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
@@ -238,7 +227,7 @@
                 <div class="glass-panel table-container">
                     <table id="archived-table">
                         <thead><tr>
-                            <th class="admin-only hidden" style="width:36px; text-align:center;"><input type="checkbox" id="archived-select-all" title="Выбрать все"></th>
+                            <th class="admin-only hidden" style="width:36px; text-align:center;"><input type="checkbox" id="archived-select-all" title="Выбрать все" style="cursor:pointer;"></th>
                             <th data-sort="id" style="cursor:pointer;white-space:nowrap;">ID &#8597;</th>
                             <th data-sort="date" style="cursor:pointer;white-space:nowrap;">Дата &#8597;</th>
                             <th class="admin-only hidden" data-sort="client" style="cursor:pointer;">Клиент &#8597;</th>
@@ -255,22 +244,8 @@
                 </div>
             </section>
 
-            <!-- CLIENTS TAB -->
-            <section id="clients-tab" class="tab-content hidden admin-only">
-                <div class="header-flex">
-                    <h2>База клиентов</h2>
-                    <button id="new-client-btn" class="btn primary">+ Новый клиент</button>
-                </div>
-                <div class="glass-panel table-container">
-                    <table id="clients-table">
-                        <thead><tr><th>ID</th><th>Пароль</th><th>Telegram ID</th></tr></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </section>
-
             <!-- ACCOUNTING TAB -->
-            <section id="accounting-tab" class="tab-content hidden admin-only">
+            <section id="accounting-tab" class="tab-content">
                 <div class="header-flex"><h2>Бухгалтерия</h2></div>
                 <div class="accounting-filters">
                     <select id="accounting-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
@@ -303,6 +278,20 @@
                         <tbody></tbody>
                     </table>
                     <p id="no-accounting" class="empty-msg hidden">Нет данных</p>
+                </div>
+            </section>
+
+            <!-- CLIENTS TAB -->
+            <section id="clients-tab" class="tab-content">
+                <div class="header-flex">
+                    <h2>База клиентов</h2>
+                    <button id="new-client-btn" class="btn primary">+ Новый клиент</button>
+                </div>
+                <div class="glass-panel table-container">
+                    <table id="clients-table">
+                        <thead><tr><th>ID</th><th>Пароль</th><th>Telegram ID</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </section>
 
@@ -364,7 +353,7 @@
                 <div class="input-group flex-row">
                     <div style="width:100%;">
                         <label>Статус</label>
-                        <select id="edit-order-status" required><option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ архив)</option></select>
+                        <select id="edit-order-status" required><option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option></select>
                     </div>
                     <div style="width:100%;">
                         <label>Photo ID</label>
@@ -401,6 +390,7 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=7"></script>
+    <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
+    <script src="/static/app.js?v=1788126375549"></script>
 </body>
 </html>
