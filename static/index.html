@@ -9,96 +9,110 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
     <style>
-        .filter-dropdown { position: relative; display: inline-block; }
+        .filter-dropdown { position:relative; display:inline-block; }
         .filter-dropdown-btn {
-            padding: 8px 14px; border-radius: 8px;
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            color: #fff; cursor: pointer; white-space: nowrap; font-family: inherit;
-            font-size: 0.9rem; display: inline-flex; align-items: center; gap: 6px;
-            transition: background 0.2s; min-width: 140px;
+            padding:7px 12px; border-radius:8px; background:rgba(255,255,255,0.05);
+            border:1px solid rgba(255,255,255,0.1); color:#fff; cursor:pointer;
+            white-space:nowrap; font-family:inherit; font-size:0.88rem;
+            display:inline-flex; align-items:center; gap:6px; transition:background 0.2s; min-width:130px;
         }
-        .filter-dropdown-btn:hover { background: rgba(255,255,255,0.1); }
-        .filter-dropdown-btn .arrow { margin-left: auto; font-size: 0.7rem; transition: transform 0.2s; }
-        .filter-dropdown-btn.open .arrow { transform: rotate(180deg); }
+        .filter-dropdown-btn:hover { background:rgba(255,255,255,0.1); }
+        .filter-dropdown-btn .arrow { margin-left:auto; font-size:0.7rem; transition:transform 0.2s; }
+        .filter-dropdown-btn.open .arrow { transform:rotate(180deg); }
         .filter-dropdown-menu {
-            display: none; position: absolute; top: calc(100% + 6px); left: 0;
-            min-width: 260px; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px; z-index: 999; padding: 8px 0;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.7); max-height: 300px; overflow-y: auto;
+            display:none; position:absolute; top:calc(100% + 6px); left:0; min-width:280px;
+            background:#181818; border:1px solid rgba(255,255,255,0.15); border-radius:10px;
+            z-index:999; padding:8px 0; box-shadow:0 12px 36px rgba(0,0,0,0.8); max-height:320px; overflow-y:auto;
         }
-        .filter-dropdown-menu.open { display: block; }
+        .filter-dropdown-menu.open { display:block; }
         .filter-dropdown-menu label {
-            display: flex; align-items: center; gap: 10px; padding: 8px 14px;
-            cursor: pointer; color: #ddd; font-size: 0.88rem; transition: background 0.15s; margin: 0;
+            display:flex; align-items:center; gap:10px; padding:8px 14px;
+            cursor:pointer; color:#ddd; font-size:0.85rem; transition:background 0.15s; margin:0;
         }
-        .filter-dropdown-menu label:hover { background: rgba(255,255,255,0.06); }
+        .filter-dropdown-menu label:hover { background:rgba(255,255,255,0.08); }
         .filter-dropdown-menu label input[type=checkbox] {
-            width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; flex-shrink: 0;
-            margin: 0; padding: 0;
+            width:16px; height:16px; accent-color:var(--primary); cursor:pointer; flex-shrink:0; margin:0; padding:0;
         }
-        .filter-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 4px 0; }
-        .filter-clear-all { padding: 8px 14px; color: var(--primary); font-size: 0.82rem; cursor: pointer; user-select: none; }
-        .filter-clear-all:hover { text-decoration: underline; }
-        .filters-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+        .filter-divider { height:1px; background:rgba(255,255,255,0.08); margin:4px 0; }
+        .filter-clear-all { padding:8px 14px; color:#ff4d4d; font-size:0.82rem; cursor:pointer; user-select:none; font-weight:500; }
+        .filter-clear-all:hover { text-decoration:underline; }
+        .filters-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
         .filter-input {
-            padding: 8px 12px; border-radius: 8px;
-            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
-            color: #fff; font-family: inherit; font-size: 0.9rem; outline: none; transition: border 0.2s;
+            padding:7px 11px; border-radius:8px; background:rgba(255,255,255,0.05);
+            border:1px solid rgba(255,255,255,0.1); color:#fff; font-family:inherit;
+            font-size:0.88rem; outline:none; transition:border 0.2s, background 0.2s;
         }
-        .filter-input:focus { border-color: rgba(229,9,20,0.4); }
-        .filter-input.wide { min-width: 200px; flex-grow: 1; }
-        .filter-input.narrow { width: 110px; }
-        .filter-input.xnarrow { width: 80px; }
-        select.filter-input { cursor: pointer; }
-        .mass-edit-panel {
-            display: none; align-items: center; gap: 12px; padding: 10px 16px;
-            background: rgba(229,9,20,0.08); border: 1px solid rgba(229,9,20,0.25);
-            border-radius: 10px; flex-wrap: wrap; width: 100%; margin-bottom: 10px;
-        }
-        .mass-edit-panel.visible { display: flex; }
-        .mass-edit-select {
-            padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit;
-        }
-        .accounting-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; align-items: center; }
-        .tax-sub-col { font-size: 0.78rem; color: #ff9999; }
-        .inline-status-form { display: flex; align-items: center; gap: 5px; }
-        .inline-status-select {
-            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-            color: #fff; font-family: inherit; font-size: 0.8rem; cursor: pointer;
-            padding: 3px 6px; border-radius: 6px; outline: none; max-width: 160px;
-        }
-        .inline-status-select:focus { border-color: var(--primary); }
-        .inline-status-select option { background: #111; }
-        .inline-save-btn {
-            padding: 3px 8px; border-radius: 5px; border: none;
-            background: var(--primary); color: #fff; font-size: 0.75rem;
-            cursor: pointer; font-family: inherit; white-space: nowrap;
+        .filter-input:focus { border-color:rgba(229,9,20,0.6); background:rgba(255,255,255,0.08); }
+        .filter-input.wide { min-width:180px; flex-grow:1; }
+        .filter-input.narrow { width:115px; }
+        .filter-input.xnarrow { width:80px; }
+        select.filter-input { cursor:pointer; }
+        
+        /* Mass edit floating / action bar */
+        .mass-action-bar {
             display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 18px;
+            background: linear-gradient(90deg, rgba(229, 9, 20, 0.18) 0%, rgba(30, 30, 30, 0.95) 100%);
+            border: 1px solid rgba(229, 9, 20, 0.4);
+            border-radius: 12px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            animation: fadeIn 0.3s ease;
         }
-        .inline-save-btn.show { display: inline-block; }
+        .mass-action-bar.visible { display: flex; }
+        .mass-action-left { display: flex; align-items: center; gap: 10px; }
+        .mass-action-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .mass-status-select {
+            padding: 8px 12px; border-radius: 8px; background: #141414;
+            border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit; font-size: 0.88rem;
+            min-width: 220px; outline: none; cursor: pointer;
+        }
+        .mass-status-select:focus { border-color: var(--primary); }
+
+        .accounting-filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center; }
+        .tax-sub-col { font-size:0.78rem; color:#ff9999; }
+        
+        /* Inline status select */
+        .inline-status-select {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+            color: #fff; font-family: inherit; font-size: 0.82rem; cursor: pointer;
+            padding: 5px 8px; border-radius: 6px; outline: none; max-width: 170px;
+            transition: all 0.2s ease;
+        }
+        .inline-status-select:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); }
+        .inline-status-select:focus { border-color: var(--primary); }
+        .inline-status-select option { background: #181818; color: #fff; }
+        .inline-status-select.saving { opacity: 0.5; pointer-events: none; }
+        .inline-status-select.saved { border-color: #00ff88; box-shadow: 0 0 8px rgba(0,255,136,0.3); }
+
+        /* Row Checkbox */
+        .order-row-checkbox, .archived-row-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+            cursor: pointer;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
     <div class="background"></div>
 
-    <!-- Login -->
     <div id="login-view" class="glass-panel active fade-in">
         <div class="logo"><h1>FUNKO <span>STOP</span></h1></div>
         <h2>Вход в Личный Кабинет</h2>
         <form id="login-form">
-            <div class="input-group">
-                <input type="text" id="username" placeholder="Логин или ID Клиента" required autocomplete="off">
-            </div>
-            <div class="input-group">
-                <input type="password" id="password" placeholder="Пароль" required>
-            </div>
+            <div class="input-group"><input type="text" id="username" placeholder="Логин или ID Клиента" required autocomplete="off"></div>
+            <div class="input-group"><input type="password" id="password" placeholder="Пароль" required></div>
             <p id="login-error" class="error-msg"></p>
             <button type="submit" class="btn primary">Войти</button>
         </form>
     </div>
 
-    <!-- Dashboard -->
     <div id="dashboard-view" class="dashboard-layout hidden fade-in">
         <aside class="sidebar glass-panel">
             <div class="logo small"><h1>FUNKO <span>STOP</span></h1></div>
@@ -124,64 +138,52 @@
                     <h2>Активные заказы</h2>
                     <button id="new-order-btn" class="btn primary admin-only hidden">+ Новый заказ</button>
                 </div>
-                <div class="filters-bar">
-                    <select id="orders-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
-                    <select id="orders-month-filter" class="filter-input narrow">
-                        <option value="">Месяц</option>
-                        <option value="01">Январь</option>
-<option value="02">Февраль</option>
-<option value="03">Март</option>
-<option value="04">Апрель</option>
-<option value="05">Май</option>
-<option value="06">Июнь</option>
-<option value="07">Июль</option>
-<option value="08">Август</option>
-<option value="09">Сентябрь</option>
-<option value="10">Октябрь</option>
-<option value="11">Ноябрь</option>
-<option value="12">Декабрь</option>
-                    </select>
-                    <input type="number" id="orders-client-filter" class="filter-input xnarrow" placeholder="ID клиента">
-                    <div class="filter-dropdown" id="orders-status-dropdown">
-                        <button type="button" class="filter-dropdown-btn" id="orders-status-btn">
-                            Все статусы <span class="arrow">&#9660;</span>
-                        </button>
-                        <div class="filter-dropdown-menu" id="orders-status-menu">
-                            <div class="filter-clear-all" id="orders-status-clear">&#10005; Сбросить фильтр</div>
-                            <div class="filter-divider"></div>
-                            <label><input type="checkbox" value="Заказ принят в обработку">Принят в обработку</label>
-<label><input type="checkbox" value="Заказ ожидает отправки из магазина">Ожидает отправки</label>
-<label><input type="checkbox" value="Заказ едет на склад США">Едет на склад США</label>
-<label><input type="checkbox" value="Заказ начал сортировку на складе США">Сортировка склад США</label>
-<label><input type="checkbox" value="Заказ отправлен из США на наш склад в Россию">Отправлен из США</label>
-<label><input type="checkbox" value="Ожидает выхода в продажу">Ожидает выхода</label>
-<label><input type="checkbox" value="Заказ проходит таможенное оформление">Таможня</label>
-<label><input type="checkbox" value="Заказ прибыл в магазин и готов к выдаче">Готов к выдаче</label>
-                        </div>
+                
+                <!-- Mass Edit Bar (appears automatically when 1 or more rows are selected) -->
+                <div class="mass-action-bar" id="orders-mass-edit-panel">
+                    <div class="mass-action-left">
+                        <span style="font-size: 1.2rem; color: var(--primary);">⚡</span>
+                        <span id="orders-mass-edit-count" style="font-weight:600; color:#fff; font-size:0.95rem;">Выбрано заказов: 0</span>
                     </div>
-                    <input type="text" id="orders-search" class="filter-input wide" placeholder="Поиск (ID, товар, клиент)...">
+                    <div class="mass-action-right">
+                        <select id="orders-mass-edit-status" class="mass-status-select">
+                            <option value="">— Выберите новый статус —</option>
+                            <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ архив)</option>
+                        </select>
+                        <button id="orders-mass-edit-btn" class="btn primary" style="padding:8px 18px; font-weight:600;">Применить статус</button>
+                        <button type="button" onclick="window.clearMassSelection('orders')" class="btn secondary outline" style="padding:8px 14px;">✕ Снять выбор</button>
+                    </div>
                 </div>
-                <div class="mass-edit-panel" id="orders-mass-edit-panel">
-                    <span id="orders-mass-edit-count" style="font-weight:bold;color:var(--primary);">Выбрано: 0</span>
-                    <select id="orders-mass-edit-status" class="mass-edit-select">
-                        <option value="">-- Выбрать статус --</option>
-                        <option value="Заказ принят в обработку">Заказ принят в обработку</option>
-<option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option>
-<option value="Заказ едет на склад США">Заказ едет на склад США</option>
-<option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option>
-<option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option>
-<option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option>
-<option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option>
-<option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option>
-<option value="Выдано">Выдано</option>
-                    </select>
-                    <button id="orders-mass-edit-btn" class="btn primary" style="padding:6px 16px;">Применить</button>
-                    <button id="orders-mass-cancel-btn" class="btn secondary outline" style="padding:6px 12px;">Отмена</button>
-                </div>
+
+                
+    <div class="filters-bar">
+        <select id="orders-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
+        <select id="orders-month-filter" class="filter-input narrow">
+            <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
+        </select>
+        <input type="number" id="orders-client-filter" class="filter-input xnarrow" placeholder="ID клиента">
+        <input type="number" id="orders-price-min" class="filter-input narrow" placeholder="Сумма от &#8381;">
+        <input type="number" id="orders-price-max" class="filter-input narrow" placeholder="Сумма до &#8381;">
+        <input type="number" id="orders-paid-min" class="filter-input narrow" placeholder="Внесено от &#8381;">
+        <input type="number" id="orders-paid-max" class="filter-input narrow" placeholder="Внесено до &#8381;">
+        
+        <div class="filter-dropdown" id="orders-status-dropdown">
+            <button type="button" class="filter-dropdown-btn" id="orders-status-btn">
+                Все статусы <span class="arrow">&#9660;</span>
+            </button>
+            <div class="filter-dropdown-menu" id="orders-status-menu">
+                <div class="filter-clear-all" id="orders-status-clear">&#10005; Сбросить фильтр</div>
+                <div class="filter-divider"></div>
+                <label><input type="checkbox" value="Заказ принят в обработку">Заказ принят в обработку</label><label><input type="checkbox" value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</label><label><input type="checkbox" value="Заказ едет на склад США">Заказ едет на склад США</label><label><input type="checkbox" value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</label><label><input type="checkbox" value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</label><label><input type="checkbox" value="Ожидает выхода в продажу">Ожидает выхода в продажу</label><label><input type="checkbox" value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</label><label><input type="checkbox" value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</label>
+            </div>
+        </div>
+        <input type="text" id="orders-search" class="filter-input wide" placeholder="🔍 Поиск (ID, товар, клиент)...">
+    </div>
+
                 <div class="glass-panel table-container">
                     <table id="orders-table">
                         <thead><tr>
-                            <th class="admin-only hidden" style="width:36px;"><input type="checkbox" id="orders-select-all"></th>
+                            <th class="admin-only hidden" style="width:36px; text-align:center;"><input type="checkbox" id="orders-select-all" title="Выбрать все"></th>
                             <th data-sort="id" style="cursor:pointer;white-space:nowrap;">ID &#8597;</th>
                             <th data-sort="date" style="cursor:pointer;white-space:nowrap;">Дата &#8597;</th>
                             <th class="admin-only hidden" data-sort="client" style="cursor:pointer;">Клиент &#8597;</th>
@@ -189,7 +191,7 @@
                             <th>Товары</th>
                             <th data-sort="price" style="cursor:pointer;white-space:nowrap;">Сумма &#8597;</th>
                             <th data-sort="paid" style="cursor:pointer;white-space:nowrap;">Оплачено &#8597;</th>
-                            <th data-sort="status" style="cursor:pointer;min-width:160px;">Статус &#8597;</th>
+                            <th data-sort="status" style="cursor:pointer;min-width:170px;">Статус &#8597;</th>
                             <th class="admin-only hidden" style="min-width:80px;"></th>
                         </tr></thead>
                         <tbody></tbody>
@@ -201,30 +203,42 @@
             <!-- ARCHIVED TAB -->
             <section id="archived-tab" class="tab-content hidden">
                 <div class="header-flex"><h2>Архив заказов</h2></div>
-                <div class="filters-bar">
-                    <select id="archived-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
-                    <select id="archived-month-filter" class="filter-input narrow">
-                        <option value="">Месяц</option>
-                        <option value="01">Январь</option>
-<option value="02">Февраль</option>
-<option value="03">Март</option>
-<option value="04">Апрель</option>
-<option value="05">Май</option>
-<option value="06">Июнь</option>
-<option value="07">Июль</option>
-<option value="08">Август</option>
-<option value="09">Сентябрь</option>
-<option value="10">Октябрь</option>
-<option value="11">Ноябрь</option>
-<option value="12">Декабрь</option>
-                    </select>
-                    <input type="number" id="archived-client-filter" class="filter-input xnarrow" placeholder="ID клиента">
-                    <input type="text" id="archived-search" class="filter-input wide" placeholder="Поиск (ID, товар, клиент)...">
+
+                <!-- Mass Edit Bar for Archive -->
+                <div class="mass-action-bar" id="archived-mass-edit-panel">
+                    <div class="mass-action-left">
+                        <span style="font-size: 1.2rem; color: var(--primary);">⚡</span>
+                        <span id="archived-mass-edit-count" style="font-weight:600; color:#fff; font-size:0.95rem;">Выбрано заказов: 0</span>
+                    </div>
+                    <div class="mass-action-right">
+                        <select id="archived-mass-edit-status" class="mass-status-select">
+                            <option value="">— Выберите новый статус —</option>
+                            <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ архив)</option>
+                        </select>
+                        <button id="archived-mass-edit-btn" class="btn primary" style="padding:8px 18px; font-weight:600;">Применить статус</button>
+                        <button type="button" onclick="window.clearMassSelection('archived')" class="btn secondary outline" style="padding:8px 14px;">✕ Снять выбор</button>
+                    </div>
                 </div>
+
+                
+    <div class="filters-bar">
+        <select id="archived-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
+        <select id="archived-month-filter" class="filter-input narrow">
+            <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
+        </select>
+        <input type="number" id="archived-client-filter" class="filter-input xnarrow" placeholder="ID клиента">
+        <input type="number" id="archived-price-min" class="filter-input narrow" placeholder="Сумма от &#8381;">
+        <input type="number" id="archived-price-max" class="filter-input narrow" placeholder="Сумма до &#8381;">
+        <input type="number" id="archived-paid-min" class="filter-input narrow" placeholder="Внесено от &#8381;">
+        <input type="number" id="archived-paid-max" class="filter-input narrow" placeholder="Внесено до &#8381;">
+        
+        <input type="text" id="archived-search" class="filter-input wide" placeholder="🔍 Поиск (ID, товар, клиент)...">
+    </div>
+
                 <div class="glass-panel table-container">
                     <table id="archived-table">
                         <thead><tr>
-                            <th class="admin-only hidden" style="width:36px;"><input type="checkbox" id="archived-select-all"></th>
+                            <th class="admin-only hidden" style="width:36px; text-align:center;"><input type="checkbox" id="archived-select-all" title="Выбрать все"></th>
                             <th data-sort="id" style="cursor:pointer;white-space:nowrap;">ID &#8597;</th>
                             <th data-sort="date" style="cursor:pointer;white-space:nowrap;">Дата &#8597;</th>
                             <th class="admin-only hidden" data-sort="client" style="cursor:pointer;">Клиент &#8597;</th>
@@ -261,22 +275,10 @@
                 <div class="accounting-filters">
                     <select id="accounting-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
                     <select id="accounting-month-filter" class="filter-input narrow">
-                        <option value="">Месяц</option>
-                        <option value="01">Январь</option>
-<option value="02">Февраль</option>
-<option value="03">Март</option>
-<option value="04">Апрель</option>
-<option value="05">Май</option>
-<option value="06">Июнь</option>
-<option value="07">Июль</option>
-<option value="08">Август</option>
-<option value="09">Сентябрь</option>
-<option value="10">Октябрь</option>
-<option value="11">Ноябрь</option>
-<option value="12">Декабрь</option>
+                        <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
                     </select>
-                    <input type="text" id="accounting-search" class="filter-input wide" placeholder="Поиск по ID или товару...">
-                    <button onclick="window.toggleMarginMode()" class="filter-dropdown-btn" style="min-width:auto;" title="Переключить: рубли / проценты">
+                    <input type="text" id="accounting-search" class="filter-input wide" placeholder="🔍 Поиск по ID или товару...">
+                    <button onclick="window.toggleMarginMode()" class="filter-dropdown-btn" style="min-width:auto;" title="Переключить ₽ / %">
                         Маржа: <span id="margin-mode-indicator">&#8381;</span>
                     </button>
                 </div>
@@ -313,9 +315,7 @@
         <div id="create-client-modal" class="glass-panel modal hidden">
             <h3>Новый клиент</h3>
             <form id="create-client-form">
-                <div class="input-group">
-                    <input type="text" id="new-client-password" placeholder="Пароль для клиента" required>
-                </div>
+                <div class="input-group"><input type="text" id="new-client-password" placeholder="Пароль для клиента" required></div>
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline close-modal">Отмена</button>
                     <button type="submit" class="btn primary">Создать</button>
@@ -364,17 +364,7 @@
                 <div class="input-group flex-row">
                     <div style="width:100%;">
                         <label>Статус</label>
-                        <select id="edit-order-status" required>
-                            <option value="Заказ принят в обработку">Заказ принят в обработку</option>
-<option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option>
-<option value="Заказ едет на склад США">Заказ едет на склад США</option>
-<option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option>
-<option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option>
-<option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option>
-<option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option>
-<option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option>
-<option value="Выдано">Выдано</option>
-                        </select>
+                        <select id="edit-order-status" required><option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ архив)</option></select>
                     </div>
                     <div style="width:100%;">
                         <label>Photo ID</label>
@@ -411,6 +401,6 @@
         </div>
     </div>
 
-    <script src="/static/app.js?v=5"></script>
+    <script src="/static/app.js?v=7"></script>
 </body>
 </html>
