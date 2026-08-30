@@ -264,10 +264,9 @@ function renderOrders() {
         });
     }
 
-    const statusCheckboxes = document.querySelectorAll('#orders-status-content input[type="checkbox"]:checked');
-    const selectedStatuses = Array.from(statusCheckboxes).map(cb => cb.value);
-    if (selectedStatuses.length > 0) {
-        orders = orders.filter(o => selectedStatuses.includes(o.status));
+    const statusFilter = document.getElementById('orders-status-filter')?.value;
+    if (statusFilter) {
+        orders = orders.filter(o => o.status === statusFilter);
     }
 
     const clientVal = parseInt(document.getElementById('orders-client-filter')?.value);
@@ -389,10 +388,9 @@ function renderArchivedOrders() {
         });
     }
 
-    const statusCheckboxes = document.querySelectorAll('#archived-status-content input[type="checkbox"]:checked');
-    const selectedStatuses = Array.from(statusCheckboxes).map(cb => cb.value);
-    if (selectedStatuses.length > 0) {
-        orders = orders.filter(o => selectedStatuses.includes(o.status));
+    const statusFilter = document.getElementById('archived-status-filter')?.value;
+    if (statusFilter) {
+        orders = orders.filter(o => o.status === statusFilter);
     }
 
     const clientVal = parseInt(document.getElementById('archived-client-filter')?.value);
@@ -592,14 +590,17 @@ function renderAccounting() {
         tr.style.animationDelay = `${i * 0.04}s`;
         
         let photoHtml = order.photo_id
-            ? `<td><img src="/api/photos/${order.photo_id}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer; transition: transform 0.2s;" onclick="viewPhoto('${order.photo_id}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></td>`
-            : `<td style="color: var(--gray-light);">—</td>`;
+            ? `<img src="/api/photos/${order.photo_id}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px; cursor: pointer; transition: transform 0.2s; flex-shrink: 0;" onclick="viewPhoto('${order.photo_id}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">`
+            : `<div style="width: 50px; height: 50px; border-radius: 5px; background: #222; display: flex; align-items: center; justify-content: center; color: var(--gray-light); flex-shrink: 0;">—</div>`;
             
         tr.innerHTML = `
             <td>${order.id}</td>
             <td>${formatDisplayDate(order.order_date)}</td>
-            ${photoHtml}
-            <td>${order.items.replace(/\n/g, '<br>')}</td>
+            <td style="display: flex; gap: 10px; align-items: center; min-width: 250px;">
+                ${photoHtml}
+                <div>${order.items.replace(/\n/g, '<br>')}</div>
+            </td>
+            <td>${(order.total_price || 0).toLocaleString('ru')}</td>
             <td>${order.cost.toLocaleString('ru')}</td>
             <td>${order.delivery.toLocaleString('ru')}</td>
             <td>${(order.paid_amount || 0).toLocaleString('ru')}</td>
