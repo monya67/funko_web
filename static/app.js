@@ -73,7 +73,12 @@ function showDashboard() {
 function updateRoleUI(role) {
     currentRole = role;
     document.querySelectorAll('.admin-only').forEach(el => {
-        role === 'admin' ? el.classList.remove('hidden') : el.classList.add('hidden');
+        if (el.classList.contains('tab-content')) return;
+        if (role === 'admin') {
+            el.classList.remove('hidden');
+        } else {
+            el.classList.add('hidden');
+        }
     });
 }
 
@@ -141,7 +146,7 @@ logoutBtn.addEventListener('click', () => {
     showLogin();
 });
 
-// Navigation
+// Navigation between tabs
 navItems.forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
@@ -149,7 +154,11 @@ navItems.forEach(item => {
         item.classList.add('active');
         const targetId = item.getAttribute('data-tab') + '-tab';
         tabContents.forEach(tab => {
-            tab.id === targetId ? tab.classList.remove('hidden') : tab.classList.add('hidden');
+            if (tab.id === targetId) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
         });
     });
 });
@@ -300,7 +309,7 @@ const ALL_STATUSES_LIST = [
 
 function makeInlineStatusCell(order) {
     const opts = ALL_STATUSES_LIST.map(s =>
-        `<option value="${s}" ${order.status === s ? 'selected' : ''}>${s}${s === 'Выдано' ? ' (→ архив)' : ''}</option>`
+        `<option value="${s}" ${order.status === s ? 'selected' : ''}>${s}${s === 'Выдано' ? ' (→ в архив)' : ''}</option>`
     ).join('');
     return `<td>
         <select class="inline-status-select" data-order-id="${order.id}" onchange="window.saveInlineStatus(${order.id}, this.value)" title="Нажмите, чтобы мгновенно сменить статус">
@@ -858,14 +867,14 @@ if (editOrderPhotoUpload) editOrderPhotoUpload.addEventListener('change', (e) =>
 // Mass edit logic
 window.updateMassEditPanel = function(tab) {
     const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
-    const panel = document.getElementById(`${tab}-mass-edit-panel`);
     const countSpan = document.getElementById(`${tab}-mass-edit-count`);
-    if (!panel) return;
-    if (checkboxes.length > 0) {
-        panel.classList.add('visible');
-        if (countSpan) countSpan.textContent = `Выбрано заказов: ${checkboxes.length} шт.`;
-    } else {
-        panel.classList.remove('visible');
+    const btn = document.getElementById(`${tab}-mass-edit-btn`);
+    if (countSpan) {
+        countSpan.textContent = `Выбрано заказов: ${checkboxes.length} шт.`;
+        countSpan.style.color = checkboxes.length > 0 ? '#00ff88' : '#fff';
+    }
+    if (btn) {
+        btn.textContent = checkboxes.length > 0 ? `⚡ Применить статус ко всем (${checkboxes.length})` : '⚡ Применить статус';
     }
 };
 
@@ -891,9 +900,16 @@ document.getElementById('archived-select-all')?.addEventListener('change', (e) =
         const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
         const select = document.getElementById(`${tab}-mass-edit-status`);
         const newStatus = select ? select.value : null;
-        if (!newStatus) { alert('Пожалуйста, выберите новый статус из выпадающего списка!'); return; }
+        if (!newStatus) { 
+            alert('Пожалуйста, выберите новый статус из выпадающего списка!'); 
+            if (select) select.focus();
+            return; 
+        }
         const orderIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        if (orderIds.length === 0) return;
+        if (orderIds.length === 0) {
+            alert('Сначала отметьте галочками нужные заказы в таблице!');
+            return;
+        }
         const btn = document.getElementById(`${tab}-mass-edit-btn`);
         const originalText = btn.textContent;
         btn.textContent = 'Применение...';
