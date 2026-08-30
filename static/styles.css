@@ -349,6 +349,15 @@ input[type="date"] {
     padding: 0.8rem 0.5rem;
 }
 
+/* Tabs */
+.tab-content {
+    display: none !important;
+}
+
+.tab-content.active {
+    display: block !important;
+}
+
 /* Header */
 .header-flex {
     display: flex;
