@@ -2,6 +2,7 @@ import os
 import asyncpg
 import jwt
 import httpx
+import ssl
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -27,6 +28,18 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365  # 1 year (persistent login)
 
 app = FastAPI(title="Funko Stop Admin Panel")
+
+# SSL context with Russian Trusted CA support (Mincifry)
+# Install certs with: sudo bash install_certs.sh
+# Then set SSL_CERT_FILE=/etc/ssl/russian-trusted-ca-bundle.pem in .env
+def get_ssl_context():
+    ca_bundle = os.getenv("SSL_CERT_FILE") or os.getenv("REQUESTS_CA_BUNDLE")
+    if ca_bundle and os.path.exists(ca_bundle):
+        ctx = ssl.create_default_context(cafile=ca_bundle)
+        return ctx
+    return True  # default: use system/certifi trust store
+
+SSL_VERIFY = get_ssl_context()
 
 IMAGE_CACHE = {}
 CACHE_LIMIT = 500
@@ -330,7 +343,7 @@ async def get_telegram_photo(photo_id: str):
     if not BOT_TOKEN:
         raise HTTPException(status_code=500, detail="BOT_TOKEN not configured")
         
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
         res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getFile?file_id={photo_id}")
         data = res.json()
         if not data.get("ok"):
@@ -371,7 +384,7 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
     except:
         pass
         
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
         files = {"photo": ("image.jpg", content, "image/jpeg")}
         data = {"chat_id": ADMIN_IDS[0], "caption": f"Uploaded from web panel by {admin['role']}"}
         res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=data, files=files)
