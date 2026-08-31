@@ -391,6 +391,45 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1788126735482"></script>
+    <script src="/static/app.js?v=1788126736100"></script>
+
+    <!-- Legal Info Footer (Required by T-Bank Ekvayring) -->
+    <footer id="legal-footer" style="
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background: rgba(10,10,12,0.97);
+        border-top: 1px solid rgba(229,9,20,0.25);
+        padding: 10px 24px;
+        z-index: 9999;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.75rem;
+        color: rgba(255,255,255,0.45);
+        line-height: 1.5;
+        box-sizing: border-box;
+    ">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
+            <span style="color:rgba(255,255,255,0.65);font-weight:600;">Funko Stop</span>
+            <span>ИП Пелих Иван Валерьевич</span>
+            <span>ОГРН: 326508100489145</span>
+            <span>ИНН: 590587003901</span>
+            <span>Дата регистрации: 21.08.2026</span>
+            <span>📍 г. Суздальская, 14к1</span>
+        </div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+            <a href="/static/oferta.html" style="color:rgba(229,9,20,0.7);text-decoration:none;" onmouseover="this.style.color='rgba(229,9,20,1)'" onmouseout="this.style.color='rgba(229,9,20,0.7)'">Публичная оферта</a>
+            <a href="/static/privacy.html" style="color:rgba(229,9,20,0.7);text-decoration:none;" onmouseover="this.style.color='rgba(229,9,20,1)'" onmouseout="this.style.color='rgba(229,9,20,0.7)'">Политика конфиденциальности</a>
+        </div>
+    </footer>
+    <style>
+        /* Push content above legal footer */
+        body { padding-bottom: 46px; }
+    </style>
 </body>
 </html>
