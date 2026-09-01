@@ -402,6 +402,94 @@ function sortOrders(orders, sortState) {
     });
 }
 
+// Pagination State & Logic
+const savedPageSize = parseInt(localStorage.getItem('funko_pageSize')) || 20;
+window.paginationState = {
+    orders: { page: 1, pageSize: savedPageSize },
+    archived: { page: 1, pageSize: savedPageSize },
+    accounting: { page: 1, pageSize: savedPageSize }
+};
+
+window.setPageSize = function(tab, size) {
+    const s = parseInt(size) || 20;
+    window.paginationState[tab].pageSize = s;
+    window.paginationState[tab].page = 1;
+    localStorage.setItem('funko_pageSize', s);
+    
+    // Sync all tabs
+    ['orders', 'archived', 'accounting'].forEach(t => {
+        window.paginationState[t].pageSize = s;
+    });
+    
+    if (tab === 'orders') renderOrders();
+    else if (tab === 'archived') renderArchivedOrders();
+    else if (tab === 'accounting') renderAccounting();
+};
+
+window.setCustomPageSize = function(tab, val) {
+    const s = parseInt(val);
+    if (!s || s < 1) return;
+    window.setPageSize(tab, s);
+};
+
+window.changePage = function(tab, delta) {
+    window.paginationState[tab].page += delta;
+    if (tab === 'orders') renderOrders();
+    else if (tab === 'archived') renderArchivedOrders();
+    else if (tab === 'accounting') renderAccounting();
+};
+
+function updatePaginationUI(tab, totalCount) {
+    const state = window.paginationState[tab];
+    const totalPages = Math.max(1, Math.ceil(totalCount / state.pageSize));
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    const bar = document.getElementById(`${tab}-pagination`);
+    if (!bar) return;
+    
+    if (totalCount === 0) {
+        bar.style.display = 'none';
+        return;
+    }
+    bar.style.display = 'flex';
+
+    const startIdx = (state.page - 1) * state.pageSize;
+    const endIdx = Math.min(startIdx + state.pageSize, totalCount);
+
+    const rangeEl = document.getElementById(`${tab}-page-range`);
+    const totalEl = document.getElementById(`${tab}-total-count`);
+    const indicatorEl = document.getElementById(`${tab}-page-indicator`);
+    const prevBtn = document.getElementById(`${tab}-prev-btn`);
+    const nextBtn = document.getElementById(`${tab}-next-btn`);
+
+    if (rangeEl) rangeEl.textContent = `${startIdx + 1}–${endIdx}`;
+    if (totalEl) totalEl.textContent = totalCount;
+    if (indicatorEl) indicatorEl.textContent = `Стр. ${state.page} из ${totalPages}`;
+
+    if (prevBtn) prevBtn.disabled = (state.page <= 1);
+    if (nextBtn) nextBtn.disabled = (state.page >= totalPages);
+
+    const sizeBtns = document.querySelectorAll(`#${tab}-page-sizes .btn-size`);
+    sizeBtns.forEach(btn => {
+        const sz = parseInt(btn.getAttribute('data-size'));
+        if (sz === state.pageSize) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    const customInput = document.getElementById(`${tab}-custom-size`);
+    if (customInput) {
+        if (![10, 20, 50, 100].includes(state.pageSize)) {
+            customInput.value = state.pageSize;
+        } else {
+            customInput.value = '';
+        }
+    }
+}
+
 // Render active orders
 function renderOrders() {
     ordersTableBody.innerHTML = '';
@@ -439,19 +527,31 @@ function renderOrders() {
 
     orders = sortOrders(orders, ordersSort);
 
-    if (orders.length === 0) { emptyMsg.classList.remove('hidden'); return; }
+    if (orders.length === 0) { 
+        emptyMsg.classList.remove('hidden'); 
+        updatePaginationUI('orders', 0);
+        return; 
+    }
     emptyMsg.classList.add('hidden');
 
-    orders.forEach((order, i) => {
+    const state = window.paginationState.orders;
+    const totalPages = Math.max(1, Math.ceil(orders.length / state.pageSize));
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    const startIdx = (state.page - 1) * state.pageSize;
+    const pageOrders = orders.slice(startIdx, startIdx + state.pageSize);
+
+    pageOrders.forEach((order, i) => {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
-        tr.style.animationDelay = `${i * 0.03}s`;
+        tr.style.animationDelay = `${i * 0.02}s`;
 
         let html = '';
         if (role === 'admin') {
             html += `<td style="text-align:center;"><input type="checkbox" class="orders-row-checkbox" value="${order.id}" onchange="window.updateMassEditPanel('orders')"></td>`;
         }
-        html += `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td>`;
+        html += `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>`;
         html += `<td>${order.id}</td>`;
         html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
         if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
@@ -475,6 +575,7 @@ function renderOrders() {
         ordersTableBody.appendChild(tr);
     });
 
+    updatePaginationUI('orders', orders.length);
     window.updateMassEditPanel('orders');
 }
 
@@ -510,19 +611,31 @@ function renderArchivedOrders() {
 
     orders = sortOrders(orders, archivedSort);
 
-    if (orders.length === 0) { emptyMsg.classList.remove('hidden'); return; }
+    if (orders.length === 0) { 
+        emptyMsg.classList.remove('hidden'); 
+        updatePaginationUI('archived', 0);
+        return; 
+    }
     emptyMsg.classList.add('hidden');
 
-    orders.forEach((order, i) => {
+    const state = window.paginationState.archived;
+    const totalPages = Math.max(1, Math.ceil(orders.length / state.pageSize));
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    const startIdx = (state.page - 1) * state.pageSize;
+    const pageOrders = orders.slice(startIdx, startIdx + state.pageSize);
+
+    pageOrders.forEach((order, i) => {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
-        tr.style.animationDelay = `${i * 0.03}s`;
+        tr.style.animationDelay = `${i * 0.02}s`;
 
         let html = '';
         if (role === 'admin') {
             html += `<td style="text-align:center;"><input type="checkbox" class="archived-row-checkbox" value="${order.id}" onchange="window.updateMassEditPanel('archived')"></td>`;
         }
-        html += `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td>`;
+        html += `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>`;
         html += `<td>${order.id}</td>`;
         html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
         if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
@@ -543,6 +656,7 @@ function renderArchivedOrders() {
         archivedTableBody.appendChild(tr);
     });
 
+    updatePaginationUI('archived', orders.length);
     window.updateMassEditPanel('archived');
 }
 
@@ -590,7 +704,11 @@ function renderAccounting() {
         orders = orders.filter(o => o.id.toString().includes(q) || (o.items && o.items.toLowerCase().includes(q)));
     }
 
-    if (orders.length === 0) { emptyMsg.classList.remove('hidden'); return; }
+    if (orders.length === 0) { 
+        emptyMsg.classList.remove('hidden'); 
+        updatePaginationUI('accounting', 0);
+        return; 
+    }
     emptyMsg.classList.add('hidden');
 
     const processed = orders.map(o => {
@@ -629,16 +747,24 @@ function renderAccounting() {
         return 0;
     });
 
-    processed.forEach((order, i) => {
+    const state = window.paginationState.accounting;
+    const totalPages = Math.max(1, Math.ceil(processed.length / state.pageSize));
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    const startIdx = (state.page - 1) * state.pageSize;
+    const pageProcessed = processed.slice(startIdx, startIdx + state.pageSize);
+
+    pageProcessed.forEach((order, i) => {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
-        tr.style.animationDelay = `${i * 0.03}s`;
+        tr.style.animationDelay = `${i * 0.02}s`;
         const photoHtml = order.photo_id
             ? `<img src="/api/photos/${order.photo_id}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer;flex-shrink:0;" onclick="viewPhoto('${order.photo_id}')">`
             : `<div style="width:44px;height:44px;border-radius:5px;background:#222;flex-shrink:0;"></div>`;
 
         tr.innerHTML = `
-            <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td>
+            <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>
             <td>${order.id}</td>
             <td style="white-space:nowrap;">${formatDisplayDate(order.order_date)}</td>
             <td>
@@ -659,6 +785,8 @@ function renderAccounting() {
         `;
         accountingTableBody.appendChild(tr);
     });
+
+    updatePaginationUI('accounting', processed.length);
 }
 
 // Sort listeners
@@ -679,15 +807,36 @@ bindSortListeners('accounting-table', accountingSort, renderAccounting);
 // Filter listeners with ALL filters included
 ['orders-year-filter', 'orders-month-filter', 'orders-client-filter', 'orders-price-min', 'orders-price-max', 'orders-paid-min', 'orders-paid-max', 'orders-search'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.addEventListener('input', renderOrders); el.addEventListener('change', renderOrders); }
+    if (el) { 
+        const handler = () => {
+            window.paginationState.orders.page = 1;
+            renderOrders();
+        };
+        el.addEventListener('input', handler); 
+        el.addEventListener('change', handler); 
+    }
 });
 ['archived-year-filter', 'archived-month-filter', 'archived-client-filter', 'archived-price-min', 'archived-price-max', 'archived-paid-min', 'archived-paid-max', 'archived-search'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.addEventListener('input', renderArchivedOrders); el.addEventListener('change', renderArchivedOrders); }
+    if (el) { 
+        const handler = () => {
+            window.paginationState.archived.page = 1;
+            renderArchivedOrders();
+        };
+        el.addEventListener('input', handler); 
+        el.addEventListener('change', handler); 
+    }
 });
 ['accounting-year-filter', 'accounting-month-filter', 'accounting-search'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) { el.addEventListener('input', renderAccounting); el.addEventListener('change', renderAccounting); }
+    if (el) { 
+        const handler = () => {
+            window.paginationState.accounting.page = 1;
+            renderAccounting();
+        };
+        el.addEventListener('input', handler); 
+        el.addEventListener('change', handler); 
+    }
 });
 
 // Multi-select dropdown
@@ -711,6 +860,7 @@ document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
         cb.addEventListener('change', () => {
             const selected = getSelectedStatuses(menu.id);
             updateStatusBtn(btn.id, selected);
+            window.paginationState.orders.page = 1;
             renderOrders();
         });
     });
@@ -721,6 +871,7 @@ document.querySelectorAll('.filter-dropdown').forEach(dropdown => {
             e.stopPropagation();
             menu.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
             updateStatusBtn(btn.id, []);
+            window.paginationState.orders.page = 1;
             renderOrders();
         });
     }
