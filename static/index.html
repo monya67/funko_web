@@ -170,6 +170,7 @@
                     <table id="orders-table">
                         <thead><tr>
                             <th class="admin-only hidden" style="width:36px; text-align:center;"><input type="checkbox" id="orders-select-all" title="Выбрать все" style="cursor:pointer;"></th>
+                            <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
                             <th data-sort="id" style="cursor:pointer;white-space:nowrap;">ID &#8597;</th>
                             <th data-sort="date" style="cursor:pointer;white-space:nowrap;">Дата &#8597;</th>
                             <th class="admin-only hidden" data-sort="client" style="cursor:pointer;">Клиент &#8597;</th>
@@ -228,6 +229,7 @@
                     <table id="archived-table">
                         <thead><tr>
                             <th class="admin-only hidden" style="width:36px; text-align:center;"><input type="checkbox" id="archived-select-all" title="Выбрать все" style="cursor:pointer;"></th>
+                            <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
                             <th data-sort="id" style="cursor:pointer;white-space:nowrap;">ID &#8597;</th>
                             <th data-sort="date" style="cursor:pointer;white-space:nowrap;">Дата &#8597;</th>
                             <th class="admin-only hidden" data-sort="client" style="cursor:pointer;">Клиент &#8597;</th>
@@ -260,6 +262,7 @@
                 <div class="glass-panel table-container">
                     <table id="accounting-table">
                         <thead><tr>
+                            <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
                             <th data-sort="id" style="cursor:pointer;white-space:nowrap;">ID &#8597;</th>
                             <th data-sort="date" style="cursor:pointer;white-space:nowrap;">ДАТА &#8597;</th>
                             <th>ТОВАРЫ</th>
@@ -289,7 +292,7 @@
                 </div>
                 <div class="glass-panel table-container">
                     <table id="clients-table">
-                        <thead><tr><th>ID</th><th>Пароль</th><th>Telegram ID</th></tr></thead>
+                        <thead><tr><th style="width:36px; text-align:center; color:var(--gray-light);">№</th><th>ID</th><th>Пароль</th><th>Telegram ID</th></tr></thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -391,7 +394,7 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1788126736100"></script>
+    <script src="/static/app.js?v=1788126736200"></script>
 
     <!-- Legal Info Footer (Required by T-Bank Ekvayring) -->
     <footer id="legal-footer" style="
@@ -420,7 +423,7 @@
             <span>ОГРН: 326508100489145</span>
             <span>ИНН: 590587003901</span>
             <span>Дата регистрации: 21.08.2026</span>
-            <span>📍 г. Суздальская, 14к1</span>
+            <span>📍 г. Москва, ул. Суздальская, 14к1</span>
         </div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;">
             <a href="/static/oferta.html" style="color:rgba(229,9,20,0.7);text-decoration:none;" onmouseover="this.style.color='rgba(229,9,20,1)'" onmouseout="this.style.color='rgba(229,9,20,0.7)'">Публичная оферта</a>
