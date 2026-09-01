@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Funko Stop | Личный кабинет</title>
-    <link rel="stylesheet" href="/static/styles.css?v=1788126735481">
+    <link rel="stylesheet" href="/static/styles.css?v=1788126736300">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
@@ -185,6 +185,27 @@
                     </table>
                     <p id="no-orders" class="empty-msg hidden">Нет активных заказов</p>
                 </div>
+                <!-- Orders Pagination -->
+                <div class="pagination-bar" id="orders-pagination">
+                    <div class="pagination-info">
+                        <span>Показано <b id="orders-page-range">0–0</b> из <b id="orders-total-count">0</b></span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button type="button" class="btn-page" id="orders-prev-btn" onclick="changePage('orders', -1)">← Назад</button>
+                        <span class="page-indicator" id="orders-page-indicator">Стр. 1 из 1</span>
+                        <button type="button" class="btn-page" id="orders-next-btn" onclick="changePage('orders', 1)">Вперёд →</button>
+                    </div>
+                    <div class="pagination-size">
+                        <span>На странице:</span>
+                        <div class="page-size-buttons" id="orders-page-sizes">
+                            <button type="button" class="btn-size" data-size="10" onclick="setPageSize('orders', 10)">10</button>
+                            <button type="button" class="btn-size active" data-size="20" onclick="setPageSize('orders', 20)">20</button>
+                            <button type="button" class="btn-size" data-size="50" onclick="setPageSize('orders', 50)">50</button>
+                            <button type="button" class="btn-size" data-size="100" onclick="setPageSize('orders', 100)">100</button>
+                        </div>
+                        <input type="number" min="1" max="500" id="orders-custom-size" class="custom-size-input" placeholder="Своё" title="Введите количество строк" onchange="setCustomPageSize('orders', this.value)">
+                    </div>
+                </div>
             </section>
 
             <!-- ARCHIVED TAB -->
@@ -244,6 +265,27 @@
                     </table>
                     <p id="no-archived" class="empty-msg hidden">Архив пуст</p>
                 </div>
+                <!-- Archived Pagination -->
+                <div class="pagination-bar" id="archived-pagination">
+                    <div class="pagination-info">
+                        <span>Показано <b id="archived-page-range">0–0</b> из <b id="archived-total-count">0</b></span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button type="button" class="btn-page" id="archived-prev-btn" onclick="changePage('archived', -1)">← Назад</button>
+                        <span class="page-indicator" id="archived-page-indicator">Стр. 1 из 1</span>
+                        <button type="button" class="btn-page" id="archived-next-btn" onclick="changePage('archived', 1)">Вперёд →</button>
+                    </div>
+                    <div class="pagination-size">
+                        <span>На странице:</span>
+                        <div class="page-size-buttons" id="archived-page-sizes">
+                            <button type="button" class="btn-size" data-size="10" onclick="setPageSize('archived', 10)">10</button>
+                            <button type="button" class="btn-size active" data-size="20" onclick="setPageSize('archived', 20)">20</button>
+                            <button type="button" class="btn-size" data-size="50" onclick="setPageSize('archived', 50)">50</button>
+                            <button type="button" class="btn-size" data-size="100" onclick="setPageSize('archived', 100)">100</button>
+                        </div>
+                        <input type="number" min="1" max="500" id="archived-custom-size" class="custom-size-input" placeholder="Своё" title="Введите количество строк" onchange="setCustomPageSize('archived', this.value)">
+                    </div>
+                </div>
             </section>
 
             <!-- ACCOUNTING TAB -->
@@ -281,6 +323,27 @@
                         <tbody></tbody>
                     </table>
                     <p id="no-accounting" class="empty-msg hidden">Нет данных</p>
+                </div>
+                <!-- Accounting Pagination -->
+                <div class="pagination-bar" id="accounting-pagination">
+                    <div class="pagination-info">
+                        <span>Показано <b id="accounting-page-range">0–0</b> из <b id="accounting-total-count">0</b></span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button type="button" class="btn-page" id="accounting-prev-btn" onclick="changePage('accounting', -1)">← Назад</button>
+                        <span class="page-indicator" id="accounting-page-indicator">Стр. 1 из 1</span>
+                        <button type="button" class="btn-page" id="accounting-next-btn" onclick="changePage('accounting', 1)">Вперёд →</button>
+                    </div>
+                    <div class="pagination-size">
+                        <span>На странице:</span>
+                        <div class="page-size-buttons" id="accounting-page-sizes">
+                            <button type="button" class="btn-size" data-size="10" onclick="setPageSize('accounting', 10)">10</button>
+                            <button type="button" class="btn-size active" data-size="20" onclick="setPageSize('accounting', 20)">20</button>
+                            <button type="button" class="btn-size" data-size="50" onclick="setPageSize('accounting', 50)">50</button>
+                            <button type="button" class="btn-size" data-size="100" onclick="setPageSize('accounting', 100)">100</button>
+                        </div>
+                        <input type="number" min="1" max="500" id="accounting-custom-size" class="custom-size-input" placeholder="Своё" title="Введите количество строк" onchange="setCustomPageSize('accounting', this.value)">
+                    </div>
                 </div>
             </section>
 
@@ -394,7 +457,7 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1788126736200"></script>
+    <script src="/static/app.js?v=1788126736300"></script>
 
     <!-- Legal Info Footer (Required by T-Bank Ekvayring) -->
     <footer id="legal-footer" style="
