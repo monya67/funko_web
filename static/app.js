@@ -451,6 +451,7 @@ function renderOrders() {
         if (role === 'admin') {
             html += `<td style="text-align:center;"><input type="checkbox" class="orders-row-checkbox" value="${order.id}" onchange="window.updateMassEditPanel('orders')"></td>`;
         }
+        html += `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td>`;
         html += `<td>${order.id}</td>`;
         html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
         if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
@@ -521,6 +522,7 @@ function renderArchivedOrders() {
         if (role === 'admin') {
             html += `<td style="text-align:center;"><input type="checkbox" class="archived-row-checkbox" value="${order.id}" onchange="window.updateMassEditPanel('archived')"></td>`;
         }
+        html += `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td>`;
         html += `<td>${order.id}</td>`;
         html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
         if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
@@ -551,7 +553,7 @@ function renderClients(clients) {
         const tr = document.createElement('tr');
         tr.className = 'row-animate';
         tr.style.animationDelay = `${i * 0.04}s`;
-        tr.innerHTML = `<td>${client.id}</td><td>${client.password}</td><td>${client.user_tg_id || '—'}</td>`;
+        tr.innerHTML = `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td><td>${client.id}</td><td>${client.password}</td><td>${client.user_tg_id || '—'}</td>`;
         clientsTableBody.appendChild(tr);
     });
 }
@@ -636,6 +638,7 @@ function renderAccounting() {
             : `<div style="width:44px;height:44px;border-radius:5px;background:#222;flex-shrink:0;"></div>`;
 
         tr.innerHTML = `
+            <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td>
             <td>${order.id}</td>
             <td style="white-space:nowrap;">${formatDisplayDate(order.order_date)}</td>
             <td>
