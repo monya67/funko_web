@@ -1,11 +1,17 @@
 const API_BASE = '/api';
 
 // DOM Elements
-const loginView = document.getElementById('login-view');
 const dashboardView = document.getElementById('dashboard-view');
 const loginForm = document.getElementById('login-form');
 const loginError = document.getElementById('login-error');
 const logoutBtn = document.getElementById('logout-btn');
+const sidebarLoginBtn = document.getElementById('sidebar-login-btn');
+const headerLoginBtn = document.getElementById('header-login-btn');
+const headerLogoutBtn = document.getElementById('header-logout-btn');
+const guestHeaderWidget = document.getElementById('guest-header-widget');
+const userHeaderWidget = document.getElementById('user-header-widget');
+const headerUserIcon = document.getElementById('header-user-icon');
+const headerUserLabel = document.getElementById('header-user-label');
 
 // Tabs
 const navItems = document.querySelectorAll('.nav-item');
@@ -13,6 +19,8 @@ const tabContents = document.querySelectorAll('.tab-content');
 
 // Modals
 const modalOverlay = document.getElementById('modal-overlay');
+const loginModal = document.getElementById('login-modal');
+const orderInquiryModal = document.getElementById('order-inquiry-modal');
 const createClientBtn = document.getElementById('new-client-btn');
 const createOrderBtn = document.getElementById('new-order-btn');
 const createClientModal = document.getElementById('create-client-modal');
@@ -35,7 +43,8 @@ const editOrderForm = document.getElementById('edit-order-form');
 
 // State
 let token = localStorage.getItem('funko_token');
-let currentRole = null;
+let currentRole = 'guest';
+let currentClientId = null;
 let allOrders = [];
 let rawActiveOrders = [];
 let rawArchivedOrders = [];
@@ -43,6 +52,14 @@ let ordersSort = { key: 'id', desc: true };
 let archivedSort = { key: 'id', desc: true };
 let accountingSort = { key: 'id', desc: true };
 let deleteTargetId = null;
+
+// Catalog State
+let rawCatalogProducts = [];
+let catalogMeta = { categories: [], series: [] };
+let selectedCatalogCategory = '';
+let catalogSort = { key: 'id', desc: true };
+let catalogView = 'grid';
+let deleteProductTargetId = null;
 
 // Global toggles
 window.marginMode = 'rub';
@@ -116,36 +133,67 @@ window.saveInlineStatus = async function(orderId, newStatus) {
 
 // Init
 function init() {
-    if (token) showDashboard();
-    else showLogin();
-}
+    loadCatalogMeta();
+    loadCatalog();
 
-function showLogin() {
-    loginView.classList.remove('hidden');
-    dashboardView.classList.add('hidden');
-    setTimeout(() => loginView.style.opacity = '1', 30);
-}
-
-function showDashboard() {
-    loginView.style.opacity = '0';
-    setTimeout(() => {
-        loginView.classList.add('hidden');
-        dashboardView.classList.remove('hidden');
-        loadDashboardData();
+    if (token) {
+        loadDashboardData().catch(() => {
+            handleLogout();
+        });
         startHeartbeat();
-    }, 400);
+    } else {
+        updateRoleUI('guest');
+    }
 }
 
 function updateRoleUI(role) {
     currentRole = role;
-    document.querySelectorAll('.admin-only').forEach(el => {
-        if (el.classList.contains('tab-content')) return;
-        if (role === 'admin') {
-            el.classList.remove('hidden');
-        } else {
-            el.classList.add('hidden');
-        }
-    });
+    if (role === 'admin') {
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+        document.querySelectorAll('.auth-only').forEach(el => el.classList.remove('hidden'));
+        if (guestHeaderWidget) guestHeaderWidget.classList.add('hidden');
+        if (userHeaderWidget) userHeaderWidget.classList.remove('hidden');
+        if (headerUserIcon) headerUserIcon.textContent = '👑';
+        if (headerUserLabel) headerUserLabel.textContent = 'Администратор';
+        if (sidebarLoginBtn) sidebarLoginBtn.classList.add('hidden');
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+    } else if (role === 'client') {
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.auth-only').forEach(el => el.classList.remove('hidden'));
+        if (guestHeaderWidget) guestHeaderWidget.classList.add('hidden');
+        if (userHeaderWidget) userHeaderWidget.classList.remove('hidden');
+        if (headerUserIcon) headerUserIcon.textContent = '👤';
+        if (headerUserLabel) headerUserLabel.textContent = currentClientId ? `Клиент #${currentClientId}` : 'Личный кабинет';
+        if (sidebarLoginBtn) sidebarLoginBtn.classList.add('hidden');
+        if (logoutBtn) logoutBtn.classList.remove('hidden');
+    } else {
+        // Guest mode
+        currentRole = 'guest';
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.auth-only').forEach(el => el.classList.add('hidden'));
+        if (guestHeaderWidget) guestHeaderWidget.classList.remove('hidden');
+        if (userHeaderWidget) userHeaderWidget.classList.add('hidden');
+        if (sidebarLoginBtn) sidebarLoginBtn.classList.remove('hidden');
+        if (logoutBtn) logoutBtn.classList.add('hidden');
+    }
+}
+
+function handleLogout() {
+    token = null;
+    currentRole = 'guest';
+    currentClientId = null;
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    localStorage.removeItem('funko_token');
+    ordersTableBody.innerHTML = '';
+    archivedTableBody.innerHTML = '';
+    clientsTableBody.innerHTML = '';
+    if (accountingTableBody) accountingTableBody.innerHTML = '';
+    allOrders = [];
+    rawActiveOrders = [];
+    rawArchivedOrders = [];
+    updateRoleUI('guest');
+    window.switchTab('catalog');
+    renderCatalog();
 }
 
 function updateOnlineBadge(count) {
@@ -165,14 +213,25 @@ function startHeartbeat() {
     }, 20000);
 }
 
-// Auth
+// Auth Modals & Listeners
+window.openLoginModal = function() {
+    if (loginError) loginError.textContent = '';
+    if (loginForm) loginForm.reset();
+    openModal(document.getElementById('login-modal'));
+};
+
+if (sidebarLoginBtn) sidebarLoginBtn.addEventListener('click', window.openLoginModal);
+if (headerLoginBtn) headerLoginBtn.addEventListener('click', window.openLoginModal);
+if (headerLogoutBtn) headerLogoutBtn.addEventListener('click', handleLogout);
+if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
     loginError.textContent = '';
-    const btn = loginForm.querySelector('button');
-    btn.textContent = 'Вход...';
+    const btn = loginForm.querySelector('button[type="submit"]');
+    if (btn) btn.textContent = 'Вход...';
     try {
         const formData = new URLSearchParams();
         formData.append('username', username);
@@ -189,43 +248,40 @@ loginForm.addEventListener('submit', async (e) => {
         const data = await res.json();
         token = data.access_token;
         localStorage.setItem('funko_token', token);
-        showDashboard();
+        closeModals();
+        await loadDashboardData();
+        startHeartbeat();
     } catch (err) {
         loginError.textContent = err.message;
     } finally {
-        btn.textContent = 'Войти';
+        if (btn) btn.textContent = 'Войти';
     }
 });
 
-logoutBtn.addEventListener('click', () => {
-    token = null;
-    currentRole = null;
-    if (heartbeatInterval) clearInterval(heartbeatInterval);
-    localStorage.removeItem('funko_token');
-    ordersTableBody.innerHTML = '';
-    archivedTableBody.innerHTML = '';
-    clientsTableBody.innerHTML = '';
-    if (accountingTableBody) accountingTableBody.innerHTML = '';
-    allOrders = [];
-    rawActiveOrders = [];
-    rawArchivedOrders = [];
-    showLogin();
-});
-
 // Navigation between tabs
+window.switchTab = function(tabName) {
+    navItems.forEach(nav => {
+        if (nav.getAttribute('data-tab') === tabName) nav.classList.add('active');
+        else nav.classList.remove('active');
+    });
+    tabContents.forEach(tab => {
+        if (tab.id === `${tabName}-tab`) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    if (tabName === 'catalog') {
+        loadCatalog();
+        loadCatalogMeta();
+    }
+};
+
 navItems.forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
-        navItems.forEach(nav => nav.classList.remove('active'));
-        item.classList.add('active');
-        const targetId = item.getAttribute('data-tab') + '-tab';
-        tabContents.forEach(tab => {
-            if (tab.id === targetId) {
-                tab.classList.add('active');
-            } else {
-                tab.classList.remove('active');
-            }
-        });
+        const tabName = item.getAttribute('data-tab');
+        if (tabName) window.switchTab(tabName);
     });
 });
 
@@ -240,16 +296,22 @@ function getDeviceId() {
 
 // API
 async function fetchAPI(endpoint, options = {}) {
-    if (!token) return logoutBtn.click();
+    const isPublicEndpoint = endpoint.startsWith('/catalog') || endpoint.startsWith('/photos');
+    if (!token && !isPublicEndpoint) {
+        handleLogout();
+        throw new Error('Требуется авторизация');
+    }
     const headers = {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'X-Device-ID': getDeviceId(),
         ...options.headers
     };
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
     const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
-    if (res.status === 401 || res.status === 403) {
-        logoutBtn.click();
+    if ((res.status === 401 || res.status === 403) && !isPublicEndpoint) {
+        handleLogout();
         throw new Error('Сессия истекла');
     }
     const data = await res.json();
@@ -288,6 +350,9 @@ function populateYearFilters(orders, archived) {
 async function loadDashboardData() {
     try {
         const data = await fetchAPI('/dashboard');
+        if (data.role === 'client' && data.client_id) {
+            currentClientId = data.client_id;
+        }
         updateRoleUI(data.role);
         if (data.online_count) updateOnlineBadge(data.online_count);
         rawActiveOrders = data.orders || [];
@@ -299,9 +364,13 @@ async function loadDashboardData() {
         if (data.role === 'admin') {
             renderClients(data.clients);
             renderAccounting();
+            populateClientsDatalist(data.clients || []);
         }
+        loadCatalog();
+        loadCatalogMeta();
     } catch (err) {
-        console.error(err);
+        console.error('Ошибка загрузки данных личного кабинета:', err);
+        handleLogout();
     }
 }
 
@@ -392,8 +461,23 @@ function sortOrders(orders, sortState) {
         if (k === 'id') { valA = a.id; valB = b.id; }
         else if (k === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
         else if (k === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
-        else if (k === 'price') { valA = a.total_price || 0; valB = b.total_price || 0; }
-        else if (k === 'paid') { valA = a.paid_amount || 0; valB = b.paid_amount || 0; }
+        else if (k === 'price') { 
+            valA = a.total_price || 0; 
+            valB = b.total_price || 0; 
+            // When sorting by price ascending, put 0 at the end (Zeros Last)
+            if (!sortState.desc) {
+                if (valA === 0 && valB > 0) return 1;
+                if (valB === 0 && valA > 0) return -1;
+            }
+        }
+        else if (k === 'paid') { 
+            valA = a.paid_amount || 0; 
+            valB = b.paid_amount || 0; 
+            if (!sortState.desc) {
+                if (valA === 0 && valB > 0) return 1;
+                if (valB === 0 && valA > 0) return -1;
+            }
+        }
         else if (k === 'status') { valA = a.status || ''; valB = b.status || ''; }
         else { valA = a.id; valB = b.id; }
         if (valA < valB) return sortState.desc ? 1 : -1;
@@ -407,23 +491,28 @@ const savedPageSize = parseInt(localStorage.getItem('funko_pageSize')) || 20;
 window.paginationState = {
     orders: { page: 1, pageSize: savedPageSize },
     archived: { page: 1, pageSize: savedPageSize },
-    accounting: { page: 1, pageSize: savedPageSize }
+    accounting: { page: 1, pageSize: savedPageSize },
+    catalog: { page: 1, pageSize: 24 }
 };
 
 window.setPageSize = function(tab, size) {
     const s = parseInt(size) || 20;
-    window.paginationState[tab].pageSize = s;
-    window.paginationState[tab].page = 1;
-    localStorage.setItem('funko_pageSize', s);
-    
-    // Sync all tabs
-    ['orders', 'archived', 'accounting'].forEach(t => {
-        window.paginationState[t].pageSize = s;
-    });
+    if (window.paginationState[tab]) {
+        window.paginationState[tab].pageSize = s;
+        window.paginationState[tab].page = 1;
+    }
+    if (tab !== 'catalog') {
+        localStorage.setItem('funko_pageSize', s);
+        // Sync order tabs
+        ['orders', 'archived', 'accounting'].forEach(t => {
+            window.paginationState[t].pageSize = s;
+        });
+    }
     
     if (tab === 'orders') renderOrders();
     else if (tab === 'archived') renderArchivedOrders();
     else if (tab === 'accounting') renderAccounting();
+    else if (tab === 'catalog') renderCatalog();
 };
 
 window.setCustomPageSize = function(tab, val) {
@@ -433,10 +522,13 @@ window.setCustomPageSize = function(tab, val) {
 };
 
 window.changePage = function(tab, delta) {
-    window.paginationState[tab].page += delta;
+    if (window.paginationState[tab]) {
+        window.paginationState[tab].page += delta;
+    }
     if (tab === 'orders') renderOrders();
     else if (tab === 'archived') renderArchivedOrders();
     else if (tab === 'accounting') renderAccounting();
+    else if (tab === 'catalog') renderCatalog();
 };
 
 function updatePaginationUI(tab, totalCount) {
@@ -789,20 +881,59 @@ function renderAccounting() {
     updatePaginationUI('accounting', processed.length);
 }
 
-// Sort listeners
-function bindSortListeners(tableId, sortState, renderFn) {
-    document.querySelectorAll(`#${tableId} th[data-sort]`).forEach(th => {
+// Sort listeners with 3-state cycle (desc -> asc -> default) and header arrows
+function bindSortListeners(tableId, sortState, renderFn, defaultKey = 'id') {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+
+    function updateHeaderArrows() {
+        table.querySelectorAll('th[data-sort]').forEach(th => {
+            const key = th.getAttribute('data-sort');
+            let baseLabel = th.getAttribute('data-base-label');
+            if (!baseLabel) {
+                baseLabel = th.textContent.replace(/[↕▲▼↑↓]/g, '').trim();
+                th.setAttribute('data-base-label', baseLabel);
+            }
+            if (sortState.key === key) {
+                th.innerHTML = `${baseLabel} <span class="sort-icon active">${sortState.desc ? '▼' : '▲'}</span>`;
+                th.classList.add('sorted-col');
+            } else {
+                th.innerHTML = `${baseLabel} <span class="sort-icon">↕</span>`;
+                th.classList.remove('sorted-col');
+            }
+        });
+    }
+
+    table.querySelectorAll('th[data-sort]').forEach(th => {
         th.addEventListener('click', () => {
             const key = th.getAttribute('data-sort');
-            if (sortState.key === key) sortState.desc = !sortState.desc;
-            else { sortState.key = key; sortState.desc = true; }
+            if (sortState.key === key) {
+                if (sortState.desc) {
+                    sortState.desc = false; // 2nd click: asc
+                } else {
+                    sortState.key = defaultKey; // 3rd click: reset to default
+                    sortState.desc = true;
+                }
+            } else {
+                sortState.key = key; // 1st click: desc
+                sortState.desc = true;
+            }
+
+            const tabName = tableId.replace('-table', '');
+            if (window.paginationState && window.paginationState[tabName]) {
+                window.paginationState[tabName].page = 1;
+            }
+            updateHeaderArrows();
             renderFn();
         });
     });
+
+    updateHeaderArrows();
 }
-bindSortListeners('orders-table', ordersSort, renderOrders);
-bindSortListeners('archived-table', archivedSort, renderArchivedOrders);
-bindSortListeners('accounting-table', accountingSort, renderAccounting);
+bindSortListeners('orders-table', ordersSort, renderOrders, 'id');
+bindSortListeners('archived-table', archivedSort, renderArchivedOrders, 'id');
+bindSortListeners('accounting-table', accountingSort, renderAccounting, 'id');
+bindSortListeners('catalog-table', catalogSort, renderCatalog, 'id');
 
 // Filter listeners with ALL filters included
 ['orders-year-filter', 'orders-month-filter', 'orders-client-filter', 'orders-price-min', 'orders-price-max', 'orders-paid-min', 'orders-paid-max', 'orders-search'].forEach(id => {
@@ -1123,4 +1254,552 @@ if (editOrderPhotoUpload) editOrderPhotoUpload.addEventListener('change', (e) =>
     });
 });
 
+// ===== CATALOG MODULE =====
+const catalogGrid = document.getElementById('catalog-grid');
+const catalogTableBody = document.querySelector('#catalog-table tbody');
+const catalogTableWrapper = document.getElementById('catalog-table-wrapper');
+const productModal = document.getElementById('product-modal');
+const productForm = document.getElementById('product-form');
+const quickOrderModal = document.getElementById('quick-order-modal');
+const quickOrderForm = document.getElementById('quick-order-form');
+const confirmDeleteProductModal = document.getElementById('confirm-delete-product-modal');
+const newProductBtn = document.getElementById('new-product-btn');
+
+window.switchCatalogView = function(view) {
+    catalogView = view;
+    document.getElementById('view-grid-btn')?.classList.toggle('active', view === 'grid');
+    document.getElementById('view-table-btn')?.classList.toggle('active', view === 'table');
+    if (view === 'grid') {
+        catalogGrid?.classList.remove('hidden');
+        catalogTableWrapper?.classList.add('hidden');
+    } else {
+        catalogGrid?.classList.add('hidden');
+        catalogTableWrapper?.classList.remove('hidden');
+    }
+    renderCatalog();
+};
+
+window.selectCatalogCategory = function(cat) {
+    selectedCatalogCategory = cat;
+    document.querySelectorAll('#catalog-category-pills .category-pill').forEach(pill => {
+        pill.classList.toggle('active', pill.getAttribute('data-category') === cat);
+    });
+    if (window.paginationState.catalog) window.paginationState.catalog.page = 1;
+    renderCatalog();
+};
+
+async function loadCatalogMeta() {
+    try {
+        const meta = await fetchAPI('/catalog/meta');
+        catalogMeta = meta;
+
+        // Categories datalist
+        const catDatalist = document.getElementById('categories-datalist');
+        if (catDatalist) {
+            catDatalist.innerHTML = (meta.categories || []).map(c => `<option value="${c}"></option>`).join('');
+        }
+
+        // Series datalist
+        const serDatalist = document.getElementById('series-datalist');
+        if (serDatalist) {
+            serDatalist.innerHTML = (meta.series || []).map(s => `<option value="${s}"></option>`).join('');
+        }
+
+        // Series filter dropdown
+        const serSelect = document.getElementById('catalog-series-filter');
+        if (serSelect) {
+            const currentVal = serSelect.value;
+            serSelect.innerHTML = '<option value="">Все серии</option>' + 
+                (meta.series || []).map(s => `<option value="${s}">${s}</option>`).join('');
+            if (currentVal) serSelect.value = currentVal;
+        }
+
+        // Category pills bar
+        const pillsContainer = document.getElementById('catalog-category-pills');
+        if (pillsContainer) {
+            let pillsHtml = `<button type="button" class="category-pill ${!selectedCatalogCategory ? 'active' : ''}" data-category="" onclick="selectCatalogCategory('')">Все товары</button>`;
+            (meta.categories || []).forEach(cat => {
+                const isActive = (selectedCatalogCategory === cat) ? 'active' : '';
+                pillsHtml += `<button type="button" class="category-pill ${isActive}" data-category="${cat}" onclick="selectCatalogCategory('${cat}')">${cat}</button>`;
+            });
+            pillsContainer.innerHTML = pillsHtml;
+        }
+    } catch (err) {
+        console.error('Error loading catalog meta:', err);
+    }
+}
+
+async function loadCatalog() {
+    try {
+        const data = await fetchAPI('/catalog');
+        rawCatalogProducts = data.products || [];
+        renderCatalog();
+    } catch (err) {
+        console.error('Error loading catalog:', err);
+    }
+}
+
+function renderCatalog() {
+    if (!catalogGrid || !catalogTableBody) return;
+    catalogGrid.innerHTML = '';
+    catalogTableBody.innerHTML = '';
+    const emptyMsg = document.getElementById('no-catalog');
+    const role = currentRole;
+    let products = [...rawCatalogProducts];
+
+    // Filter by Category
+    if (selectedCatalogCategory) {
+        products = products.filter(p => p.category === selectedCatalogCategory);
+    }
+
+    // Filter by Series
+    const seriesVal = document.getElementById('catalog-series-filter')?.value;
+    if (seriesVal) {
+        products = products.filter(p => p.series === seriesVal);
+    }
+
+    // Filter by Price min/max
+    const priceMin = parseFloat(document.getElementById('catalog-price-min')?.value);
+    if (!isNaN(priceMin)) products = products.filter(p => (p.final_price || p.price || 0) >= priceMin);
+    const priceMax = parseFloat(document.getElementById('catalog-price-max')?.value);
+    if (!isNaN(priceMax)) products = products.filter(p => (p.final_price || p.price || 0) <= priceMax);
+
+    // Filter by Stock
+    const stockVal = document.getElementById('catalog-stock-filter')?.value;
+    if (stockVal === 'in_stock') products = products.filter(p => p.in_stock);
+    else if (stockVal === 'out_of_stock') products = products.filter(p => !p.in_stock);
+
+    // Search query
+    const q = document.getElementById('catalog-search')?.value.toLowerCase().trim();
+    if (q) {
+        products = products.filter(p => 
+            p.name.toLowerCase().includes(q) ||
+            (p.figure_number && p.figure_number.toLowerCase().includes(q)) ||
+            (p.category && p.category.toLowerCase().includes(q)) ||
+            (p.series && p.series.toLowerCase().includes(q))
+        );
+    }
+
+    // Sort products
+    if (catalogView === 'table' && catalogSort.key && catalogSort.key !== 'id') {
+        products.sort((a, b) => {
+            let valA, valB;
+            const k = catalogSort.key;
+            if (k === 'number') { valA = a.figure_number || ''; valB = b.figure_number || ''; }
+            else if (k === 'name') { valA = a.name || ''; valB = b.name || ''; }
+            else if (k === 'category') { valA = a.category || ''; valB = b.category || ''; }
+            else if (k === 'series') { valA = a.series || ''; valB = b.series || ''; }
+            else if (k === 'price') { valA = a.price || 0; valB = b.price || 0; }
+            else if (k === 'discount') { valA = a.discount_percent || 0; valB = b.discount_percent || 0; }
+            else if (k === 'final_price') { valA = a.final_price || a.price || 0; valB = b.final_price || b.price || 0; }
+            else if (k === 'packs') { valA = a.packs_count || 0; valB = b.packs_count || 0; }
+            else { valA = a.id; valB = b.id; }
+            if (valA < valB) return catalogSort.desc ? 1 : -1;
+            if (valA > valB) return catalogSort.desc ? -1 : 1;
+            return 0;
+        });
+    } else {
+        const sortSelect = document.getElementById('catalog-sort-select')?.value || 'id_desc';
+        products.sort((a, b) => {
+            if (sortSelect === 'price_asc') {
+                const pa = a.final_price || a.price || 0;
+                const pb = b.final_price || b.price || 0;
+                return pa - pb;
+            } else if (sortSelect === 'price_desc') {
+                const pa = a.final_price || a.price || 0;
+                const pb = b.final_price || b.price || 0;
+                return pb - pa;
+            } else if (sortSelect === 'discount_desc') {
+                return (b.discount_percent || 0) - (a.discount_percent || 0);
+            } else if (sortSelect === 'name_asc') {
+                return a.name.localeCompare(b.name, 'ru');
+            } else {
+                return b.id - a.id;
+            }
+        });
+    }
+
+    if (products.length === 0) {
+        if (emptyMsg) emptyMsg.classList.remove('hidden');
+        updatePaginationUI('catalog', 0);
+        return;
+    }
+    if (emptyMsg) emptyMsg.classList.add('hidden');
+
+    const state = window.paginationState.catalog;
+    const totalPages = Math.max(1, Math.ceil(products.length / state.pageSize));
+    if (state.page > totalPages) state.page = totalPages;
+    if (state.page < 1) state.page = 1;
+
+    const startIdx = (state.page - 1) * state.pageSize;
+    const pageProducts = products.slice(startIdx, startIdx + state.pageSize);
+
+    if (catalogView === 'grid') {
+        pageProducts.forEach((p, i) => {
+            const card = document.createElement('div');
+            card.className = 'product-card row-animate';
+            card.style.animationDelay = `${i * 0.02}s`;
+
+            const imgHtml = p.photo_id
+                ? `<img src="/api/photos/${p.photo_id}" alt="${p.name}" loading="lazy">`
+                : `<div class="product-image-placeholder"><span>📷</span><span style="font-size:0.75rem;color:var(--gray);">Нет фото</span></div>`;
+
+            const discountBadge = p.discount_percent > 0
+                ? `<span class="card-badge card-badge-discount">-${p.discount_percent}%</span>`
+                : '';
+            const packsBadge = p.packs_count > 0
+                ? `<span class="card-badge card-badge-packs">🎁 +${p.packs_count} ${p.packs_count === 1 ? 'пак' : (p.packs_count < 5 ? 'пака' : 'паков')}</span>`
+                : '';
+            const numberBadge = p.figure_number
+                ? `<span class="card-badge card-badge-number">#${p.figure_number}</span>`
+                : '';
+            const stockBadge = p.in_stock
+                ? `<span class="card-badge card-badge-stock in-stock">В наличии</span>`
+                : `<span class="card-badge card-badge-stock out-stock">Под заказ</span>`;
+
+            const priceDisplay = p.discount_percent > 0
+                ? `<span class="price-final discounted">${(p.final_price || p.price).toLocaleString('ru')} &#8381;</span>
+                   <span class="price-original">${p.price.toLocaleString('ru')} &#8381;</span>`
+                : `<span class="price-final">${p.price.toLocaleString('ru')} &#8381;</span>`;
+
+            let actionsHtml = '';
+            if (role === 'admin') {
+                actionsHtml = `
+                    <div class="product-card-actions">
+                        <button type="button" class="btn-quick-order" onclick="openQuickOrderModal(${p.id})">⚡ В заказ</button>
+                        <button type="button" class="btn-card-icon" onclick="openEditProductModal(${p.id})" title="Редактировать">✏️</button>
+                        <button type="button" class="btn-card-icon delete" onclick="confirmDeleteProduct(${p.id})" title="Удалить">&#10005;</button>
+                    </div>
+                `;
+            } else {
+                actionsHtml = `
+                    <div class="product-card-actions">
+                        <button type="button" class="btn-client-order" onclick="openOrderInquiryModal(${p.id})">💬 Заказать</button>
+                    </div>
+                `;
+            }
+
+            card.innerHTML = `
+                <div class="product-image-box" onclick="${p.photo_id ? `viewPhoto('${p.photo_id}')` : ''}">
+                    ${imgHtml}
+                    ${discountBadge}
+                    ${packsBadge}
+                    ${numberBadge}
+                    ${stockBadge}
+                </div>
+                <div class="product-card-body">
+                    <div class="product-card-meta">
+                        ${p.category ? `<span class="meta-chip meta-chip-category">${p.category}</span>` : ''}
+                        ${p.series ? `<span class="meta-chip meta-chip-series">${p.series}</span>` : ''}
+                    </div>
+                    <div class="product-card-title" title="${p.name}">${p.name}</div>
+                    <div class="product-price-box">
+                        ${priceDisplay}
+                    </div>
+                    ${actionsHtml}
+                </div>
+            `;
+            catalogGrid.appendChild(card);
+        });
+    } else {
+        // Table view
+        pageProducts.forEach((p, i) => {
+            const tr = document.createElement('tr');
+            tr.className = 'row-animate';
+            tr.style.animationDelay = `${i * 0.02}s`;
+
+            const photoCell = makePhotoCell(p.photo_id);
+            const discountText = p.discount_percent > 0 ? `<span style="color:#ff4d4d;font-weight:600;">-${p.discount_percent}%</span>` : '—';
+            const finalPriceVal = (p.final_price || p.price || 0).toLocaleString('ru');
+            const packsText = p.packs_count > 0 ? `<span style="color:#ffb400;font-weight:600;">🎁 +${p.packs_count}</span>` : '0';
+            const stockHtml = p.in_stock 
+                ? `<span style="color:#00ff88;font-size:0.85rem;">● В наличии</span>`
+                : `<span style="color:#888;font-size:0.85rem;">○ Под заказ</span>`;
+
+            let actionsHtml = '';
+            if (role === 'admin') {
+                actionsHtml = `
+                    <td class="admin-only actions-cell" style="white-space:nowrap;">
+                        <button class="edit-btn" onclick="openQuickOrderModal(${p.id})" title="Оформить заказ">⚡ В заказ</button>
+                        <button class="edit-btn" onclick="openEditProductModal(${p.id})" title="Редактировать">Ред.</button>
+                        <button class="delete-btn" onclick="confirmDeleteProduct(${p.id})" title="Удалить">&#10005;</button>
+                    </td>
+                `;
+            } else {
+                actionsHtml = `
+                    <td class="actions-cell" style="white-space:nowrap; text-align:center;">
+                        <button type="button" class="btn-client-order" onclick="openOrderInquiryModal(${p.id})" style="padding:4px 12px;font-size:0.8rem;">💬 Заказать</button>
+                    </td>
+                `;
+            }
+
+            tr.innerHTML = `
+                <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>
+                ${photoCell}
+                <td style="font-family:monospace;font-weight:600;">${p.figure_number || '—'}</td>
+                <td style="font-weight:600;">${p.name}</td>
+                <td><span class="meta-chip meta-chip-category">${p.category || '—'}</span></td>
+                <td><span class="meta-chip meta-chip-series">${p.series || '—'}</span></td>
+                <td style="white-space:nowrap;">${(p.price || 0).toLocaleString('ru')} &#8381;</td>
+                <td>${discountText}</td>
+                <td style="white-space:nowrap;font-weight:700;color:var(--primary);">${finalPriceVal} &#8381;</td>
+                <td>${packsText}</td>
+                <td>${stockHtml}</td>
+                ${actionsHtml}
+            `;
+            catalogTableBody.appendChild(tr);
+        });
+    }
+
+    updatePaginationUI('catalog', products.length);
+}
+
+// Open Order Inquiry Modal for Clients & Guests
+window.openOrderInquiryModal = function(id) {
+    const p = rawCatalogProducts.find(x => x.id === id);
+    if (!p) return;
+    const modal = document.getElementById('order-inquiry-modal');
+    if (!modal) return;
+
+    const img = document.getElementById('inquiry-img');
+    const num = document.getElementById('inquiry-number');
+    const title = document.getElementById('inquiry-title');
+    const price = document.getElementById('inquiry-price');
+    const packs = document.getElementById('inquiry-packs');
+    const tgBtn = document.getElementById('inquiry-tg-btn');
+
+    if (img) {
+        if (p.photo_id) {
+            img.src = `/api/photos/${p.photo_id}`;
+            img.style.display = 'block';
+        } else {
+            img.style.display = 'none';
+        }
+    }
+    if (num) num.textContent = p.figure_number ? `#${p.figure_number}` : '';
+    if (title) title.textContent = p.name;
+    const finalPrice = (p.final_price || p.price || 0).toLocaleString('ru');
+    if (price) price.textContent = `${finalPrice} ₽`;
+    if (packs) packs.textContent = p.packs_count > 0 ? `🎁 +${p.packs_count} пак.` : '';
+
+    if (tgBtn) {
+        const clientInfo = currentClientId ? ` (Клиент #${currentClientId})` : '';
+        const msgText = `Здравствуйте! Хочу заказать фигурку: ${p.name}${p.figure_number ? ` (#${p.figure_number})` : ''}, цена: ${finalPrice} ₽${clientInfo}`;
+        tgBtn.href = `https://t.me/funkostop_bot?text=${encodeURIComponent(msgText)}`;
+    }
+
+    openModal(modal);
+};
+
+// Open Add Product Modal
+window.openAddProductModal = function() {
+    if (!productModal) return;
+    productForm.reset();
+    document.getElementById('product-id').value = '';
+    document.getElementById('product-modal-title').textContent = 'Добавить товар в каталог';
+    document.getElementById('product-in-stock').checked = true;
+    document.getElementById('product-packs').value = '0';
+    document.getElementById('product-discount').value = '0';
+    document.getElementById('product-photo-preview-wrap').style.display = 'none';
+    document.getElementById('product-photo-preview').src = '';
+    openModal(productModal);
+};
+
+// Open Edit Product Modal
+window.openEditProductModal = function(id) {
+    const p = rawCatalogProducts.find(x => x.id === id);
+    if (!p || !productModal) return;
+    document.getElementById('product-id').value = p.id;
+    document.getElementById('product-modal-title').textContent = `Редактировать товар #${p.id}`;
+    document.getElementById('product-name').value = p.name;
+    document.getElementById('product-figure-number').value = p.figure_number || '';
+    document.getElementById('product-category').value = p.category || '';
+    document.getElementById('product-series').value = p.series || '';
+    document.getElementById('product-price').value = p.price;
+    document.getElementById('product-discount').value = p.discount_percent || 0;
+    document.getElementById('product-final-price').value = p.final_price || p.price;
+    document.getElementById('product-packs').value = p.packs_count || 0;
+    document.getElementById('product-in-stock').checked = !!p.in_stock;
+    document.getElementById('product-photo-id').value = p.photo_id || '';
+    
+    const previewWrap = document.getElementById('product-photo-preview-wrap');
+    const previewImg = document.getElementById('product-photo-preview');
+    if (p.photo_id) {
+        previewImg.src = `/api/photos/${p.photo_id}`;
+        previewWrap.style.display = 'block';
+    } else {
+        previewWrap.style.display = 'none';
+    }
+    openModal(productModal);
+};
+
+// Auto-calculation of price and discount
+const priceInput = document.getElementById('product-price');
+const discountInput = document.getElementById('product-discount');
+const finalPriceInput = document.getElementById('product-final-price');
+
+function calcFinalPrice() {
+    const price = parseFloat(priceInput?.value) || 0;
+    const discount = parseFloat(discountInput?.value) || 0;
+    if (price >= 0 && discountInput && finalPriceInput) {
+        const finalP = Math.max(0, Math.round(price * (100 - discount) / 100));
+        finalPriceInput.value = finalP;
+    }
+}
+function calcDiscountFromFinal() {
+    const price = parseFloat(priceInput?.value) || 0;
+    const finalP = parseFloat(finalPriceInput?.value) || 0;
+    if (price > 0 && discountInput) {
+        const disc = Math.max(0, Math.min(99, Math.round((price - finalP) * 100 / price)));
+        discountInput.value = disc;
+    }
+}
+priceInput?.addEventListener('input', calcFinalPrice);
+discountInput?.addEventListener('input', calcFinalPrice);
+finalPriceInput?.addEventListener('input', calcDiscountFromFinal);
+
+// Product Photo Upload Listener
+const productPhotoUpload = document.getElementById('product-photo-upload');
+if (productPhotoUpload) {
+    productPhotoUpload.addEventListener('change', async (e) => {
+        await handlePhotoUpload(e, 'product-photo-id');
+        const photoId = document.getElementById('product-photo-id').value;
+        if (photoId) {
+            const previewWrap = document.getElementById('product-photo-preview-wrap');
+            const previewImg = document.getElementById('product-photo-preview');
+            previewImg.src = `/api/photos/${photoId}`;
+            previewWrap.style.display = 'block';
+        }
+    });
+}
+
+// Product Form Submit
+productForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('product-id').value;
+    const price = parseInt(document.getElementById('product-price').value) || 0;
+    const discount = parseInt(document.getElementById('product-discount').value) || 0;
+    let finalPrice = parseInt(document.getElementById('product-final-price').value);
+    if (isNaN(finalPrice) || finalPrice <= 0) {
+        finalPrice = Math.max(0, Math.round(price * (100 - discount) / 100));
+    }
+    const payload = {
+        name: document.getElementById('product-name').value.trim(),
+        figure_number: document.getElementById('product-figure-number').value.trim(),
+        price: price,
+        discount_percent: discount,
+        final_price: finalPrice,
+        category: document.getElementById('product-category').value.trim(),
+        series: document.getElementById('product-series').value.trim(),
+        packs_count: parseInt(document.getElementById('product-packs').value) || 0,
+        photo_id: document.getElementById('product-photo-id').value.trim(),
+        in_stock: document.getElementById('product-in-stock').checked
+    };
+
+    try {
+        if (id) {
+            await fetchAPI(`/catalog/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+            await fetchAPI('/catalog', { method: 'POST', body: JSON.stringify(payload) });
+        }
+        closeModals();
+        await loadCatalogMeta();
+        await loadCatalog();
+    } catch (err) {
+        alert('Ошибка сохранения товара: ' + err.message);
+    }
+});
+
+// Delete Product
+window.confirmDeleteProduct = function(id) {
+    const p = rawCatalogProducts.find(x => x.id === id);
+    if (!p) return;
+    deleteProductTargetId = id;
+    document.getElementById('delete-product-name-display').textContent = p.name;
+    openModal(confirmDeleteProductModal);
+};
+document.getElementById('confirm-delete-product-btn')?.addEventListener('click', async () => {
+    if (!deleteProductTargetId) return;
+    try {
+        await fetchAPI(`/catalog/${deleteProductTargetId}`, { method: 'DELETE' });
+        closeModals();
+        deleteProductTargetId = null;
+        await loadCatalogMeta();
+        await loadCatalog();
+    } catch (err) {
+        alert('Ошибка при удалении: ' + err.message);
+    }
+});
+
+// Quick Order Modal
+window.openQuickOrderModal = function(id) {
+    const p = rawCatalogProducts.find(x => x.id === id);
+    if (!p) return;
+    document.getElementById('quick-order-product-id').value = p.id;
+    const title = p.figure_number ? `${p.figure_number} - ${p.name}` : p.name;
+    document.getElementById('quick-order-title').textContent = title;
+    
+    const priceVal = p.final_price > 0 ? p.final_price : p.price;
+    document.getElementById('quick-order-price').textContent = `${priceVal.toLocaleString('ru')} ₽`;
+    document.getElementById('quick-order-packs').textContent = p.packs_count > 0 ? `🎁 +${p.packs_count} пак.` : '';
+    
+    const imgEl = document.getElementById('quick-order-img');
+    if (p.photo_id) {
+        imgEl.src = `/api/photos/${p.photo_id}`;
+        imgEl.style.display = 'block';
+    } else {
+        imgEl.style.display = 'none';
+    }
+    document.getElementById('quick-order-client-id').value = '';
+    document.getElementById('quick-order-paid').value = priceVal;
+    openModal(quickOrderModal);
+};
+
+quickOrderForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const productId = document.getElementById('quick-order-product-id').value;
+    const clientId = parseInt(document.getElementById('quick-order-client-id').value);
+    const paidAmount = parseInt(document.getElementById('quick-order-paid').value) || 0;
+
+    if (!clientId) {
+        alert('Укажите корректный ID клиента!');
+        return;
+    }
+
+    try {
+        const res = await fetchAPI(`/catalog/${productId}/create_order`, {
+            method: 'POST',
+            body: JSON.stringify({ client_id: clientId, paid_amount: paidAmount })
+        });
+        closeModals();
+        await loadDashboardData();
+        document.querySelector('[data-tab="orders"]').click();
+        alert(`🎉 Заказ #${res.id} успешно создан!`);
+    } catch (err) {
+        alert('Ошибка оформления заказа: ' + err.message);
+    }
+});
+
+function populateClientsDatalist(clients) {
+    const dl = document.getElementById('clients-datalist');
+    if (!dl) return;
+    dl.innerHTML = clients.map(c => `<option value="${c.id}">Клиент #${c.id}</option>`).join('');
+}
+
+// Catalog filter listeners
+['catalog-search', 'catalog-price-min', 'catalog-price-max', 'catalog-series-filter', 'catalog-stock-filter', 'catalog-sort-select'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        const handler = () => {
+            if (window.paginationState.catalog) window.paginationState.catalog.page = 1;
+            renderCatalog();
+        };
+        el.addEventListener('input', handler);
+        el.addEventListener('change', handler);
+    }
+});
+
+newProductBtn?.addEventListener('click', openAddProductModal);
+
 init();
+
