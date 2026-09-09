@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Funko Stop | Личный кабинет</title>
-    <link rel="stylesheet" href="/static/styles.css?v=1788126736300">
+    <title>Funko Stop | Каталог фигурок и Личный кабинет</title>
+    <link rel="stylesheet" href="/static/styles.css?v=1788128900000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
@@ -85,23 +85,13 @@
 <body>
     <div class="background"></div>
 
-    <div id="login-view" class="glass-panel active fade-in">
-        <div class="logo"><h1>FUNKO <span>STOP</span></h1></div>
-        <h2>Вход в Личный Кабинет</h2>
-        <form id="login-form">
-            <div class="input-group"><input type="text" id="username" placeholder="Логин или ID Клиента" required autocomplete="off"></div>
-            <div class="input-group"><input type="password" id="password" placeholder="Пароль" required></div>
-            <p id="login-error" class="error-msg"></p>
-            <button type="submit" class="btn primary">Войти</button>
-        </form>
-    </div>
-
-    <div id="dashboard-view" class="dashboard-layout hidden fade-in">
+    <div id="dashboard-view" class="dashboard-layout fade-in">
         <aside class="sidebar glass-panel">
             <div class="logo small"><h1>FUNKO <span>STOP</span></h1></div>
             <nav>
-                <a href="#" class="nav-item active" data-tab="orders">Заказы</a>
-                <a href="#" class="nav-item" data-tab="archived">Архив</a>
+                <a href="#" class="nav-item active" data-tab="catalog">Каталог</a>
+                <a href="#" class="nav-item auth-only hidden" data-tab="orders">Заказы</a>
+                <a href="#" class="nav-item auth-only hidden" data-tab="archived">Архив</a>
                 <a href="#" class="nav-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
                 <a href="#" class="nav-item admin-only hidden" data-tab="clients">Клиенты</a>
             </nav>
@@ -110,13 +100,38 @@
                 <span style="width:8px;height:8px;background:#40c057;border-radius:50%;display:inline-block;"></span>
                 На сайте: <strong id="online-count">1</strong> чел.
             </div>
-            <button id="logout-btn" class="btn secondary outline mt-auto">Выйти</button>
+            <div class="sidebar-auth-box mt-auto">
+                <button id="sidebar-login-btn" class="btn primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">🔑 Войти</button>
+                <button id="logout-btn" class="btn secondary outline hidden" style="width: 100%;">Выйти</button>
+            </div>
         </aside>
 
         <main class="content">
+            <!-- Top Header Bar with Account Login at Top-Right -->
+            <header class="app-topbar glass-panel">
+                <div class="topbar-left">
+                    <span class="store-badge">✨ Официальная витрина Funko Stop</span>
+                </div>
+                <div class="topbar-right">
+                    <!-- Guest Widget -->
+                    <div id="guest-header-widget" class="header-auth-group">
+                        <button type="button" id="header-login-btn" class="btn primary small" style="display:flex;align-items:center;gap:7px;font-weight:600;">
+                            <span>🔑</span> Войти в аккаунт
+                        </button>
+                    </div>
+                    <!-- Logged-in User Widget -->
+                    <div id="user-header-widget" class="header-auth-group hidden" style="display:flex;align-items:center;gap:10px;">
+                        <div class="user-chip">
+                            <span id="header-user-icon">👤</span>
+                            <span id="header-user-label" style="font-weight:600;font-size:0.88rem;">Клиент</span>
+                        </div>
+                        <button type="button" id="header-logout-btn" class="btn secondary outline small" style="padding:6px 14px;">Выйти</button>
+                    </div>
+                </div>
+            </header>
 
             <!-- ORDERS TAB -->
-            <section id="orders-tab" class="tab-content active">
+            <section id="orders-tab" class="tab-content">
                 <div class="header-flex">
                     <h2>Активные заказы</h2>
                     <button id="new-order-btn" class="btn primary admin-only hidden">+ Новый заказ</button>
@@ -204,6 +219,100 @@
                             <button type="button" class="btn-size" data-size="100" onclick="setPageSize('orders', 100)">100</button>
                         </div>
                         <input type="number" min="1" max="500" id="orders-custom-size" class="custom-size-input" placeholder="Своё" title="Введите количество строк" onchange="setCustomPageSize('orders', this.value)">
+                    </div>
+                </div>
+            </section>
+
+            <!-- CATALOG TAB -->
+            <section id="catalog-tab" class="tab-content active">
+                <div class="header-flex">
+                    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                        <h2>Каталог товаров</h2>
+                        <div class="view-toggle" id="catalog-view-toggle">
+                            <button type="button" class="btn-toggle active" id="view-grid-btn" title="Сетка карточек" onclick="switchCatalogView('grid')">⊞ Карточки</button>
+                            <button type="button" class="btn-toggle" id="view-table-btn" title="Таблица" onclick="switchCatalogView('table')">☰ Таблица</button>
+                        </div>
+                    </div>
+                    <button id="new-product-btn" class="btn primary admin-only hidden">+ Добавить товар</button>
+                </div>
+
+                <!-- Catalog Category Pills -->
+                <div class="category-pills-bar" id="catalog-category-pills">
+                    <button type="button" class="category-pill active" data-category="" onclick="selectCatalogCategory('')">Все товары</button>
+                </div>
+
+                <!-- Catalog Filters Bar -->
+                <div class="filters-bar" style="margin-top: 10px;">
+                    <input type="text" id="catalog-search" class="filter-input wide" placeholder="🔍 Поиск (название, номер, серия)...">
+                    
+                    <select id="catalog-series-filter" class="filter-input narrow">
+                        <option value="">Все серии</option>
+                    </select>
+
+                    <input type="number" id="catalog-price-min" class="filter-input narrow" placeholder="Цена от &#8381;">
+                    <input type="number" id="catalog-price-max" class="filter-input narrow" placeholder="Цена до &#8381;">
+
+                    <select id="catalog-stock-filter" class="filter-input narrow">
+                        <option value="">Все статусы</option>
+                        <option value="in_stock">В наличии</option>
+                        <option value="out_of_stock">Нет в наличии</option>
+                    </select>
+
+                    <select id="catalog-sort-select" class="filter-input narrow">
+                        <option value="id_desc">Сначала новые</option>
+                        <option value="price_asc">Цена: по возрастанию</option>
+                        <option value="price_desc">Цена: по убыванию</option>
+                        <option value="discount_desc">По размеру скидки</option>
+                        <option value="name_asc">По названию (А-Я)</option>
+                    </select>
+                </div>
+
+                <!-- Catalog Grid View -->
+                <div id="catalog-grid" class="catalog-grid"></div>
+
+                <!-- Catalog Table View -->
+                <div id="catalog-table-wrapper" class="glass-panel table-container hidden">
+                    <table id="catalog-table">
+                        <thead>
+                            <tr>
+                                <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
+                                <th>Фото</th>
+                                <th data-sort="number" style="cursor:pointer;white-space:nowrap;">№ фиг. &#8597;</th>
+                                <th data-sort="name" style="cursor:pointer;white-space:nowrap;">Название &#8597;</th>
+                                <th data-sort="category" style="cursor:pointer;white-space:nowrap;">Категория &#8597;</th>
+                                <th data-sort="series" style="cursor:pointer;white-space:nowrap;">Серия &#8597;</th>
+                                <th data-sort="price" style="cursor:pointer;white-space:nowrap;">Базовая цена &#8597;</th>
+                                <th data-sort="discount" style="cursor:pointer;white-space:nowrap;">Скидка &#8597;</th>
+                                <th data-sort="final_price" style="cursor:pointer;white-space:nowrap;">Итоговая цена &#8597;</th>
+                                <th data-sort="packs" style="cursor:pointer;white-space:nowrap;">Паки &#8597;</th>
+                                <th>Наличие</th>
+                                <th style="min-width:120px; text-align:center;">Действие</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <p id="no-catalog" class="empty-msg hidden">Товары не найдены</p>
+
+                <!-- Catalog Pagination -->
+                <div class="pagination-bar" id="catalog-pagination">
+                    <div class="pagination-info">
+                        <span>Показано <b id="catalog-page-range">0–0</b> из <b id="catalog-total-count">0</b></span>
+                    </div>
+                    <div class="pagination-controls">
+                        <button type="button" class="btn-page" id="catalog-prev-btn" onclick="changePage('catalog', -1)">← Назад</button>
+                        <span class="page-indicator" id="catalog-page-indicator">Стр. 1 из 1</span>
+                        <button type="button" class="btn-page" id="catalog-next-btn" onclick="changePage('catalog', 1)">Вперёд →</button>
+                    </div>
+                    <div class="pagination-size">
+                        <span>На странице:</span>
+                        <div class="page-size-buttons" id="catalog-page-sizes">
+                            <button type="button" class="btn-size" data-size="12" onclick="setPageSize('catalog', 12)">12</button>
+                            <button type="button" class="btn-size active" data-size="24" onclick="setPageSize('catalog', 24)">24</button>
+                            <button type="button" class="btn-size" data-size="48" onclick="setPageSize('catalog', 48)">48</button>
+                        </div>
+                        <input type="number" min="1" max="200" id="catalog-custom-size" class="custom-size-input" placeholder="Своё" title="Количество товаров на странице" onchange="setCustomPageSize('catalog', this.value)">
                     </div>
                 </div>
             </section>
@@ -454,10 +563,181 @@
                 <button type="button" id="confirm-delete-btn" class="btn danger">Удалить</button>
             </div>
         </div>
+
+        <!-- Product Modal (Add/Edit) -->
+        <div id="product-modal" class="glass-panel modal hidden" style="max-width: 580px;">
+            <h3 id="product-modal-title">Добавить товар в каталог</h3>
+            <form id="product-form">
+                <input type="hidden" id="product-id">
+
+                <div class="input-group flex-row">
+                    <div style="flex: 2;">
+                        <label>Название товара *</label>
+                        <input type="text" id="product-name" placeholder="например, Patrick Bateman (Chase)" required autocomplete="off">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Номер фигурки</label>
+                        <input type="text" id="product-figure-number" placeholder="942" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="input-group flex-row">
+                    <div style="width: 100%;">
+                        <label>Категория товара *</label>
+                        <input type="text" id="product-category" list="categories-datalist" placeholder="Monster High, Funko..." required autocomplete="off">
+                    </div>
+                    <div style="width: 100%;">
+                        <label>Серия / Вселенная</label>
+                        <input type="text" id="product-series" list="series-datalist" placeholder="Breaking Bad, Marvel..." autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="input-group flex-row" style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                    <div style="flex: 1;">
+                        <label>Базовая цена (&#8381;) *</label>
+                        <input type="number" id="product-price" placeholder="5000" min="0" required>
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Скидка (%)</label>
+                        <input type="number" id="product-discount" placeholder="0" min="0" max="99" value="0">
+                    </div>
+                    <div style="flex: 1;">
+                        <label>Итоговая цена (&#8381;)</label>
+                        <input type="number" id="product-final-price" placeholder="5000" min="0" style="font-weight: bold; color: var(--primary);">
+                    </div>
+                </div>
+
+                <div class="input-group flex-row">
+                    <div style="flex: 1;">
+                        <label>🎁 Сколько паков даст</label>
+                        <input type="number" id="product-packs" placeholder="0" min="0" value="0">
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: flex-end; padding-bottom: 8px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+                            <input type="checkbox" id="product-in-stock" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
+                            <span style="font-size: 0.9rem; font-weight: 500;">В наличии на складе</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Фотография товара</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="product-photo-id" placeholder="Telegram Photo ID или URL" style="flex-grow: 1;">
+                        <label for="product-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 14px; cursor: pointer; white-space: nowrap;">📷 Загрузить фото</label>
+                        <input type="file" id="product-photo-upload" accept="image/*" style="display: none;">
+                    </div>
+                    <div id="product-photo-preview-wrap" style="margin-top: 10px; display: none;">
+                        <img id="product-photo-preview" src="" alt="Превью" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                    <button type="submit" class="btn primary" id="save-product-btn">Сохранить товар</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Quick Order Modal from Catalog -->
+        <div id="quick-order-modal" class="glass-panel modal hidden" style="max-width: 480px;">
+            <h3>⚡ Быстрое оформление заказа</h3>
+            <div id="quick-order-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.06);">
+                <img id="quick-order-img" src="" alt="Товар" style="width: 54px; height: 54px; object-fit: cover; border-radius: 6px;">
+                <div>
+                    <div id="quick-order-title" style="font-weight: 600; font-size: 0.95rem; color: #fff;"></div>
+                    <div style="display: flex; gap: 8px; margin-top: 4px; align-items: baseline;">
+                        <span id="quick-order-price" style="color: var(--primary); font-weight: bold; font-size: 1.1rem;"></span>
+                        <span id="quick-order-packs" style="color: #ffb400; font-size: 0.85rem;"></span>
+                    </div>
+                </div>
+            </div>
+            <form id="quick-order-form">
+                <input type="hidden" id="quick-order-product-id">
+                <div class="input-group">
+                    <label>Клиент (ID) *</label>
+                    <input type="number" id="quick-order-client-id" placeholder="Введите ID клиента" required list="clients-datalist">
+                </div>
+                <div class="input-group">
+                    <label>Внесено / Оплачено (&#8381;)</label>
+                    <input type="number" id="quick-order-paid" placeholder="0" min="0" value="0">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                    <button type="submit" class="btn primary">⚡ Оформить заказ</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Confirm Delete Product Modal -->
+        <div id="confirm-delete-product-modal" class="glass-panel modal hidden">
+            <h3>Удалить товар?</h3>
+            <p id="delete-product-name-display" style="color: #fff; font-weight: 600; margin-bottom: 0.5rem;"></p>
+            <p style="color:var(--gray); margin-bottom:1rem;">Товар будет безвозвратно удален из каталога.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                <button type="button" id="confirm-delete-product-btn" class="btn danger">Удалить</button>
+            </div>
+        </div>
+
+        <!-- Login Modal (Accessible from Top-Right Header & Sidebar) -->
+        <div id="login-modal" class="glass-panel modal hidden" style="max-width: 400px; text-align: center;">
+            <div class="logo"><h1>FUNKO <span>STOP</span></h1></div>
+            <h3 style="margin-top: 6px; font-size: 1.3rem;">Вход в Личный Кабинет</h3>
+            <p style="color: var(--gray); font-size: 0.85rem; margin-bottom: 18px;">Введите ваш логин или ID Клиента</p>
+            <form id="login-form">
+                <div class="input-group">
+                    <input type="text" id="username" placeholder="Логин или ID Клиента" required autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="password" placeholder="Пароль" required>
+                </div>
+                <p id="login-error" class="error-msg" style="margin-bottom: 10px;"></p>
+                <div class="modal-actions" style="margin-top: 10px;">
+                    <button type="button" class="btn secondary outline close-modal" style="flex: 1;">Отмена</button>
+                    <button type="submit" class="btn primary" style="flex: 1.4;">Войти</button>
+                </div>
+            </form>
+            <div style="margin-top: 18px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.82rem; color: var(--gray);">
+                <span>Вопросы по заказам? </span>
+                <a href="https://t.me/funkostop_bot" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Telegram @funkostop_bot</a>
+            </div>
+        </div>
+
+        <!-- Product Inquiry / Order Modal for Clients & Guests -->
+        <div id="order-inquiry-modal" class="glass-panel modal hidden" style="max-width: 480px;">
+            <h3>🛒 Заказ фигурки</h3>
+            <p style="color: var(--gray); font-size: 0.85rem; margin-bottom: 16px;">Быстрое оформление через наш официальный Telegram-бот</p>
+
+            <div id="inquiry-product-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; margin-bottom: 18px; border: 1px solid rgba(255,255,255,0.08);">
+                <img id="inquiry-img" src="" alt="Товар" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
+                <div style="flex: 1; min-width: 0;">
+                    <div id="inquiry-number" style="font-size: 0.78rem; color: var(--primary); font-weight: 700;"></div>
+                    <div id="inquiry-title" style="font-weight: 600; font-size: 0.95rem; color: #fff; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
+                    <div style="display: flex; gap: 8px; margin-top: 4px; align-items: baseline;">
+                        <span id="inquiry-price" style="color: #ff3b30; font-weight: 800; font-size: 1.15rem;"></span>
+                        <span id="inquiry-packs" style="color: #ffb400; font-size: 0.82rem;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <a id="inquiry-tg-btn" href="#" target="_blank" class="btn primary" style="display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; padding: 12px; font-weight: 600; font-size: 0.95rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                    Написать в Telegram (@funkostop_bot)
+                </a>
+                <button type="button" class="btn secondary outline close-modal">Закрыть</button>
+            </div>
+        </div>
     </div>
 
+    <!-- Datalists for Autocomplete -->
+    <datalist id="categories-datalist"></datalist>
+    <datalist id="series-datalist"></datalist>
+    <datalist id="clients-datalist"></datalist>
+
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1788126736300"></script>
+    <script src="/static/app.js?v=1788128900000"></script>
 
     <!-- Legal Info Footer (Required by T-Bank Ekvayring) -->
     <footer id="legal-footer" style="
