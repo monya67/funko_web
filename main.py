@@ -80,6 +80,38 @@ async def startup():
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cost_price INTEGER DEFAULT 0")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_cost INTEGER DEFAULT 0")
 
+        # Catalog tables
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS categories (
+                id SERIAL PRIMARY KEY,
+                name TEXT UNIQUE NOT NULL
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS series (
+                id SERIAL PRIMARY KEY,
+                name TEXT UNIQUE NOT NULL
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS products (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                figure_number TEXT DEFAULT '',
+                price INTEGER NOT NULL DEFAULT 0,
+                discount_percent INTEGER DEFAULT 0,
+                final_price INTEGER NOT NULL DEFAULT 0,
+                category TEXT NOT NULL DEFAULT '',
+                series TEXT NOT NULL DEFAULT '',
+                packs_count INTEGER DEFAULT 0,
+                photo_id TEXT DEFAULT '',
+                in_stock BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        for cat in ["Monster High", "Funko", "Youtooz"]:
+            await db.execute("INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", cat)
+
 @app.on_event("shutdown")
 async def shutdown():
     if pool:
@@ -149,6 +181,34 @@ class OrderUpdate(BaseModel):
     cost_price: int = 0
     delivery_cost: int = 0
 
+class ProductCreate(BaseModel):
+    name: str
+    figure_number: str = ""
+    price: int
+    discount_percent: int = 0
+    final_price: int = 0
+    category: str = ""
+    series: str = ""
+    packs_count: int = 0
+    photo_id: str = ""
+    in_stock: bool = True
+
+class ProductUpdate(BaseModel):
+    name: str
+    figure_number: str = ""
+    price: int
+    discount_percent: int = 0
+    final_price: int = 0
+    category: str = ""
+    series: str = ""
+    packs_count: int = 0
+    photo_id: str = ""
+    in_stock: bool = True
+
+class QuickOrderCreate(BaseModel):
+    client_id: int
+    paid_amount: int = 0
+
 # --- API Routes ---
 @app.post("/api/ping")
 async def ping_user(request: Request, user: dict = Depends(get_current_user)):
@@ -212,6 +272,7 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             )
             return {
                 "role": "client",
+                "client_id": client_id,
                 "online_count": online,
                 "orders": [dict(o) for o in orders],
                 "archived": [dict(o) for o in archived]
@@ -327,6 +388,134 @@ async def delete_order(order_id: int, admin: dict = Depends(require_admin)):
         if res == "DELETE 0":
             raise HTTPException(status_code=404, detail="Order not found")
         return {"success": True}
+
+# --- Catalog API Routes (Public for all visitors) ---
+@app.get("/api/catalog/meta")
+async def get_catalog_meta():
+    async with pool.acquire() as db:
+        cats = await db.fetch("SELECT name FROM categories ORDER BY name ASC")
+        sers = await db.fetch("SELECT name FROM series ORDER BY name ASC")
+        return {
+            "categories": [r["name"] for r in cats],
+            "series": [r["name"] for r in sers]
+        }
+
+@app.get("/api/catalog")
+async def get_catalog():
+    async with pool.acquire() as db:
+        products = await db.fetch(
+            "SELECT id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, created_at FROM products ORDER BY id DESC"
+        )
+        return {"products": [dict(p) for p in products]}
+
+@app.post("/api/catalog")
+async def create_product(product: ProductCreate, admin: dict = Depends(require_admin)):
+    cat = product.category.strip()
+    ser = product.series.strip()
+    
+    final_price = product.final_price
+    discount = product.discount_percent
+    if final_price <= 0 and product.price > 0:
+        final_price = max(0, round(product.price * (100 - discount) / 100))
+    elif discount <= 0 and product.price > 0 and final_price > 0 and final_price < product.price:
+        discount = round((product.price - final_price) * 100 / product.price)
+
+    async with pool.acquire() as db:
+        if cat:
+            await db.execute("INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", cat)
+        if ser:
+            await db.execute("INSERT INTO series (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", ser)
+            
+        new_id = await db.fetchval(
+            """INSERT INTO products 
+               (name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id""",
+            product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
+            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock
+        )
+        return {"success": True, "id": new_id}
+
+@app.put("/api/catalog/{product_id}")
+async def update_product(product_id: int, product: ProductUpdate, admin: dict = Depends(require_admin)):
+    cat = product.category.strip()
+    ser = product.series.strip()
+
+    final_price = product.final_price
+    discount = product.discount_percent
+    if final_price <= 0 and product.price > 0:
+        final_price = max(0, round(product.price * (100 - discount) / 100))
+    elif discount <= 0 and product.price > 0 and final_price > 0 and final_price < product.price:
+        discount = round((product.price - final_price) * 100 / product.price)
+
+    async with pool.acquire() as db:
+        if cat:
+            await db.execute("INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", cat)
+        if ser:
+            await db.execute("INSERT INTO series (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", ser)
+
+        res = await db.execute(
+            """UPDATE products 
+               SET name = $1, figure_number = $2, price = $3, discount_percent = $4, final_price = $5,
+                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10 
+               WHERE id = $11""",
+            product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
+            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, product_id
+        )
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"success": True}
+
+@app.delete("/api/catalog/{product_id}")
+async def delete_product(product_id: int, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        res = await db.execute("DELETE FROM products WHERE id = $1", product_id)
+        if res == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Product not found")
+        return {"success": True}
+
+@app.post("/api/catalog/{product_id}/create_order")
+async def create_order_from_product(product_id: int, order_data: QuickOrderCreate, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        product = await db.fetchrow("SELECT * FROM products WHERE id = $1", product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail="Product not found")
+
+        client = await db.fetchrow("SELECT id, user_tg_id FROM clients WHERE id = $1", order_data.client_id)
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        item_title = product["name"]
+        if product["figure_number"]:
+            item_title = f"{product['figure_number']} - {item_title}"
+
+        order_price = product["final_price"] if product["final_price"] > 0 else product["price"]
+        order_date = datetime.now().strftime("%d.%m.%Y")
+
+        new_order_id = await db.fetchval(
+            """INSERT INTO orders (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost) 
+               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0) RETURNING id""",
+            order_data.client_id, item_title, order_price, order_data.paid_amount, "Заказ принят в обработку", product["photo_id"], order_date
+        )
+
+        # Telegram notification
+        if client["user_tg_id"] and BOT_TOKEN:
+            try:
+                msg = f"🎉 **У вас новый заказ!**\n\n🆔 Заказ #{new_order_id}\n🛒 Позиции:\n{item_title}\n\n💰 Стоимость: {order_price} ₽\n✅ Оплачено: {order_data.paid_amount} ₽"
+                async with httpx.AsyncClient() as http_client:
+                    if product["photo_id"]:
+                        await http_client.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                            data={"chat_id": client["user_tg_id"], "photo": product["photo_id"], "caption": msg, "parse_mode": "Markdown"}
+                        )
+                    else:
+                        await http_client.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            json={"chat_id": client["user_tg_id"], "text": msg, "parse_mode": "Markdown"}
+                        )
+            except Exception as e:
+                print(f"Error sending TG notification: {e}")
+
+        return {"success": True, "id": new_order_id}
 
 def convert_to_webp(content):
     img = Image.open(io.BytesIO(content))
