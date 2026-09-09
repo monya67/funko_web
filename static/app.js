@@ -78,10 +78,10 @@ window.updateMassEditPanel = function(tab) {
     }
     if (btn) {
         if (count > 0) {
-            btn.textContent = `⚡ Применить статус ко всем (${count})`;
+            btn.textContent = `Применить статус ко всем (${count})`;
             btn.style.opacity = '1';
         } else {
-            btn.textContent = '⚡ Применить статус';
+            btn.textContent = 'Применить статус';
             btn.style.opacity = '0.7';
         }
     }
@@ -153,7 +153,7 @@ function updateRoleUI(role) {
         document.querySelectorAll('.auth-only').forEach(el => el.classList.remove('hidden'));
         if (guestHeaderWidget) guestHeaderWidget.classList.add('hidden');
         if (userHeaderWidget) userHeaderWidget.classList.remove('hidden');
-        if (headerUserIcon) headerUserIcon.textContent = '👑';
+        if (headerUserIcon) headerUserIcon.textContent = '';
         if (headerUserLabel) headerUserLabel.textContent = 'Администратор';
         if (sidebarLoginBtn) sidebarLoginBtn.classList.add('hidden');
         if (logoutBtn) logoutBtn.classList.remove('hidden');
@@ -162,7 +162,7 @@ function updateRoleUI(role) {
         document.querySelectorAll('.auth-only').forEach(el => el.classList.remove('hidden'));
         if (guestHeaderWidget) guestHeaderWidget.classList.add('hidden');
         if (userHeaderWidget) userHeaderWidget.classList.remove('hidden');
-        if (headerUserIcon) headerUserIcon.textContent = '👤';
+        if (headerUserIcon) headerUserIcon.textContent = '';
         if (headerUserLabel) headerUserLabel.textContent = currentClientId ? `Клиент #${currentClientId}` : 'Личный кабинет';
         if (sidebarLoginBtn) sidebarLoginBtn.classList.add('hidden');
         if (logoutBtn) logoutBtn.classList.remove('hidden');
@@ -1442,13 +1442,13 @@ function renderCatalog() {
 
             const imgHtml = p.photo_id
                 ? `<img src="/api/photos/${p.photo_id}" alt="${p.name}" loading="lazy">`
-                : `<div class="product-image-placeholder"><span>📷</span><span style="font-size:0.75rem;color:var(--gray);">Нет фото</span></div>`;
+                : `<div class="product-image-placeholder"><span style="font-size:0.75rem;color:var(--gray);">Нет фото</span></div>`;
 
             const discountBadge = p.discount_percent > 0
                 ? `<span class="card-badge card-badge-discount">-${p.discount_percent}%</span>`
                 : '';
             const packsBadge = p.packs_count > 0
-                ? `<span class="card-badge card-badge-packs">🎁 +${p.packs_count} ${p.packs_count === 1 ? 'пак' : (p.packs_count < 5 ? 'пака' : 'паков')}</span>`
+                ? `<span class="card-badge card-badge-packs">+${p.packs_count} ${p.packs_count === 1 ? 'пак' : (p.packs_count < 5 ? 'пака' : 'паков')}</span>`
                 : '';
             const numberBadge = p.figure_number
                 ? `<span class="card-badge card-badge-number">#${p.figure_number}</span>`
@@ -1466,15 +1466,15 @@ function renderCatalog() {
             if (role === 'admin') {
                 actionsHtml = `
                     <div class="product-card-actions">
-                        <button type="button" class="btn-quick-order" onclick="openQuickOrderModal(${p.id})">⚡ В заказ</button>
-                        <button type="button" class="btn-card-icon" onclick="openEditProductModal(${p.id})" title="Редактировать">✏️</button>
+                        <button type="button" class="btn-quick-order" onclick="openQuickOrderModal(${p.id})">В заказ</button>
+                        <button type="button" class="btn-card-icon" onclick="openEditProductModal(${p.id})" title="Редактировать">✎</button>
                         <button type="button" class="btn-card-icon delete" onclick="confirmDeleteProduct(${p.id})" title="Удалить">&#10005;</button>
                     </div>
                 `;
             } else {
                 actionsHtml = `
                     <div class="product-card-actions">
-                        <button type="button" class="btn-client-order" onclick="openOrderInquiryModal(${p.id})">💬 Заказать</button>
+                        <button type="button" class="btn-client-order" onclick="openOrderInquiryModal(${p.id})">Заказать</button>
                     </div>
                 `;
             }
@@ -1511,7 +1511,7 @@ function renderCatalog() {
             const photoCell = makePhotoCell(p.photo_id);
             const discountText = p.discount_percent > 0 ? `<span style="color:#ff4d4d;font-weight:600;">-${p.discount_percent}%</span>` : '—';
             const finalPriceVal = (p.final_price || p.price || 0).toLocaleString('ru');
-            const packsText = p.packs_count > 0 ? `<span style="color:#ffb400;font-weight:600;">🎁 +${p.packs_count}</span>` : '0';
+            const packsText = p.packs_count > 0 ? `<span style="color:#ffb400;font-weight:600;">+${p.packs_count}</span>` : '0';
             const stockHtml = p.in_stock 
                 ? `<span style="color:#00ff88;font-size:0.85rem;">● В наличии</span>`
                 : `<span style="color:#888;font-size:0.85rem;">○ Под заказ</span>`;
@@ -1520,7 +1520,7 @@ function renderCatalog() {
             if (role === 'admin') {
                 actionsHtml = `
                     <td class="admin-only actions-cell" style="white-space:nowrap;">
-                        <button class="edit-btn" onclick="openQuickOrderModal(${p.id})" title="Оформить заказ">⚡ В заказ</button>
+                        <button class="edit-btn" onclick="openQuickOrderModal(${p.id})" title="Оформить заказ">В заказ</button>
                         <button class="edit-btn" onclick="openEditProductModal(${p.id})" title="Редактировать">Ред.</button>
                         <button class="delete-btn" onclick="confirmDeleteProduct(${p.id})" title="Удалить">&#10005;</button>
                     </td>
@@ -1528,7 +1528,7 @@ function renderCatalog() {
             } else {
                 actionsHtml = `
                     <td class="actions-cell" style="white-space:nowrap; text-align:center;">
-                        <button type="button" class="btn-client-order" onclick="openOrderInquiryModal(${p.id})" style="padding:4px 12px;font-size:0.8rem;">💬 Заказать</button>
+                        <button type="button" class="btn-client-order" onclick="openOrderInquiryModal(${p.id})" style="padding:4px 12px;font-size:0.8rem;">Заказать</button>
                     </td>
                 `;
             }
@@ -1580,7 +1580,7 @@ window.openOrderInquiryModal = function(id) {
     if (title) title.textContent = p.name;
     const finalPrice = (p.final_price || p.price || 0).toLocaleString('ru');
     if (price) price.textContent = `${finalPrice} ₽`;
-    if (packs) packs.textContent = p.packs_count > 0 ? `🎁 +${p.packs_count} пак.` : '';
+    if (packs) packs.textContent = p.packs_count > 0 ? `+${p.packs_count} пак.` : '';
 
     if (tgBtn) {
         const clientInfo = currentClientId ? ` (Клиент #${currentClientId})` : '';
@@ -1741,7 +1741,7 @@ window.openQuickOrderModal = function(id) {
     
     const priceVal = p.final_price > 0 ? p.final_price : p.price;
     document.getElementById('quick-order-price').textContent = `${priceVal.toLocaleString('ru')} ₽`;
-    document.getElementById('quick-order-packs').textContent = p.packs_count > 0 ? `🎁 +${p.packs_count} пак.` : '';
+    document.getElementById('quick-order-packs').textContent = p.packs_count > 0 ? `+${p.packs_count} пак.` : '';
     
     const imgEl = document.getElementById('quick-order-img');
     if (p.photo_id) {
@@ -1774,7 +1774,7 @@ quickOrderForm?.addEventListener('submit', async (e) => {
         closeModals();
         await loadDashboardData();
         document.querySelector('[data-tab="orders"]').click();
-        alert(`🎉 Заказ #${res.id} успешно создан!`);
+        alert(`Заказ #${res.id} успешно создан!`);
     } catch (err) {
         alert('Ошибка оформления заказа: ' + err.message);
     }

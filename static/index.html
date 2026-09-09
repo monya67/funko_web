@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Funko Stop | Каталог фигурок и Личный кабинет</title>
-    <link rel="stylesheet" href="/static/styles.css?v=1788128900000">
+    <link rel="stylesheet" href="/static/styles.css?v=1788129600000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
@@ -101,7 +101,7 @@
                 На сайте: <strong id="online-count">1</strong> чел.
             </div>
             <div class="sidebar-auth-box mt-auto">
-                <button id="sidebar-login-btn" class="btn primary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">🔑 Войти</button>
+                <button id="sidebar-login-btn" class="btn primary" style="width: 100%; display: flex; align-items: center; justify-content: center;">Войти</button>
                 <button id="logout-btn" class="btn secondary outline hidden" style="width: 100%;">Выйти</button>
             </div>
         </aside>
@@ -109,20 +109,17 @@
         <main class="content">
             <!-- Top Header Bar with Account Login at Top-Right -->
             <header class="app-topbar glass-panel">
-                <div class="topbar-left">
-                    <span class="store-badge">✨ Официальная витрина Funko Stop</span>
-                </div>
+                <div class="topbar-left"></div>
                 <div class="topbar-right">
                     <!-- Guest Widget -->
                     <div id="guest-header-widget" class="header-auth-group">
-                        <button type="button" id="header-login-btn" class="btn primary small" style="display:flex;align-items:center;gap:7px;font-weight:600;">
-                            <span>🔑</span> Войти в аккаунт
+                        <button type="button" id="header-login-btn" class="btn primary small" style="font-weight:600;">
+                            Войти в аккаунт
                         </button>
                     </div>
                     <!-- Logged-in User Widget -->
                     <div id="user-header-widget" class="header-auth-group hidden" style="display:flex;align-items:center;gap:10px;">
                         <div class="user-chip">
-                            <span id="header-user-icon">👤</span>
                             <span id="header-user-label" style="font-weight:600;font-size:0.88rem;">Клиент</span>
                         </div>
                         <button type="button" id="header-logout-btn" class="btn secondary outline small" style="padding:6px 14px;">Выйти</button>
@@ -141,7 +138,6 @@
                 
     <div class="mass-action-bar admin-only hidden" id="orders-mass-edit-panel" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.35); border-radius: 12px; margin-bottom: 14px; flex-wrap: wrap;">
         <div class="mass-action-left" style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 1.3rem; color: var(--primary);">⚡</span>
             <span id="orders-mass-edit-count" style="font-weight: 600; color: #fff; font-size: 0.95rem;">Выбрано заказов: 0 шт.</span>
             <span style="color: var(--gray); font-size: 0.85rem;">(отметьте галочками нужные строки)</span>
         </div>
@@ -150,7 +146,7 @@
                 <option value="">— Выберите новый статус —</option>
                 <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
             </select>
-            <button id="orders-mass-edit-btn" class="btn primary" style="padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">⚡ Применить статус</button>
+            <button id="orders-mass-edit-btn" class="btn primary" style="padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">Применить статус</button>
             <button type="button" onclick="window.clearMassSelection('orders')" class="btn secondary outline" style="padding: 8px 14px; cursor: pointer;">✕ Снять выбор</button>
         </div>
     </div>
@@ -178,7 +174,7 @@
                 <label><input type="checkbox" value="Заказ принят в обработку">Заказ принят в обработку</label><label><input type="checkbox" value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</label><label><input type="checkbox" value="Заказ едет на склад США">Заказ едет на склад США</label><label><input type="checkbox" value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</label><label><input type="checkbox" value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</label><label><input type="checkbox" value="Ожидает выхода в продажу">Ожидает выхода в продажу</label><label><input type="checkbox" value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</label><label><input type="checkbox" value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</label>
             </div>
         </div>
-        <input type="text" id="orders-search" class="filter-input wide" placeholder="🔍 Поиск (ID, товар, клиент)...">
+        <input type="text" id="orders-search" class="filter-input wide" placeholder="Поиск (ID, товар, клиент)...">
     </div>
 
                 <div class="glass-panel table-container">
@@ -243,7 +239,7 @@
 
                 <!-- Catalog Filters Bar -->
                 <div class="filters-bar" style="margin-top: 10px;">
-                    <input type="text" id="catalog-search" class="filter-input wide" placeholder="🔍 Поиск (название, номер, серия)...">
+                    <input type="text" id="catalog-search" class="filter-input wide" placeholder="Поиск (название, номер, серия)...">
                     
                     <select id="catalog-series-filter" class="filter-input narrow">
                         <option value="">Все серии</option>
@@ -325,7 +321,6 @@
                 
     <div class="mass-action-bar admin-only hidden" id="archived-mass-edit-panel" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.35); border-radius: 12px; margin-bottom: 14px; flex-wrap: wrap;">
         <div class="mass-action-left" style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 1.3rem; color: var(--primary);">⚡</span>
             <span id="archived-mass-edit-count" style="font-weight: 600; color: #fff; font-size: 0.95rem;">Выбрано заказов: 0 шт.</span>
             <span style="color: var(--gray); font-size: 0.85rem;">(отметьте галочками нужные строки)</span>
         </div>
@@ -334,7 +329,7 @@
                 <option value="">— Выберите новый статус —</option>
                 <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
             </select>
-            <button id="archived-mass-edit-btn" class="btn primary" style="padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">⚡ Применить статус</button>
+            <button id="archived-mass-edit-btn" class="btn primary" style="padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">Применить статус</button>
             <button type="button" onclick="window.clearMassSelection('archived')" class="btn secondary outline" style="padding: 8px 14px; cursor: pointer;">✕ Снять выбор</button>
         </div>
     </div>
@@ -352,7 +347,7 @@
         <input type="number" id="archived-paid-min" class="filter-input narrow" placeholder="Внесено от &#8381;">
         <input type="number" id="archived-paid-max" class="filter-input narrow" placeholder="Внесено до &#8381;">
         
-        <input type="text" id="archived-search" class="filter-input wide" placeholder="🔍 Поиск (ID, товар, клиент)...">
+        <input type="text" id="archived-search" class="filter-input wide" placeholder="Поиск (ID, товар, клиент)...">
     </div>
 
                 <div class="glass-panel table-container">
@@ -405,7 +400,7 @@
                     <select id="accounting-month-filter" class="filter-input narrow">
                         <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
                     </select>
-                    <input type="text" id="accounting-search" class="filter-input wide" placeholder="🔍 Поиск по ID или товару...">
+                    <input type="text" id="accounting-search" class="filter-input wide" placeholder="Поиск по ID или товару...">
                     <button onclick="window.toggleMarginMode()" class="filter-dropdown-btn" style="min-width:auto;" title="Переключить ₽ / %">
                         Маржа: <span id="margin-mode-indicator">&#8381;</span>
                     </button>
@@ -609,7 +604,7 @@
 
                 <div class="input-group flex-row">
                     <div style="flex: 1;">
-                        <label>🎁 Сколько паков даст</label>
+                        <label>Количество паков</label>
                         <input type="number" id="product-packs" placeholder="0" min="0" value="0">
                     </div>
                     <div style="flex: 1; display: flex; align-items: flex-end; padding-bottom: 8px;">
@@ -624,7 +619,7 @@
                     <label>Фотография товара</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <input type="text" id="product-photo-id" placeholder="Telegram Photo ID или URL" style="flex-grow: 1;">
-                        <label for="product-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 14px; cursor: pointer; white-space: nowrap;">📷 Загрузить фото</label>
+                        <label for="product-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 14px; cursor: pointer; white-space: nowrap;">Загрузить фото</label>
                         <input type="file" id="product-photo-upload" accept="image/*" style="display: none;">
                     </div>
                     <div id="product-photo-preview-wrap" style="margin-top: 10px; display: none;">
@@ -641,7 +636,7 @@
 
         <!-- Quick Order Modal from Catalog -->
         <div id="quick-order-modal" class="glass-panel modal hidden" style="max-width: 480px;">
-            <h3>⚡ Быстрое оформление заказа</h3>
+            <h3>Быстрое оформление заказа</h3>
             <div id="quick-order-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.06);">
                 <img id="quick-order-img" src="" alt="Товар" style="width: 54px; height: 54px; object-fit: cover; border-radius: 6px;">
                 <div>
@@ -664,7 +659,7 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline close-modal">Отмена</button>
-                    <button type="submit" class="btn primary">⚡ Оформить заказ</button>
+                    <button type="submit" class="btn primary">Оформить заказ</button>
                 </div>
             </form>
         </div>
@@ -706,7 +701,7 @@
 
         <!-- Product Inquiry / Order Modal for Clients & Guests -->
         <div id="order-inquiry-modal" class="glass-panel modal hidden" style="max-width: 480px;">
-            <h3>🛒 Заказ фигурки</h3>
+            <h3>Заказ фигурки</h3>
             <p style="color: var(--gray); font-size: 0.85rem; margin-bottom: 16px;">Быстрое оформление через наш официальный Telegram-бот</p>
 
             <div id="inquiry-product-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; margin-bottom: 18px; border: 1px solid rgba(255,255,255,0.08);">
@@ -737,7 +732,7 @@
     <datalist id="clients-datalist"></datalist>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1788128900000"></script>
+    <script src="/static/app.js?v=1788129600000"></script>
 
     <!-- Legal Info Footer (Required by T-Bank Ekvayring) -->
     <footer id="legal-footer" style="
