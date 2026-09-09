@@ -1296,33 +1296,60 @@ async function loadCatalogMeta() {
         // Categories datalist
         const catDatalist = document.getElementById('categories-datalist');
         if (catDatalist) {
-            catDatalist.innerHTML = (meta.categories || []).map(c => `<option value="${c}"></option>`).join('');
+            catDatalist.innerHTML = '';
+            (meta.categories || []).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                catDatalist.appendChild(opt);
+            });
         }
 
         // Series datalist
         const serDatalist = document.getElementById('series-datalist');
         if (serDatalist) {
-            serDatalist.innerHTML = (meta.series || []).map(s => `<option value="${s}"></option>`).join('');
+            serDatalist.innerHTML = '';
+            (meta.series || []).forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                serDatalist.appendChild(opt);
+            });
         }
 
         // Series filter dropdown
         const serSelect = document.getElementById('catalog-series-filter');
         if (serSelect) {
             const currentVal = serSelect.value;
-            serSelect.innerHTML = '<option value="">Все серии</option>' + 
-                (meta.series || []).map(s => `<option value="${s}">${s}</option>`).join('');
+            serSelect.innerHTML = '<option value="">Все серии</option>';
+            (meta.series || []).forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                serSelect.appendChild(opt);
+            });
             if (currentVal) serSelect.value = currentVal;
         }
 
         // Category pills bar
         const pillsContainer = document.getElementById('catalog-category-pills');
         if (pillsContainer) {
-            let pillsHtml = `<button type="button" class="category-pill ${!selectedCatalogCategory ? 'active' : ''}" data-category="" onclick="selectCatalogCategory('')">Все товары</button>`;
+            pillsContainer.innerHTML = '';
+            const allBtn = document.createElement('button');
+            allBtn.type = 'button';
+            allBtn.className = `category-pill ${!selectedCatalogCategory ? 'active' : ''}`;
+            allBtn.setAttribute('data-category', '');
+            allBtn.textContent = 'Все товары';
+            allBtn.onclick = () => selectCatalogCategory('');
+            pillsContainer.appendChild(allBtn);
+
             (meta.categories || []).forEach(cat => {
-                const isActive = (selectedCatalogCategory === cat) ? 'active' : '';
-                pillsHtml += `<button type="button" class="category-pill ${isActive}" data-category="${cat}" onclick="selectCatalogCategory('${cat}')">${cat}</button>`;
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `category-pill ${selectedCatalogCategory === cat ? 'active' : ''}`;
+                btn.setAttribute('data-category', cat);
+                btn.textContent = cat;
+                btn.onclick = () => selectCatalogCategory(cat);
+                pillsContainer.appendChild(btn);
             });
-            pillsContainer.innerHTML = pillsHtml;
         }
     } catch (err) {
         console.error('Error loading catalog meta:', err);
