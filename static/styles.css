@@ -3424,3 +3424,442 @@ th.sorted-col {
     font-weight: 700;
     border-radius: 12px;
 }
+
+/* FAQ Manager Callout Banner */
+.faq-manager-callout {
+    margin-top: 20px;
+    padding: 20px 24px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.025);
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.faq-manager-callout:hover {
+    border-color: rgba(0, 136, 204, 0.35);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.faq-callout-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.faq-callout-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(0, 136, 204, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4dabf7;
+    flex-shrink: 0;
+    border: 1px solid rgba(0, 136, 204, 0.3);
+}
+
+.faq-callout-text h4 {
+    margin: 0;
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.faq-callout-text p {
+    margin: 3px 0 0 0;
+    font-size: 0.86rem;
+    color: var(--gray);
+    line-height: 1.4;
+}
+
+.faq-callout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+/* Hub Tracking Card Dynamic Styles */
+#hub-tracking-card:hover #hub-tracking-action {
+    color: #ff4d4d;
+    transform: translateX(3px);
+}
+
+#hub-tracking-action {
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+/* ==========================================================================
+   Comprehensive Mobile & Touch Optimization (<= 768px and <= 600px)
+   ========================================================================== */
+@media (max-width: 768px) {
+    /* Prevent iOS Safari automatic zoom on form input focus */
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+
+    .home-container {
+        padding: 14px 12px 36px 12px;
+        gap: 28px;
+    }
+
+    .landing-info-triad {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .info-card {
+        padding: 20px 16px;
+    }
+
+    /* Modal responsiveness */
+    .modal {
+        width: calc(100vw - 20px) !important;
+        max-width: 480px;
+        padding: 1.5rem 1.1rem;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        box-sizing: border-box;
+    }
+
+    /* Tables smooth touch scroll and readable column widths */
+    .table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 12px;
+        padding: 0.25rem;
+    }
+
+    .table-container table {
+        min-width: 660px;
+    }
+
+    /* Pagination Mobile */
+    .pagination-bar {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        text-align: center;
+        padding: 10px;
+    }
+
+    .pagination-controls {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .pagination-size {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    /* FAQ Manager Callout Responsive */
+    .faq-manager-callout {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+        padding: 18px 16px;
+        text-align: center;
+    }
+
+    .faq-callout-info {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 10px;
+    }
+
+    .faq-callout-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 600px) {
+    /* Header Nav Elements */
+    .landing-header {
+        padding: 0;
+    }
+
+    .landing-nav-inner {
+        padding: 8px 12px;
+        gap: 6px;
+    }
+
+    .landing-logo {
+        font-size: 1.12rem;
+        letter-spacing: -0.01em;
+    }
+
+    .landing-nav-actions {
+        gap: 5px;
+        align-items: center;
+    }
+
+    .landing-btn-catalog {
+        padding: 6px 9px;
+        font-size: 0.78rem;
+        gap: 4px;
+    }
+
+    .landing-btn-cart {
+        padding: 6px 9px;
+        gap: 5px;
+    }
+
+    .landing-btn-cart span:not(.cart-badge-count) {
+        display: none;
+    }
+
+    .landing-btn-login {
+        padding: 6px 10px;
+        font-size: 0.8rem;
+    }
+
+    .landing-user-chip {
+        gap: 4px;
+    }
+
+    .landing-user-name {
+        max-width: 76px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 4px 7px;
+        font-size: 0.74rem;
+    }
+
+    .landing-btn-orders {
+        padding: 5px 8px;
+        font-size: 0.76rem;
+        white-space: nowrap;
+    }
+
+    /* Hero Section Mobile */
+    .home-hero {
+        padding: 20px 14px;
+        border-radius: 16px;
+    }
+
+    .hero-badge-pill {
+        font-size: 0.72rem;
+        padding: 5px 12px;
+        white-space: normal;
+        text-align: center;
+        line-height: 1.35;
+    }
+
+    .hero-heading {
+        font-size: 1.65rem;
+        line-height: 1.25;
+        margin-top: 10px;
+        margin-bottom: 12px;
+    }
+
+    .hero-description {
+        font-size: 0.88rem;
+        line-height: 1.5;
+        margin-bottom: 18px;
+    }
+
+    .hero-cta-buttons {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .hero-cta-buttons .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 11px 14px;
+        font-size: 0.88rem;
+        box-sizing: border-box;
+    }
+
+    .hero-stats-strip {
+        padding: 14px;
+        gap: 12px;
+        border-radius: 14px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .stat-item {
+        width: 100%;
+    }
+
+    .stat-title {
+        font-size: 0.95rem;
+    }
+
+    .stat-sub {
+        font-size: 0.78rem;
+    }
+
+    /* Hub Cards 1 Column */
+    .home-hub-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .hub-card {
+        padding: 16px 14px;
+        border-radius: 14px;
+        gap: 12px;
+    }
+
+    .hub-card-icon {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+    }
+
+    .hub-card h4 {
+        font-size: 0.98rem;
+    }
+
+    .hub-card p {
+        font-size: 0.82rem;
+    }
+
+    /* Section Titles */
+    .home-section-header {
+        gap: 6px;
+    }
+
+    .section-title {
+        font-size: 1.45rem;
+        line-height: 1.25;
+    }
+
+    .section-subtitle {
+        font-size: 0.85rem;
+    }
+
+    /* Steps Mobile */
+    .home-steps-grid.four-steps {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .step-card {
+        padding: 16px 14px;
+        border-radius: 14px;
+    }
+
+    .step-number {
+        font-size: 1.4rem;
+    }
+
+    /* FAQ accordion button */
+    .faq-question-btn {
+        padding: 13px 14px;
+        font-size: 0.9rem;
+    }
+
+    .faq-answer-panel {
+        padding: 0 14px 14px 14px;
+        font-size: 0.84rem;
+    }
+
+    /* Bottom CTA banner */
+    .home-cta-card {
+        padding: 20px 14px;
+        border-radius: 16px;
+    }
+
+    .cta-title {
+        font-size: 1.4rem;
+        line-height: 1.25;
+    }
+
+    .cta-sub {
+        font-size: 0.84rem;
+        margin-bottom: 16px;
+    }
+
+    .cta-btns {
+        width: 100%;
+    }
+
+    .cta-btns .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Under development card */
+    .under-dev-card {
+        padding: 1.8rem 1rem;
+        border-radius: 16px;
+    }
+
+    .under-dev-title {
+        font-size: 1.55rem;
+    }
+
+    .under-dev-subtitle {
+        font-size: 0.88rem;
+        margin-bottom: 1.6rem;
+    }
+
+    .under-dev-highlights {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-bottom: 1.8rem;
+    }
+
+    .under-dev-feature {
+        padding: 1.1rem;
+    }
+
+    .under-dev-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .under-dev-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Floating cart button */
+    #floating-cart-btn {
+        bottom: 16px;
+        right: 14px;
+        padding: 10px 16px;
+        font-size: 0.86rem;
+    }
+
+    /* Footer Mobile */
+    .landing-footer {
+        padding: 32px 14px 20px 14px;
+    }
+
+    .landing-footer-inner {
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .footer-col-links {
+        flex-direction: column;
+        gap: 20px;
+    }
+}

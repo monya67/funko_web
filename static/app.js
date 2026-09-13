@@ -155,6 +155,11 @@ function updateRoleUI(role) {
     const landingLoginBtn = document.getElementById('landing-login-btn');
     const landingUserChip = document.getElementById('landing-user-chip');
     const landingUserName = document.getElementById('landing-user-name');
+    const hubTrackingTag = document.getElementById('hub-tracking-tag');
+    const hubTrackingTitle = document.getElementById('hub-tracking-title');
+    const hubTrackingDesc = document.getElementById('hub-tracking-desc');
+    const hubTrackingAction = document.getElementById('hub-tracking-action');
+    const hubTrackingIcon = document.getElementById('hub-tracking-icon');
 
     if (role === 'admin') {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
@@ -172,6 +177,12 @@ function updateRoleUI(role) {
             landingUserChip.classList.remove('hidden');
             if (landingUserName) landingUserName.textContent = 'Администратор';
         }
+
+        if (hubTrackingTag) hubTrackingTag.textContent = 'Панель управления';
+        if (hubTrackingTitle) hubTrackingTitle.textContent = 'Управление заказами';
+        if (hubTrackingDesc) hubTrackingDesc.textContent = 'Вы вошли как Администратор. Нажмите для перехода к базе заказов и учету.';
+        if (hubTrackingAction) hubTrackingAction.innerHTML = 'Открыть заказы &rarr;';
+        if (hubTrackingIcon) hubTrackingIcon.className = 'hub-card-icon red';
     } else if (role === 'client') {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.auth-only').forEach(el => el.classList.remove('hidden'));
@@ -189,6 +200,12 @@ function updateRoleUI(role) {
             landingUserChip.classList.remove('hidden');
             if (landingUserName) landingUserName.textContent = window.currentClientFullName || (currentClientId ? `ID #${currentClientId}` : 'Клиент');
         }
+
+        if (hubTrackingTag) hubTrackingTag.textContent = 'Личный кабинет активен';
+        if (hubTrackingTitle) hubTrackingTitle.textContent = currentClientId ? `Мои заказы (ID: #${currentClientId})` : 'Мои заказы';
+        if (hubTrackingDesc) hubTrackingDesc.textContent = 'Вы уже вошли в аккаунт. Нажмите, чтобы открыть статус посылок и историю ваших заказов.';
+        if (hubTrackingAction) hubTrackingAction.innerHTML = 'Перейти в мои заказы &rarr;';
+        if (hubTrackingIcon) hubTrackingIcon.className = 'hub-card-icon green';
     } else {
         // Guest mode
         currentRole = 'guest';
@@ -200,6 +217,12 @@ function updateRoleUI(role) {
 
         if (landingLoginBtn) landingLoginBtn.classList.remove('hidden');
         if (landingUserChip) landingUserChip.classList.add('hidden');
+
+        if (hubTrackingTag) hubTrackingTag.textContent = 'Отслеживание заказов';
+        if (hubTrackingTitle) hubTrackingTitle.textContent = 'funkostop.org';
+        if (hubTrackingDesc) hubTrackingDesc.textContent = 'Личный кабинет покупателя: путь со склада США до Москвы и статус готовности к выдаче.';
+        if (hubTrackingAction) hubTrackingAction.innerHTML = 'Войти в кабинет &rarr;';
+        if (hubTrackingIcon) hubTrackingIcon.className = 'hub-card-icon amber';
     }
     window.updateCatalogDevMode();
 }
@@ -269,6 +292,14 @@ window.openLoginModal = function() {
     if (loginError) loginError.textContent = '';
     if (loginForm) loginForm.reset();
     openModal(document.getElementById('login-modal'));
+};
+
+window.goToOrdersOrLogin = function() {
+    if (token) {
+        window.switchTab('orders');
+    } else {
+        window.openLoginModal();
+    }
 };
 
 if (sidebarLoginBtn) sidebarLoginBtn.addEventListener('click', window.openLoginModal);
@@ -2103,8 +2134,8 @@ window.openOrderInquiryModal = function(id) {
 
     if (tgBtn) {
         const clientInfo = currentClientId ? ` (Клиент #${currentClientId})` : '';
-        const msgText = `Здравствуйте! Хочу заказать фигурку: ${p.name}${p.figure_number ? ` (#${p.figure_number})` : ''}, цена: ${finalPrice} ₽${clientInfo}`;
-        tgBtn.href = `https://t.me/funkostop_bot?text=${encodeURIComponent(msgText)}`;
+        const msgText = `Здравствуйте! Хочу уточнить по фигурке: ${p.name}${p.figure_number ? ` (#${p.figure_number})` : ''}, цена: ${finalPrice} ₽${clientInfo}`;
+        tgBtn.href = `https://t.me/Funko_Stop?text=${encodeURIComponent(msgText)}`;
     }
 
     openModal(modal);

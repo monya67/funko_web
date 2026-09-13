@@ -55,7 +55,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1788240000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1789312000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -335,14 +335,15 @@
                             </div>
                         </a>
 
-                        <div class="hub-card glass-panel" onclick="window.openLoginModal()" style="cursor: pointer;">
-                            <div class="hub-card-icon amber">
+                        <div id="hub-tracking-card" class="hub-card glass-panel" onclick="window.goToOrdersOrLogin()" style="cursor: pointer;">
+                            <div id="hub-tracking-icon" class="hub-card-icon amber">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                             </div>
                             <div class="hub-card-content">
-                                <span class="hub-card-tag">Отслеживание заказов</span>
-                                <h4>funkostop.org</h4>
-                                <p>Личный кабинет покупателя: путь со склада США до Москвы и статус готовности к выдаче.</p>
+                                <span id="hub-tracking-tag" class="hub-card-tag">Отслеживание заказов</span>
+                                <h4 id="hub-tracking-title">funkostop.org</h4>
+                                <p id="hub-tracking-desc">Личный кабинет покупателя: путь со склада США до Москвы и статус готовности к выдаче.</p>
+                                <span id="hub-tracking-action" class="hub-card-action-text" style="display:inline-flex; align-items:center; gap:4px; font-size:0.8rem; font-weight:700; color:var(--primary); margin-top:4px;">Войти в кабинет &rarr;</span>
                             </div>
                         </div>
 
@@ -726,6 +727,23 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- FAQ Manager Callout -->
+                        <div class="faq-manager-callout glass-panel">
+                            <div class="faq-callout-info">
+                                <div class="faq-callout-avatar">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                                </div>
+                                <div class="faq-callout-text">
+                                    <h4>Остались вопросы по заказу или фигурке?</h4>
+                                    <p>Наш менеджер на связи каждый день: поможет выбрать, проверит наличие и ответит на любые вопросы.</p>
+                                </div>
+                            </div>
+                            <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" class="btn primary faq-callout-btn">
+                                <span>Написать менеджеру (@Funko_Stop)</span>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </a>
+                        </div>
                     </section>
 
                     <!-- Bottom CTA Banner -->
@@ -767,6 +785,7 @@
                                 </div>
                                 <div class="footer-link-group">
                                     <h5>Разделы</h5>
+                                    <a href="javascript:void(0)" onclick="window.goToOrdersOrLogin()">Отслеживание заказов</a>
                                     <a href="#preorder-section">Условия предзаказа</a>
                                     <a href="#stock-section">Наличие на Авито</a>
                                     <a href="#delivery-section">Оплата и доставка</a>
@@ -1835,14 +1854,14 @@
             </form>
             <div style="margin-top: 18px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.82rem; color: var(--gray);">
                 <span>Вопросы по заказам? </span>
-                <a href="https://t.me/funkostop_bot" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Telegram @funkostop_bot</a>
+                <a href="https://t.me/Funko_Stop" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Менеджер @Funko_Stop</a>
             </div>
         </div>
 
         <!-- Product Inquiry / Order Modal for Clients & Guests -->
         <div id="order-inquiry-modal" class="glass-panel modal hidden" style="max-width: 480px;">
-            <h3>Заказ фигурки</h3>
-            <p style="color: var(--gray); font-size: 0.85rem; margin-bottom: 16px;">Быстрое оформление через наш официальный Telegram-бот</p>
+            <h3>Связаться с менеджером</h3>
+            <p style="color: var(--gray); font-size: 0.85rem; margin-bottom: 16px;">Напишите нашему менеджеру в Telegram для консультации или быстрого оформления</p>
 
             <div id="inquiry-product-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; margin-bottom: 18px; border: 1px solid rgba(255,255,255,0.08);">
                 <img id="inquiry-img" src="" alt="Товар" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
@@ -1857,9 +1876,9 @@
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <a id="inquiry-tg-btn" href="#" target="_blank" class="btn primary" style="display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; padding: 12px; font-weight: 600; font-size: 0.95rem;">
+                <a id="inquiry-tg-btn" href="https://t.me/Funko_Stop" target="_blank" class="btn primary" style="display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; padding: 12px; font-weight: 600; font-size: 0.95rem;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                    Написать в Telegram (@funkostop_bot)
+                    Написать менеджеру (@Funko_Stop)
                 </a>
                 <button type="button" class="btn secondary outline close-modal">Закрыть</button>
             </div>
@@ -1907,6 +1926,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1788240000000"></script>
+    <script src="/static/app.js?v=1789312000000"></script>
 </body>
 </html>
