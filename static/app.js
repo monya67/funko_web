@@ -324,8 +324,6 @@ window.switchTab = function(tabName) {
     });
     tabContents.forEach(tab => {
         if (tab.id === `${tabName}-tab`) {
-            tab.classList.remove('active');
-            void tab.offsetWidth; // Force reflow to replay smooth page transition animation
             tab.classList.add('active');
         } else {
             tab.classList.remove('active');
@@ -338,7 +336,7 @@ window.switchTab = function(tabName) {
             loadCatalogMeta();
         }
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
 };
 
 navItems.forEach(item => {

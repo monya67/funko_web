@@ -1646,14 +1646,14 @@ th.sorted-col {
     display: flex;
     flex-direction: column;
     position: relative;
-    backdrop-filter: blur(10px);
-    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    transform: translateZ(0);
 }
 
 .product-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
     border-color: rgba(229, 9, 20, 0.45);
-    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.7), 0 0 20px rgba(229, 9, 20, 0.2);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(229, 9, 20, 0.15);
 }
 
 /* Image Box */
@@ -2948,23 +2948,22 @@ th.sorted-col {
     display: none !important;
 }
 
-/* Page Transition Animations */
+/* Page Transition Animations - Ultra-Smooth 60/120 FPS */
 @keyframes pageTransitionIn {
     0% {
         opacity: 0;
-        transform: translateY(14px) scale(0.992);
-        filter: blur(5px);
+        transform: translateY(6px);
     }
     100% {
         opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0px);
+        transform: translateY(0);
     }
 }
 
 .tab-content.active {
-    animation: pageTransitionIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
-    will-change: transform, opacity, filter;
+    animation: pageTransitionIn 0.18s ease-out forwards !important;
+    will-change: opacity, transform;
+    transform: translateZ(0);
 }
 
 /* Cart Badges */
