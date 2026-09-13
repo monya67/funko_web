@@ -12,6 +12,7 @@ from fastapi import UploadFile, File, Form
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import io
+import random
 from PIL import Image
 
 load_dotenv()
@@ -79,6 +80,15 @@ async def startup():
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_date TEXT")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cost_price INTEGER DEFAULT 0")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_cost INTEGER DEFAULT 0")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_name TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_tg TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_type TEXT DEFAULT '50%'")
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS full_name TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS tg_username TEXT DEFAULT ''")
 
         # Catalog tables
         await db.execute("""
@@ -106,11 +116,11 @@ async def startup():
                 packs_count INTEGER DEFAULT 0,
                 photo_id TEXT DEFAULT '',
                 in_stock BOOLEAN DEFAULT TRUE,
+                badge TEXT DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        for cat in ["Monster High", "Funko", "Youtooz"]:
-            await db.execute("INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", cat)
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS badge TEXT DEFAULT ''")
 
 @app.on_event("shutdown")
 async def shutdown():
@@ -160,6 +170,19 @@ def require_admin(user: dict = Depends(get_current_user)):
 # --- Models ---
 class ClientCreate(BaseModel):
     password: str
+    first_name: str = ""
+    last_name: str = ""
+    full_name: str = ""
+    phone: str = ""
+    tg_username: str = ""
+
+class ClientUpdate(BaseModel):
+    password: str = ""
+    first_name: str = ""
+    last_name: str = ""
+    full_name: str = ""
+    phone: str = ""
+    tg_username: str = ""
 
 class OrderCreate(BaseModel):
     client_id: int
@@ -192,6 +215,7 @@ class ProductCreate(BaseModel):
     packs_count: int = 0
     photo_id: str = ""
     in_stock: bool = True
+    badge: str = ""
 
 class ProductUpdate(BaseModel):
     name: str
@@ -204,10 +228,31 @@ class ProductUpdate(BaseModel):
     packs_count: int = 0
     photo_id: str = ""
     in_stock: bool = True
+    badge: str = ""
 
 class QuickOrderCreate(BaseModel):
     client_id: int
     paid_amount: int = 0
+
+class CartItem(BaseModel):
+    id: int
+    name: str
+    figure_number: str = ""
+    price: int = 0
+    final_price: int = 0
+    photo_id: str = ""
+    qty: int = 1
+
+class CheckoutRequest(BaseModel):
+    items: list[CartItem]
+    customer_name: str = ""
+    first_name: str = ""
+    last_name: str = ""
+    phone: str
+    telegram: str
+    payment_type: str = "50%"
+    delivery_method: str = ""
+    comment: str = ""
 
 # --- API Routes ---
 @app.post("/api/ping")
@@ -246,7 +291,15 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
     online = get_online_count()
     async with pool.acquire() as db:
         if user["role"] == "admin":
-            clients = await db.fetch("SELECT id, password, user_tg_id FROM clients ORDER BY id DESC")
+            clients = await db.fetch("""
+                SELECT id, password, user_tg_id, 
+                       COALESCE(full_name, '') as full_name,
+                       COALESCE(first_name, '') as first_name,
+                       COALESCE(last_name, '') as last_name,
+                       COALESCE(phone, '') as phone,
+                       COALESCE(tg_username, '') as tg_username
+                FROM clients ORDER BY id DESC
+            """)
             orders = await db.fetch(
                 "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = FALSE ORDER BY id DESC"
             )
@@ -262,6 +315,7 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             }
         else:
             client_id = user["id"]
+            client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name FROM clients WHERE id = $1", client_id)
             orders = await db.fetch(
                 "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = FALSE ORDER BY id DESC",
                 client_id
@@ -273,6 +327,7 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             return {
                 "role": "client",
                 "client_id": client_id,
+                "full_name": client_info["full_name"] if client_info else "",
                 "online_count": online,
                 "orders": [dict(o) for o in orders],
                 "archived": [dict(o) for o in archived]
@@ -280,9 +335,65 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
 
 @app.post("/api/clients")
 async def create_client(client: ClientCreate, admin: dict = Depends(require_admin)):
+    pwd = (client.password or "").strip()
+    first_name = (client.first_name or "").strip()
+    last_name = (client.last_name or "").strip()
+    full_name = (client.full_name or "").strip()
+    if not full_name and (first_name or last_name):
+        full_name = f"{first_name} {last_name}".strip()
+    elif full_name and not (first_name or last_name):
+        parts = full_name.split()
+        first_name = parts[0] if parts else ""
+        last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+    phone = (client.phone or "").strip()
+    tg_username = (client.tg_username or "").strip()
+
+    if not pwd:
+        raise HTTPException(status_code=400, detail="Пароль обязателен")
     async with pool.acquire() as db:
-        new_id = await db.fetchval("INSERT INTO clients (password) VALUES ($1) RETURNING id", client.password)
+        new_id = await db.fetchval(
+            "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+            pwd, full_name, first_name, last_name, phone, tg_username
+        )
         return {"success": True, "id": new_id}
+
+@app.put("/api/clients/{client_id}")
+async def update_client(client_id: int, client: ClientUpdate, admin: dict = Depends(require_admin)):
+    first_name = (client.first_name or "").strip()
+    last_name = (client.last_name or "").strip()
+    full_name = (client.full_name or "").strip()
+    if not full_name and (first_name or last_name):
+        full_name = f"{first_name} {last_name}".strip()
+    elif full_name and not (first_name or last_name):
+        parts = full_name.split()
+        first_name = parts[0] if parts else ""
+        last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+    phone = (client.phone or "").strip()
+    tg_username = (client.tg_username or "").strip()
+    pwd = (client.password or "").strip()
+
+    async with pool.acquire() as db:
+        if pwd:
+            res = await db.execute(
+                "UPDATE clients SET password = $1, full_name = $2, first_name = $3, last_name = $4, phone = $5, tg_username = $6 WHERE id = $7",
+                pwd, full_name, first_name, last_name, phone, tg_username, client_id
+            )
+        else:
+            res = await db.execute(
+                "UPDATE clients SET full_name = $1, first_name = $2, last_name = $3, phone = $4, tg_username = $5 WHERE id = $6",
+                full_name, first_name, last_name, phone, tg_username, client_id
+            )
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Клиент не найден")
+        return {"success": True}
+
+@app.delete("/api/clients/{client_id}")
+async def delete_client(client_id: int, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        res = await db.execute("DELETE FROM clients WHERE id = $1", client_id)
+        if res == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Клиент не найден")
+        return {"success": True}
 
 @app.post("/api/orders")
 async def create_order(order: OrderCreate, admin: dict = Depends(require_admin)):
@@ -404,7 +515,7 @@ async def get_catalog_meta():
 async def get_catalog():
     async with pool.acquire() as db:
         products = await db.fetch(
-            "SELECT id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, created_at FROM products ORDER BY id DESC"
+            "SELECT id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge, created_at FROM products ORDER BY id DESC"
         )
         return {"products": [dict(p) for p in products]}
 
@@ -412,6 +523,7 @@ async def get_catalog():
 async def create_product(product: ProductCreate, admin: dict = Depends(require_admin)):
     cat = product.category.strip()
     ser = product.series.strip()
+    badge = (product.badge or "").strip().upper()
     
     final_price = product.final_price
     discount = product.discount_percent
@@ -428,10 +540,10 @@ async def create_product(product: ProductCreate, admin: dict = Depends(require_a
             
         new_id = await db.fetchval(
             """INSERT INTO products 
-               (name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id""",
+               (name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id""",
             product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
-            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock
+            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge
         )
         return {"success": True, "id": new_id}
 
@@ -439,6 +551,7 @@ async def create_product(product: ProductCreate, admin: dict = Depends(require_a
 async def update_product(product_id: int, product: ProductUpdate, admin: dict = Depends(require_admin)):
     cat = product.category.strip()
     ser = product.series.strip()
+    badge = (product.badge or "").strip().upper()
 
     final_price = product.final_price
     discount = product.discount_percent
@@ -456,10 +569,10 @@ async def update_product(product_id: int, product: ProductUpdate, admin: dict = 
         res = await db.execute(
             """UPDATE products 
                SET name = $1, figure_number = $2, price = $3, discount_percent = $4, final_price = $5,
-                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10 
-               WHERE id = $11""",
+                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10, badge = $11 
+               WHERE id = $12""",
             product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
-            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, product_id
+            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product_id
         )
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Product not found")
@@ -471,6 +584,36 @@ async def delete_product(product_id: int, admin: dict = Depends(require_admin)):
         res = await db.execute("DELETE FROM products WHERE id = $1", product_id)
         if res == "DELETE 0":
             raise HTTPException(status_code=404, detail="Product not found")
+        return {"success": True}
+
+@app.post("/api/catalog/categories")
+async def add_category(data: dict, admin: dict = Depends(require_admin)):
+    name = (data.get("name") or "").strip()
+    if not name: raise HTTPException(status_code=400, detail="Name required")
+    async with pool.acquire() as db:
+        await db.execute("INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", name)
+        return {"success": True}
+
+@app.delete("/api/catalog/categories/{cat_name}")
+async def delete_category(cat_name: str, admin: dict = Depends(require_admin)):
+    clean_name = cat_name.strip()
+    async with pool.acquire() as db:
+        await db.execute("DELETE FROM categories WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))", clean_name)
+        return {"success": True}
+
+@app.post("/api/catalog/series")
+async def add_series(data: dict, admin: dict = Depends(require_admin)):
+    name = (data.get("name") or "").strip()
+    if not name: raise HTTPException(status_code=400, detail="Name required")
+    async with pool.acquire() as db:
+        await db.execute("INSERT INTO series (name) VALUES ($1) ON CONFLICT (name) DO NOTHING", name)
+        return {"success": True}
+
+@app.delete("/api/catalog/series/{ser_name}")
+async def delete_series(ser_name: str, admin: dict = Depends(require_admin)):
+    clean_name = ser_name.strip()
+    async with pool.acquire() as db:
+        await db.execute("DELETE FROM series WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))", clean_name)
         return {"success": True}
 
 @app.post("/api/catalog/{product_id}/create_order")
@@ -517,10 +660,141 @@ async def create_order_from_product(product_id: int, order_data: QuickOrderCreat
 
         return {"success": True, "id": new_order_id}
 
+@app.post("/api/checkout")
+async def process_checkout(req: Request, checkout: CheckoutRequest):
+    if not checkout.items:
+        raise HTTPException(status_code=400, detail="Корзина пуста")
+    first_name = (checkout.first_name or "").strip()
+    last_name = (checkout.last_name or "").strip()
+    if first_name or last_name:
+        name = f"{first_name} {last_name}".strip()
+    else:
+        name = (checkout.customer_name or "").strip()
+        parts = name.split()
+        first_name = parts[0] if parts else ""
+        last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
+
+    phone = (checkout.phone or "").strip()
+    telegram = (checkout.telegram or "").strip()
+
+    if (not first_name and not name) or not phone or not telegram:
+        raise HTTPException(status_code=400, detail="Имя, телефон и Telegram обязательны для оформления")
+
+    # Calculate total price & item list
+    total_price = 0
+    item_lines = []
+    first_photo = ""
+    for item in checkout.items:
+        p_price = item.final_price if item.final_price > 0 else item.price
+        subtotal = p_price * max(1, item.qty)
+        total_price += subtotal
+        qty_str = f" x{item.qty}" if item.qty > 1 else ""
+        num_str = f" #{item.figure_number}" if item.figure_number else ""
+        item_lines.append(f"{item.name}{num_str}{qty_str} — {subtotal} ₽")
+        if not first_photo and item.photo_id:
+            first_photo = item.photo_id
+
+    items_text = "\n".join(item_lines)
+    paid_amount = round(total_price * 0.5) if checkout.payment_type == "50%" else total_price
+    order_date = datetime.now().strftime("%d.%m.%Y")
+
+    # Check if user is logged in
+    auth_header = req.headers.get("Authorization")
+    client_id = None
+    generated_pwd = None
+    new_token = None
+
+    if auth_header and auth_header.startswith("Bearer "):
+        raw_token = auth_header.split(" ")[1]
+        try:
+            payload = jwt.decode(raw_token, SECRET_KEY, algorithms=[ALGORITHM])
+            if payload.get("role") == "client" and payload.get("sub"):
+                client_id = int(payload["sub"])
+        except Exception:
+            client_id = None
+
+    async with pool.acquire() as db:
+        if not client_id:
+            existing_client = await db.fetchrow(
+                "SELECT id, password FROM clients WHERE (phone != '' AND phone = $1) OR (full_name != '' AND full_name = $2) LIMIT 1",
+                phone, name
+            )
+            if existing_client:
+                client_id = existing_client["id"]
+                generated_pwd = existing_client["password"]
+            else:
+                generated_pwd = str(random.randint(100000, 999999))
+                client_id = await db.fetchval(
+                    "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+                    generated_pwd, name, first_name, last_name, phone, telegram
+                )
+            new_token = create_access_token(data={"sub": str(client_id), "role": "client"})
+        else:
+            await db.execute(
+                """UPDATE clients 
+                   SET full_name = COALESCE(NULLIF(full_name, ''), $1),
+                       first_name = COALESCE(NULLIF(first_name, ''), $2),
+                       last_name = COALESCE(NULLIF(last_name, ''), $3),
+                       phone = COALESCE(NULLIF(phone, ''), $4),
+                       tg_username = COALESCE(NULLIF(tg_username, ''), $5)
+                   WHERE id = $6""",
+                name, first_name, last_name, phone, telegram, client_id
+            )
+
+        status_text = "Заказ принят в обработку"
+        order_id = await db.fetchval(
+            """INSERT INTO orders 
+               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type) 
+               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11) RETURNING id""",
+            client_id, items_text, total_price, paid_amount, status_text, first_photo, order_date,
+            name, phone, telegram, checkout.payment_type
+        )
+
+        # Notify admin in Telegram
+        if BOT_TOKEN and ADMIN_IDS:
+            try:
+                admin_msg = (
+                    f"🔥 **Новый заказ #{order_id} на сайте funkostop.org!**\n\n"
+                    f"👤 Клиент #{client_id}: {name}\n"
+                    f"📞 Телефон: {phone}\n"
+                    f"✈️ Telegram: {telegram}\n"
+                    f"📦 Доставка: {checkout.delivery_method or 'Не указан'}\n\n"
+                    f"🛒 **Позиции:**\n{items_text}\n\n"
+                    f"💰 Сумма: {total_price} ₽\n"
+                    f"💳 Оплачено: {paid_amount} ₽ ({checkout.payment_type})\n"
+                )
+                if checkout.comment:
+                    admin_msg += f"💬 Комментарий: {checkout.comment}\n"
+                async with httpx.AsyncClient() as http_client:
+                    await http_client.post(
+                        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                        json={"chat_id": ADMIN_IDS[0], "text": admin_msg, "parse_mode": "Markdown"}
+                    )
+            except Exception as e:
+                print(f"Error sending TG admin order alert: {e}")
+
+        return {
+            "success": True,
+            "order_id": order_id,
+            "client_id": client_id,
+            "password": generated_pwd,
+            "access_token": new_token,
+            "total_price": total_price,
+            "paid_amount": paid_amount,
+            "payment_type": checkout.payment_type
+        }
+
 def convert_to_webp(content):
+    if len(content) > 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        return content
     img = Image.open(io.BytesIO(content))
     out_io = io.BytesIO()
-    img.save(out_io, format="WEBP", quality=80)
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        if img.mode != "RGBA":
+            img = img.convert("RGBA")
+        img.save(out_io, format="WEBP", quality=92)
+    else:
+        img.save(out_io, format="WEBP", quality=85)
     return out_io.getvalue()
 
 # --- Telegram Photo Proxy ---
@@ -563,33 +837,91 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
         
     content = await file.read()
     
+    # Check for transparency (PNG, WebP with alpha channel)
+    has_alpha = False
+    filename = "image.webp"
+    mime_type = "image/webp"
+
     try:
         img = Image.open(io.BytesIO(content))
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        out_io = io.BytesIO()
-        img.save(out_io, format="JPEG", quality=85)
-        content = out_io.getvalue()
-    except:
-        pass
+        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+            has_alpha = True
+
+        if has_alpha:
+            if img.mode != "RGBA":
+                img = img.convert("RGBA")
+            out_io = io.BytesIO()
+            img.save(out_io, format="WEBP", quality=92)
+            content = out_io.getvalue()
+            filename = "image.webp"
+            mime_type = "image/webp"
+        else:
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+            out_io = io.BytesIO()
+            img.save(out_io, format="WEBP", quality=85)
+            content = out_io.getvalue()
+            filename = "image.webp"
+            mime_type = "image/webp"
+    except Exception as e:
+        print(f"Image processing error: {e}")
+        filename = "image.jpg"
+        mime_type = "image/jpeg"
         
     async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
-        files = {"photo": ("image.jpg", content, "image/jpeg")}
-        data = {"chat_id": ADMIN_IDS[0], "caption": f"Uploaded from web panel by {admin['role']}"}
-        res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=data, files=files)
-        res_data = res.json()
+        # If image has transparency, use sendDocument so Telegram keeps alpha channel intact (sendPhoto forces JPEG)
+        if has_alpha:
+            files = {"document": (filename, content, mime_type)}
+            data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
+            res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
+            res_data = res.json()
+            if not res_data.get("ok"):
+                raise HTTPException(status_code=500, detail="Failed to upload document to Telegram")
+            photo_id = res_data["result"]["document"]["file_id"]
+        else:
+            files = {"photo": (filename, content, mime_type)}
+            data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
+            res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=data, files=files)
+            res_data = res.json()
+            if not res_data.get("ok"):
+                # Fallback to sendDocument
+                files = {"document": (filename, content, mime_type)}
+                res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
+                res_data = res.json()
+                if not res_data.get("ok"):
+                    raise HTTPException(status_code=500, detail="Failed to upload to Telegram")
+                photo_id = res_data["result"]["document"]["file_id"]
+            else:
+                photos = res_data["result"]["photo"]
+                largest_photo = max(photos, key=lambda x: x["file_size"])
+                photo_id = largest_photo["file_id"]
+
+        # Silently delete the message immediately from the admin's Telegram chat so no bot spam remains
+        try:
+            msg_id = res_data["result"]["message_id"]
+            await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": ADMIN_IDS[0], "message_id": msg_id})
+        except Exception:
+            pass
         
-        if not res_data.get("ok"):
-            raise HTTPException(status_code=500, detail="Failed to upload to Telegram")
-            
-        photos = res_data["result"]["photo"]
-        largest_photo = max(photos, key=lambda x: x["file_size"])
-        
-        return {"photo_id": largest_photo["file_id"]}
+        return {"photo_id": photo_id}
+
 
 # --- Static Files ---
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+@app.get("/favicon.ico")
+async def get_favicon_ico():
+    return FileResponse("static/favicon.ico")
+
+@app.get("/favicon.png")
+async def get_favicon_png():
+    return FileResponse("static/favicon.png")
+
+@app.get("/apple-touch-icon.png")
+async def get_apple_touch_icon():
+    return FileResponse("static/apple-touch-icon.png")
+
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
+

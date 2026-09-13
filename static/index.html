@@ -3,18 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Funko Stop | Каталог фигурок и Личный кабинет</title>
-    <link rel="stylesheet" href="/static/styles.css?v=1788129600000">
+    <title>Funko Stop — Каталог оригинальных фигурок Funko POP и коллекционных товаров</title>
+    
+    <!-- Favicon & Apple Touch Icon (compatible with both http:// and file:///) -->
+    <link rel="icon" type="image/png" sizes="48x48" href="favicon.png?v=1788155000000">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=1788155000000">
+    <link rel="icon" type="image/x-icon" href="favicon.ico?v=1788155000000">
+    <link rel="shortcut icon" href="favicon.ico?v=1788155000000">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=1788155000000">
+
+    <!-- SEO Meta Tags for Search Engines -->
+    <meta name="description" content="Оригинальные фигурки Funko POP, YouTooz, Monster High в наличии и под заказ. Доставка по всей России, предзаказы эксклюзивов и программа лояльности.">
+    <meta name="keywords" content="Funko Stop, Funko POP, фигурки Funko, фанко поп купить, YouTooz, Monster High, оригинальные фигурки, коллекционные фигурки, Chase фигурки, GITD">
+    <meta name="author" content="Funko Stop">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph (OG) for Google, Telegram, VK, WhatsApp -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Funko Stop">
+    <meta property="og:url" content="https://funkostop.org/">
+    <meta property="og:title" content="Funko Stop — Каталог оригинальных фигурок Funko POP">
+    <meta property="og:description" content="Оригинальные фигурки Funko POP, YouTooz, Monster High в наличии и под заказ. Гарантия подлинности и доставка по всей России!">
+    <meta property="og:image" content="https://funkostop.org/static/logo.jpg">
+    <meta property="og:image:width" content="640">
+    <meta property="og:image:height" content="640">
+    <meta property="og:locale" content="ru_RU">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Funko Stop — Каталог оригинальных фигурок">
+    <meta name="twitter:description" content="Оригинальные фигурки Funko POP, YouTooz, Monster High в наличии и под заказ. Гарантия подлинности!">
+    <meta name="twitter:image" content="https://funkostop.org/static/logo.jpg">
+
+    <!-- Schema.org Microdata for Rich Google Search Snippet -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "OnlineStore",
+      "name": "Funko Stop",
+      "image": "https://funkostop.org/static/logo.jpg",
+      "description": "Интернет-магазин оригинальных фигурок Funko POP, YouTooz, Monster High и коллекционных товаров.",
+      "url": "https://funkostop.org",
+      "currenciesAccepted": "RUB",
+      "priceRange": "₽₽",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "ул. Суздальская, 14к1",
+        "addressLocality": "Москва",
+        "addressCountry": "RU"
+      }
+    }
+    </script>
+
+    <link rel="stylesheet" href="/static/styles.css?v=1788230000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
-        /* Strict Tab Switching */
+        /* Strict Tab Switching with Smooth Page Transitions */
+        @keyframes pageTransitionIn {
+            0% {
+                opacity: 0;
+                transform: translateY(12px) scale(0.995);
+                filter: blur(4px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                filter: blur(0px);
+            }
+        }
         .tab-content {
             display: none !important;
         }
         .tab-content.active {
             display: block !important;
+            animation: pageTransitionIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            will-change: transform, opacity, filter;
         }
 
         .filter-dropdown { position:relative; display:inline-block; }
@@ -85,11 +150,12 @@
 <body>
     <div class="background"></div>
 
-    <div id="dashboard-view" class="dashboard-layout fade-in">
+    <div id="dashboard-view" class="dashboard-layout home-mode fade-in">
         <aside class="sidebar glass-panel">
             <div class="logo small"><h1>FUNKO <span>STOP</span></h1></div>
             <nav>
-                <a href="#" class="nav-item active" data-tab="catalog">Каталог</a>
+                <a href="#" class="nav-item active" data-tab="home">Главная</a>
+                <a href="#" class="nav-item" data-tab="catalog">Каталог</a>
                 <a href="#" class="nav-item auth-only hidden" data-tab="orders">Заказы</a>
                 <a href="#" class="nav-item auth-only hidden" data-tab="archived">Архив</a>
                 <a href="#" class="nav-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
@@ -101,31 +167,626 @@
                 На сайте: <strong id="online-count">1</strong> чел.
             </div>
             <div class="sidebar-auth-box mt-auto">
+                <div id="sidebar-user-chip" class="user-chip hidden" style="margin-bottom: 10px; width: 100%; justify-content: center; text-align: center;">
+                    <span id="sidebar-user-label" style="font-weight:600;font-size:0.85rem;"></span>
+                </div>
                 <button id="sidebar-login-btn" class="btn primary" style="width: 100%; display: flex; align-items: center; justify-content: center;">Войти</button>
                 <button id="logout-btn" class="btn secondary outline hidden" style="width: 100%;">Выйти</button>
             </div>
         </aside>
 
         <main class="content">
-            <!-- Top Header Bar with Account Login at Top-Right -->
-            <header class="app-topbar glass-panel">
-                <div class="topbar-left"></div>
-                <div class="topbar-right">
-                    <!-- Guest Widget -->
-                    <div id="guest-header-widget" class="header-auth-group">
-                        <button type="button" id="header-login-btn" class="btn primary small" style="font-weight:600;">
-                            Войти в аккаунт
-                        </button>
-                    </div>
-                    <!-- Logged-in User Widget -->
-                    <div id="user-header-widget" class="header-auth-group hidden" style="display:flex;align-items:center;gap:10px;">
-                        <div class="user-chip">
-                            <span id="header-user-label" style="font-weight:600;font-size:0.88rem;">Клиент</span>
+
+            <!-- HOME / TITLE TAB (Full screen immersive landing) -->
+            <section id="home-tab" class="tab-content active">
+                <!-- Sticky Landing Navbar -->
+                <header class="landing-navbar">
+                    <div class="landing-nav-inner">
+                        <div class="landing-logo" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+                            <span class="landing-logo-text">FUNKO <span>STOP</span></span>
                         </div>
-                        <button type="button" id="header-logout-btn" class="btn secondary outline small" style="padding:6px 14px;">Выйти</button>
+                        <nav class="landing-nav-links">
+                            <a href="#preorder-section" class="landing-nav-link">Предзаказ</a>
+                            <a href="#stock-section" class="landing-nav-link">Наличие (Авито)</a>
+                            <a href="#delivery-section" class="landing-nav-link">Оплата и доставка</a>
+                            <a href="#condition-section" class="landing-nav-link">Состояние коробок</a>
+                            <a href="#support-section" class="landing-nav-link">Гарантии</a>
+                            <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="landing-nav-link">Отзывы</a>
+                            <a href="#faq-section" class="landing-nav-link">FAQ</a>
+                        </nav>
+                        <div class="landing-nav-actions">
+                            <button type="button" class="btn primary landing-btn-catalog" onclick="window.switchTab('catalog')">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                <span>Каталог</span>
+                            </button>
+                            <button type="button" class="btn secondary outline landing-btn-cart" onclick="window.openCartModal()" style="display:inline-flex; align-items:center; gap:8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                                <span>Корзина</span>
+                                <span id="landing-cart-badge" class="cart-badge-count">0</span>
+                            </button>
+                            <button type="button" id="landing-login-btn" class="btn secondary outline landing-btn-login" onclick="window.openLoginModal()">
+                                <span>Войти</span>
+                            </button>
+                            <div id="landing-user-chip" class="landing-user-chip hidden">
+                                <span id="landing-user-name" class="landing-user-name"></span>
+                                <button type="button" class="btn secondary outline landing-btn-orders" onclick="window.switchTab('orders')">Мои заказы</button>
+                            </div>
+                        </div>
                     </div>
+                </header>
+
+                <div class="home-container">
+                    <!-- Hero Section -->
+                    <div class="home-hero glass-panel">
+                        <div class="hero-content">
+                            <div class="hero-brand-badge">
+                                <span class="hero-badge-pill">
+                                    <span class="hero-status-pulse"></span>
+                                    Официальный сервис предзаказов и доставки фигурок
+                                </span>
+                            </div>
+
+                            <h1 class="hero-heading">
+                                Редкие фигурки и эксклюзивы <span class="hero-accent-text">Funko POP</span>
+                            </h1>
+
+                            <p class="hero-description">
+                                Собрали здесь всё, что стоит знать перед заказом: от 50% предоплаты и фиксации цены до бесплатного 30-дневного хранения на складе в Москве, бережной доставки по всей РФ и гарантий сохранности.
+                            </p>
+
+                            <div class="hero-cta-buttons">
+                                <button type="button" class="btn primary hero-btn-main" onclick="window.switchTab('catalog')">
+                                    <span>Перейти в каталог</span>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                </button>
+                                <a href="https://t.me/Funko_Stop" target="_blank" class="btn secondary outline hero-btn-telegram" rel="noopener">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                                    <span>Менеджер @Funko_Stop</span>
+                                </a>
+                                <a href="https://t.me/FunkoStopReviews" target="_blank" class="btn secondary outline hero-btn-reviews" rel="noopener">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                    <span>Отзывы @FunkoStopReviews</span>
+                                </a>
+                                <a href="https://t.me/funkostop_bot" target="_blank" class="btn secondary outline hero-btn-bot" rel="noopener">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="12" x2="9" y2="12"></line><line x1="15" y1="12" x2="15" y2="12"></line></svg>
+                                    <span>Telegram-бот @funkostop_bot</span>
+                                </a>
+                                <a href="https://www.avito.ru/user/8736383a1370c438418994b93f35c736/profile?src=sharing" target="_blank" class="btn secondary outline hero-btn-avito" rel="noopener">
+                                    <span>Наличие на Авито</span>
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Hero Stats Strip -->
+                        <div class="hero-stats-strip">
+                            <div class="stat-item">
+                                <div class="stat-icon-wrap">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M16 8l-8 8"></path><circle cx="9" cy="9" r="1.5"></circle><circle cx="15" cy="15" r="1.5"></circle></svg>
+                                </div>
+                                <div class="stat-text">
+                                    <span class="stat-title">50% Предоплата</span>
+                                    <span class="stat-sub">Фиксация цены до самого получения</span>
+                                </div>
+                            </div>
+                            <div class="stat-divider"></div>
+                            <div class="stat-item">
+                                <div class="stat-icon-wrap">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                </div>
+                                <div class="stat-text">
+                                    <span class="stat-title">30–90 Дней хранения</span>
+                                    <span class="stat-sub">Бесплатно на нашем складе в Москве</span>
+                                </div>
+                            </div>
+                            <div class="stat-divider"></div>
+                            <div class="stat-item">
+                                <div class="stat-icon-wrap">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                                </div>
+                                <div class="stat-text">
+                                    <span class="stat-title">Доставка по всей РФ</span>
+                                    <span class="stat-sub">СДЭК, Почта, Ozon, Яндекс, Авито</span>
+                                </div>
+                            </div>
+                            <div class="stat-divider"></div>
+                            <div class="stat-item">
+                                <div class="stat-icon-wrap">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                                </div>
+                                <div class="stat-text">
+                                    <span class="stat-title">Р/С в Т-Банке</span>
+                                    <span class="stat-sub">Официально ИП • 0% скрытых комиссий</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Hub Cards -->
+                    <div class="home-hub-grid">
+                        <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" class="hub-card glass-panel">
+                            <div class="hub-card-icon red">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                            </div>
+                            <div class="hub-card-content">
+                                <span class="hub-card-tag">Менеджер в Telegram</span>
+                                <h4>@Funko_Stop</h4>
+                                <p>Оформление предзаказов, согласование доставки, вопросы по состоянию и поиск фигурок.</p>
+                            </div>
+                        </a>
+
+                        <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="hub-card glass-panel">
+                            <div class="hub-card-icon amber">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            </div>
+                            <div class="hub-card-content">
+                                <span class="hub-card-tag">Канал с отзывами</span>
+                                <h4>@FunkoStopReviews</h4>
+                                <p>Фотографии полученных заказов, распаковки и реальные впечатления коллекционеров.</p>
+                            </div>
+                        </a>
+
+                        <a href="https://t.me/funkostop_bot" target="_blank" rel="noopener" class="hub-card glass-panel">
+                            <div class="hub-card-icon green">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="12" x2="9" y2="12"></line><line x1="15" y1="12" x2="15" y2="12"></line></svg>
+                            </div>
+                            <div class="hub-card-content">
+                                <span class="hub-card-tag">Telegram-бот</span>
+                                <h4>@funkostop_bot</h4>
+                                <p>Уведомления о поступлении заказа на склад и мгновенный трекинг статуса посылки.</p>
+                            </div>
+                        </a>
+
+                        <div class="hub-card glass-panel" onclick="window.openLoginModal()" style="cursor: pointer;">
+                            <div class="hub-card-icon amber">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            </div>
+                            <div class="hub-card-content">
+                                <span class="hub-card-tag">Отслеживание заказов</span>
+                                <h4>funkostop.org</h4>
+                                <p>Личный кабинет покупателя: путь со склада США до Москвы и статус готовности к выдаче.</p>
+                            </div>
+                        </div>
+
+                        <a href="https://www.avito.ru/user/8736383a1370c438418994b93f35c736/profile?src=sharing" target="_blank" rel="noopener" class="hub-card glass-panel">
+                            <div class="hub-card-icon blue">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 8v8"></path><path d="M8 12h8"></path></svg>
+                            </div>
+                            <div class="hub-card-content">
+                                <span class="hub-card-tag">Товары в наличии</span>
+                                <h4>Витрина на Авито</h4>
+                                <p>Фигурки, которые уже находятся в России и готовы к мгновенной отправке и бесплатной брони.</p>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- PREORDER SECTION -->
+                    <section id="preorder-section" class="landing-section">
+                        <div class="home-section-header">
+                            <span class="section-label">Как это устроено</span>
+                            <h2 class="section-title">Предзаказ фигурок из США и Европы</h2>
+                            <p class="section-subtitle">Прозрачные условия, фиксация стоимости и надёжные гарантии на каждом этапе.</p>
+                        </div>
+
+                        <div class="home-steps-grid four-steps">
+                            <div class="step-card glass-panel">
+                                <div class="step-number">01</div>
+                                <h4>Заказ на сайте или через менеджера</h4>
+                                <p>Выберите фигурку в каталоге, добавьте в корзину и оформите заказ онлайн с 50% предоплатой на расчётный счёт в Т-Банке. Также можно написать напрямую менеджеру <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" style="color:var(--primary); font-weight:700;">@Funko_Stop</a>.</p>
+                            </div>
+                            <div class="step-arrow">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </div>
+                            <div class="step-card glass-panel">
+                                <div class="step-number">02</div>
+                                <h4>Личный кабинет и трекинг</h4>
+                                <p>Сразу после оплаты заказ привязывается к вашему Личному кабинету на <strong>funkostop.org</strong> и становится доступен для отслеживания в Telegram-боте <a href="https://t.me/funkostop_bot" target="_blank" rel="noopener" style="color:#4dabf7; font-weight:700;">@funkostop_bot</a>.</p>
+                            </div>
+                            <div class="step-arrow">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </div>
+                            <div class="step-card glass-panel">
+                                <div class="step-number">03</div>
+                                <h4>Прибытие в Москву</h4>
+                                <p>Когда фигурка поступит на наш склад в Москве, мы сразу сообщим вам об этом и проверим целостность коробки.</p>
+                            </div>
+                            <div class="step-arrow">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                            </div>
+                            <div class="step-card glass-panel">
+                                <div class="step-number">04</div>
+                                <h4>Оплата и отправка</h4>
+                                <p>Вы вносите остаток суммы, и мы отправляем посылку выбранной службой (СДЭК, Почта, Ozon, Яндекс) либо передаём самовывозом.</p>
+                            </div>
+                        </div>
+
+                        <!-- Preorder Rules Cards -->
+                        <div class="landing-info-triad">
+                            <div class="info-card glass-panel">
+                                <div class="info-card-header">
+                                    <div class="info-card-icon red">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                    </div>
+                                    <h3>Когда фиксируется цена?</h3>
+                                </div>
+                                <p>Цена фиксируется после внесения предоплаты, поэтому стоимость вашего заказа не изменится.</p>
+                                <p class="info-card-sub"><em>Исключение:</em> если нам не удастся выкупить товар в США по изначальной цене, мы обязательно свяжемся с вами и предложим варианты. Если новая цена вам не подходит — заказ можно отменить с полным возвратом предоплаты.</p>
+                            </div>
+
+                            <div class="info-card glass-panel">
+                                <div class="info-card-header">
+                                    <div class="info-card-icon amber">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                                    </div>
+                                    <h3>Можно ли отказаться от предзаказа?</h3>
+                                </div>
+                                <p>Да, но всё зависит от этапа заказа:</p>
+                                <ul class="info-card-list">
+                                    <li>Если фигурка <strong>ещё не была выкуплена в США</strong> — предоплату можно вернуть.</li>
+                                    <li>Возврат возможен для предзаказов, которые <strong>ещё ожидают выхода в продажу</strong>.</li>
+                                    <li>Если товар <strong>уже выкуплен и едет к нам</strong> — отменить такой заказ по желанию уже нельзя.</li>
+                                </ul>
+                                <p class="info-card-sub">Если ситуация нестандартная — напишите менеджеру <strong>@Funko_Stop</strong>, обсудим её индивидуально.</p>
+                            </div>
+
+                            <div class="info-card glass-panel">
+                                <div class="info-card-header">
+                                    <div class="info-card-icon green">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                    </div>
+                                    <h3>Перенос релиза или отмена</h3>
+                                </div>
+                                <p><strong>Перенос даты:</strong> Такое бывает. Если релиз перенесли, мы сообщим вам об этом, и статус обновится на funkostop.org и в @funkostop_bot.</p>
+                                <p><strong>Отмена фигурки:</strong> Если релиз отменили и фигурка не вышла — вы получаете предоплату обратно в полном объёме. В возврате предоплаты в такой ситуации мы никогда не откажем.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- STOCK & AVITO SECTION -->
+                    <section id="stock-section" class="landing-section">
+                        <div class="avito-banner-card glass-panel">
+                            <div class="avito-banner-content">
+                                <span class="section-label">Товары в наличии</span>
+                                <h2 class="avito-title">Актуальное наличие фигурок в России</h2>
+                                <p class="avito-description">
+                                    Основное актуальное наличие мы размещаем на Авито. Если хотите посмотреть, какие фигурки уже находятся в Москве и готовы к немедленной покупке без ожидания доставки из-за рубежа — ориентируйтесь на наш проверенный профиль:
+                                </p>
+                                <div class="avito-actions">
+                                    <a href="https://www.avito.ru/user/8736383a1370c438418994b93f35c736/profile?src=sharing" target="_blank" rel="noopener" class="btn primary avito-btn-link">
+                                        <span>Открыть профиль на Авито</span>
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                    </a>
+                                    <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" class="btn secondary outline">
+                                        <span>Написать по наличию @Funko_Stop</span>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="avito-banner-side">
+                                <div class="reserve-box">
+                                    <div class="reserve-badge">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                        <span>Бесплатная бронь до 5 дней</span>
+                                    </div>
+                                    <h4>Можно забронировать фигурку?</h4>
+                                    <p>Да. Для товара, который уже находится в России, бесплатная бронь действует <strong>до 5 дней</strong>.</p>
+                                    <p class="reserve-sub">Если нужен более длительный срок — напишите менеджеру <strong>@Funko_Stop</strong>, такие ситуации обсуждаем отдельно. Если срок брони закончился без оплаты или обратной связи, товар возвращается в свободную продажу.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- PAYMENT & DELIVERY SECTION -->
+                    <section id="delivery-section" class="landing-section">
+                        <div class="home-section-header">
+                            <span class="section-label">Условия</span>
+                            <h2 class="section-title">Оплата, хранение и доставка</h2>
+                            <p class="section-subtitle">Официальные расчеты через Т-Банк, гибкие сроки бесплатного хранения и надежные службы доставки.</p>
+                        </div>
+
+                        <div class="home-features-grid">
+                            <!-- Payment Card -->
+                            <div class="feature-card glass-panel">
+                                <div class="feature-icon red">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                                </div>
+                                <h3>Оплата без комиссий</h3>
+                                <p>Предзаказы оформляются с предоплатой <strong>от 50%</strong> на расчётный счёт ИП в Т-Банке в строгом соответствии с законами РФ. С нашей стороны скрытых комиссий нет.</p>
+                                <p class="feature-sub">В отдельных случаях принимаем оплату переводом или криптовалютой (возможность уточняйте у <strong>@Funko_Stop</strong>). Оставшуюся сумму можно внести в любое удобное время до отправки: пока посылка едет из США либо в течение 30 дней после поступления в Москву.</p>
+                            </div>
+
+                            <!-- Storage Card -->
+                            <div class="feature-card glass-panel">
+                                <div class="feature-icon green">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                                </div>
+                                <h3>Бесплатное хранение</h3>
+                                <p>После поступления заказа в Москву мы <strong>бесплатно храним его 30 дней</strong>. Если заказ полностью оплачен — срок хранения увеличивается <strong>до 90 дней</strong>.</p>
+                                <p class="feature-sub">Нужен больший срок? Напишите <strong>@Funko_Stop</strong>, договоримся отдельно. Если срок хранения закончился, мы обязательно свяжемся с вами лично перед принятием решения.</p>
+                            </div>
+
+                            <!-- Delivery Card -->
+                            <div class="feature-card glass-panel">
+                                <div class="feature-icon amber">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                </div>
+                                <h3>Доставка по РФ и СНГ</h3>
+                                <p>Отправляем заказы проверенными службами: <strong>СДЭК, Почта России, Яндекс Доставка, Авито Доставка, Ozon</strong>. Доставка оплачивается отдельно по тарифам службы.</p>
+                                <p class="feature-sub">Отправка производится только после полной оплаты в течение <strong>3–5 рабочих дней</strong>. Также отправляем в другие страны при наличии подходящего сервиса.</p>
+                            </div>
+
+                            <!-- Bundle & Pickup Card -->
+                            <div class="feature-card glass-panel">
+                                <div class="feature-icon blue">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>
+                                </div>
+                                <h3>Объединение и самовывоз</h3>
+                                <p><strong>Объединение заказов:</strong> Да! Можно объединять любые позиции в одну посылку: несколько предзаказов, товары из наличия или их комбинацию. Просто сообщите менеджеру.</p>
+                                <p class="feature-sub"><strong>Самовывоз в Москве:</strong> доступен у метро <em>Новокосино</em>. Точный адрес и время согласовываются с менеджером <strong>@Funko_Stop</strong> после поступления фигурки.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- BOX CONDITION & VINYL PROTECTORS SECTION -->
+                    <section id="condition-section" class="landing-section">
+                        <div class="home-section-header">
+                            <span class="section-label">Честность и стандарты</span>
+                            <h2 class="section-title">Состояние коробок и упаковка</h2>
+                            <p class="section-subtitle">Мы заботимся о сохранности вашей коллекции и честно говорим обо всех нюансах.</p>
+                        </div>
+
+                        <div class="landing-info-triad">
+                            <div class="info-card glass-panel">
+                                <div class="info-card-header">
+                                    <div class="info-card-icon red">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                    </div>
+                                    <h3>Честно о Mint-состоянии</h3>
+                                </div>
+                                <p>Сразу честно: мы не гарантируем Mint-состояние. Мы стараемся привозить фигурки максимально аккуратно и в большинстве случаев они приезжают в отличном состоянии.</p>
+                                <p class="info-card-sub">Но Funko — массовое фабричное производство, поэтому небольшие заводские особенности покраски или картона иногда встречаются. Мы не можем повлиять на то, как производитель изготовил конкретную коробку. Небольшие заводские дефекты не являются основанием для компенсации.</p>
+                            </div>
+
+                            <div class="info-card glass-panel">
+                                <div class="info-card-header">
+                                    <div class="info-card-icon amber">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                    </div>
+                                    <h3>Фото перед отправкой</h3>
+                                </div>
+                                <p><strong>Конечно!</strong> Если вам важно состояние конкретной фигурки или коробки — просто попросите менеджера <strong>@Funko_Stop</strong> прислать детальные фотографии перед упаковкой.</p>
+                                <p class="info-card-sub">Мы покажем коробку со всех ракурсов, проверим углы, окошко и стикеры, чтобы вы были уверены в покупке на 100%.</p>
+                            </div>
+
+                            <div class="info-card glass-panel">
+                                <div class="info-card-header">
+                                    <div class="info-card-icon green">
+                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                    </div>
+                                    <h3>Протекторы Vaulted Vinyl</h3>
+                                </div>
+                                <p><strong>Да, есть в наличии!</strong> В наличии оригинальные стандартные пластиковые протекторы <strong>Vaulted Vinyl</strong> высшего качества.</p>
+                                <p class="info-card-sub">Стоимость — <strong>250 ₽ за штуку</strong>. Если хотите упаковать фигурку в протектор для дополнительной защиты при пересылке или хранения на полке — сообщите менеджеру при оформлении.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- SUPPORT & GUARANTEES SECTION -->
+                    <section id="support-section" class="landing-section">
+                        <div class="home-section-header">
+                            <span class="section-label">Забота о покупателях</span>
+                            <h2 class="section-title">Если с заказом что-то не так</h2>
+                            <p class="section-subtitle">Главное — не паниковать. Мы всегда на стороне клиента и находим честное решение.</p>
+                        </div>
+
+                        <div class="home-features-grid">
+                            <div class="feature-card glass-panel">
+                                <div class="feature-icon green">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+                                </div>
+                                <h3>Утеря посылки до Москвы</h3>
+                                <p>Если при доставке до нашего склада в Москве посылка потерялась — мы либо <strong>полностью вернём предоплату</strong>, либо <strong>перезакажем товар за свой счёт</strong>. К счастью, таких случаев у нас пока не было.</p>
+                            </div>
+
+                            <div class="feature-card glass-panel">
+                                <div class="feature-icon amber">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                </div>
+                                <h3>Повреждение или брак</h3>
+                                <p>Если фигурка повреждена или коробка получила серьёзное повреждение, влияющее на коллекционную ценность — напишите <strong>@Funko_Stop</strong> и приложите фото. Мы рассмотрим ситуацию индивидуально, согласуем компенсацию или полную отмену заказа.</p>
+                            </div>
+
+                            <div class="feature-card glass-panel">
+                                <div class="feature-icon red">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                                </div>
+                                <h3>Видео распаковки</h3>
+                                <p><strong>Очень желательно!</strong> Видео непрерывной распаковки посылки поможет быстрее разобраться и объективно подтвердить ситуацию, если с заказом что-то произошло во время доставки.</p>
+                            </div>
+
+                            <div class="feature-card glass-panel">
+                                <div class="feature-icon blue">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                </div>
+                                <h3>Срок обращения: 5 дней</h3>
+                                <p>Пожалуйста, обращайтесь в течение <strong>5 дней с момента получения</strong> посылки в пункте выдачи. Напишите <strong>@Funko_Stop</strong> с подробным описанием и медиафайлами.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ACCORDION FAQ SECTION -->
+                    <section id="faq-section" class="landing-section">
+                        <div class="home-section-header">
+                            <span class="section-label">Вопрос-ответ</span>
+                            <h2 class="section-title">Часто задаваемые вопросы</h2>
+                            <p class="section-subtitle">Кликните на вопрос, чтобы развернуть подробный ответ.</p>
+                        </div>
+
+                        <div class="faq-accordion-list">
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Как оформить заказ на сайте или предзаказ?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Оформить заказ теперь можно быстро и удобно прямо на сайте:
+                                    <br>1. Выберите нужные фигурки в каталоге и добавьте их в <strong>корзину</strong>.
+                                    <br>2. Перейдите в корзину и нажмите «К оформлению заказа».
+                                    <br>3. Укажите ваши контактные данные (Имя, Телефон, Telegram).
+                                    <br>4. Выберите удобный формат оплаты: <strong>50% предоплата</strong> (для брони и фиксации цены) либо <strong>100% полная оплата</strong>.
+                                    <br>5. Оплатите заказ онлайн на официальный расчётный счёт ИП в Т-Банке.
+                                    <br>После оплаты заказ сразу привязывается к вашему Личному кабинету на <strong>funkostop.org</strong> и подключается к боту <a href="https://t.me/funkostop_bot" target="_blank" rel="noopener">@funkostop_bot</a>. Также при любых вопросах вы всегда можете оформить заказ вручную через нашего менеджера в Telegram: <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener">@Funko_Stop</a>.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Когда фиксируется цена и может ли она измениться?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Цена фиксируется после внесения предоплаты, поэтому стоимость вашего заказа не изменится. Исключение: если нам не удастся выкупить товар в США по изначальной цене. В таком случае мы обязательно свяжемся с вами и предложим варианты. Если новая цена вам не подходит — заказ можно отменить с полным возвратом предоплаты.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Можно ли отказаться от предзаказа и вернуть предоплату?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Да, но всё зависит от этапа заказа. Если фигурка ещё не была выкуплена в США — предоплату можно вернуть. Также возврат возможен для предзаказов, которые ещё ожидают выхода в продажу. Если товар уже выкуплен и едет к нам — отменить такой заказ по желанию уже нельзя. Если ситуация нестандартная — напишите менеджеру @Funko_Stop, обсудим её индивидуально.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Что будет, если Funko перенесёт дату выхода или отменит фигурку?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Если релиз перенесли — мы сообщим вам об этом, и статус обновится на сайте и в боте. Если релиз отменили производителем и фигурка не вышла — вы гарантированно получаете 100% предоплаты обратно. В возврате предоплаты в такой ситуации мы никогда не откажем.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Как посмотреть товары в наличии и забронировать?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Основное актуальное наличие фигурок в России мы размещаем в нашем профиле на Авито. Для товара в наличии бесплатная бронь действует до 5 дней. Если нужен больший срок — напишите менеджеру @Funko_Stop. Если срок брони закончился без оплаты или обратной связи, товар возвращается в продажу.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Какие способы оплаты вы принимаете?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Оплата принимается на официальный расчётный счёт нашего ИП в Т-Банке в строгом соответствии с законодательством РФ. В отдельных случаях можем принять оплату переводом или криптовалютой (уточняйте у @Funko_Stop). С нашей стороны никаких скрытых комиссий нет.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Сколько заказ бесплатно хранится в Москве?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>После поступления заказа на склад в Москве мы бесплатно храним его 30 дней. Если заказ полностью оплачен — срок хранения увеличивается до 90 дней. Перед окончанием срока мы обязательно свяжемся с вами лично.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Какими службами доставляете и можно ли объединить заказы?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Отправляем по всей России через Яндекс Доставку, Авито Доставку, Почту России, Ozon и СДЭК. Отправка производится в течение 3–5 рабочих дней после полной оплаты. Любые заказы (предзаказы и наличие) можно объединять в одну совместную отправку. Также доступен самовывоз в Москве у метро Новокосино.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Можно ли запросить фото коробки и добавить протектор?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Да! Если вам важно состояние коробки — просто попросите менеджера @Funko_Stop прислать фотографии перед отправкой. Также в наличии есть фирменные протекторы Vaulted Vinyl по 250 ₽ за штуку.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Что делать, если посылка повредилась или потерялась?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Главное — не паниковать. Напишите менеджеру @Funko_Stop в течение 5 дней после получения, приложите фото и видео распаковки. При утере до Москвы мы вернём предоплату либо перезакажем товар за свой счёт. При повреждениях — индивидуально согласуем компенсацию или отмену.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Bottom CTA Banner -->
+                    <div class="home-cta-card glass-panel">
+                        <div class="cta-inner">
+                            <h2 class="cta-title">Соберите свою коллекцию с Funko Stop</h2>
+                            <p class="cta-sub">Оригинальные фигурки, редкие Chase и конвенционные эксклюзивы с персональным отслеживанием каждого шага доставки.</p>
+                            <div class="cta-btns">
+                                <button type="button" class="btn primary hero-btn-main" onclick="window.switchTab('catalog')">
+                                    <span>Каталог</span>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Landing Minimalist Footer -->
+                    <footer class="landing-footer">
+                        <div class="landing-footer-inner">
+                            <div class="footer-col-brand">
+                                <span class="footer-logo">FUNKO <span>STOP</span></span>
+                                <p>Оригинальные фигурки Funko POP, эксклюзивы и предзаказы из США и Европы. Доставка по всей России.</p>
+                            </div>
+                            <div class="footer-col-links">
+                                <div class="footer-link-group">
+                                    <h5>Связь и каналы</h5>
+                                    <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                                        <span>Менеджер @Funko_Stop</span>
+                                    </a>
+                                    <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                                        <span>Канал с отзывами @FunkoStopReviews</span>
+                                    </a>
+                                    <a href="https://t.me/funkostop_bot" target="_blank" rel="noopener">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="12" x2="9" y2="12"></line><line x1="15" y1="12" x2="15" y2="12"></line></svg>
+                                        <span>Telegram-бот @funkostop_bot</span>
+                                    </a>
+                                </div>
+                                <div class="footer-link-group">
+                                    <h5>Разделы</h5>
+                                    <a href="#preorder-section">Условия предзаказа</a>
+                                    <a href="#stock-section">Наличие на Авито</a>
+                                    <a href="#delivery-section">Оплата и доставка</a>
+                                    <a href="#condition-section">Состояние коробок</a>
+                                    <a href="#faq-section">Вопрос-ответ (FAQ)</a>
+                                </div>
+                                <div class="footer-link-group">
+                                    <h5>Документы</h5>
+                                    <a href="/static/privacy.html">Политика конфиденциальности</a>
+                                    <a href="/static/oferta.html">Публичная оферта</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="landing-footer-bottom">
+                            <span>© 2026 Funko Stop. Все права защищены • Расчётный счёт ИП в Т-Банке</span>
+                        </div>
+                    </footer>
                 </div>
-            </header>
+            </section>
 
             <!-- ORDERS TAB -->
             <section id="orders-tab" class="tab-content">
@@ -220,95 +881,234 @@
             </section>
 
             <!-- CATALOG TAB -->
-            <section id="catalog-tab" class="tab-content active">
-                <div class="header-flex">
-                    <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+            <section id="catalog-tab" class="tab-content">
+                <!-- Admin Notification Banner when Catalog is in Dev Mode -->
+                <div id="catalog-admin-dev-notice" class="admin-only hidden" style="background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #fff;">
+                        <span style="font-size: 1.25rem;">👑</span>
+                        <span><strong>Режим администратора:</strong> Каталог открыт для вас. Для обычных посетителей включена заглушка <em>«В разработке»</em>.</span>
+                    </div>
+                    <span style="font-size: 0.78rem; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; color: #ff9999; white-space: nowrap;">Доступ админа</span>
+                </div>
+
+                <!-- Guest Under Development Screen -->
+                <div id="catalog-guest-under-dev" class="catalog-under-dev-container">
+                    <div class="under-dev-card glass-panel">
+                        <div class="under-dev-badge">
+                            <span class="under-dev-badge-dot"></span>
+                            СКОРО ЗАПУСК ОНЛАЙН-ВИТРИНЫ
+                        </div>
+                        <h2 class="under-dev-title">Раздел каталога в разработке</h2>
+                        <p class="under-dev-subtitle">
+                            Мы активно наполняем базу редких оригинальных фигурок <strong>Funko POP</strong>, лимитированных выставочных эксклюзивов (SDCC, NYCC, Funko Shop) и акриловых протекторов. Прямой заказ через сайт заработает совсем скоро!
+                        </p>
+
+                        <div class="under-dev-highlights">
+                            <div class="under-dev-feature">
+                                <div class="feature-icon">✈️</div>
+                                <div class="feature-title">Предзаказ через менеджера</div>
+                                <div class="feature-desc">Напишите нам в Telegram — найдём и доставим любую фигурку из США и Европы с фиксированной ценой и предоплатой 50%.</div>
+                            </div>
+                            <div class="under-dev-feature">
+                                <div class="feature-icon">📦</div>
+                                <div class="feature-title">В наличии в Москве</div>
+                                <div class="feature-desc">Более 150 оригинальных позиций с отправкой через Авито Доставку в день заказа в бронебойной упаковке.</div>
+                            </div>
+                            <div class="under-dev-feature">
+                                <div class="feature-icon">🤖</div>
+                                <div class="feature-title">Отслеживание в боте</div>
+                                <div class="feature-desc">Статусы всех ваших предзаказов и посылок обновляются онлайн через официальный Telegram-бот @funkostop_bot.</div>
+                            </div>
+                        </div>
+
+                        <div class="under-dev-actions">
+                            <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" class="btn primary btn-large" style="display:inline-flex; align-items:center; gap:10px;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                                <span>Написать менеджеру @Funko_Stop</span>
+                            </a>
+                            <a href="https://www.avito.ru/user/8736383a1370c438418994b93f35c736/profile?src=sharing" target="_blank" rel="noopener" class="btn secondary outline btn-large" style="display:inline-flex; align-items:center; gap:8px;">
+                                <span>Наличие на Авито ↗</span>
+                            </a>
+                            <button type="button" class="btn secondary outline btn-large" onclick="window.switchTab('home')">
+                                <span>← На Главную (Условия)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="catalog-header-bar" id="catalog-header-bar">
+                    <div class="catalog-header-left">
                         <h2>Каталог товаров</h2>
                         <div class="view-toggle" id="catalog-view-toggle">
                             <button type="button" class="btn-toggle active" id="view-grid-btn" title="Сетка карточек" onclick="switchCatalogView('grid')">⊞ Карточки</button>
                             <button type="button" class="btn-toggle" id="view-table-btn" title="Таблица" onclick="switchCatalogView('table')">☰ Таблица</button>
                         </div>
                     </div>
-                    <button id="new-product-btn" class="btn primary admin-only hidden">+ Добавить товар</button>
-                </div>
-
-                <!-- Catalog Category Pills -->
-                <div class="category-pills-bar" id="catalog-category-pills">
-                    <button type="button" class="category-pill active" data-category="" onclick="selectCatalogCategory('')">Все товары</button>
-                </div>
-
-                <!-- Catalog Filters Bar -->
-                <div class="filters-bar" style="margin-top: 10px;">
-                    <input type="text" id="catalog-search" class="filter-input wide" placeholder="Поиск (название, номер, серия)...">
-                    
-                    <select id="catalog-series-filter" class="filter-input narrow">
-                        <option value="">Все серии</option>
-                    </select>
-
-                    <input type="number" id="catalog-price-min" class="filter-input narrow" placeholder="Цена от &#8381;">
-                    <input type="number" id="catalog-price-max" class="filter-input narrow" placeholder="Цена до &#8381;">
-
-                    <select id="catalog-stock-filter" class="filter-input narrow">
-                        <option value="">Все статусы</option>
-                        <option value="in_stock">В наличии</option>
-                        <option value="out_of_stock">Нет в наличии</option>
-                    </select>
-
-                    <select id="catalog-sort-select" class="filter-input narrow">
-                        <option value="id_desc">Сначала новые</option>
-                        <option value="price_asc">Цена: по возрастанию</option>
-                        <option value="price_desc">Цена: по убыванию</option>
-                        <option value="discount_desc">По размеру скидки</option>
-                        <option value="name_asc">По названию (А-Я)</option>
-                    </select>
-                </div>
-
-                <!-- Catalog Grid View -->
-                <div id="catalog-grid" class="catalog-grid"></div>
-
-                <!-- Catalog Table View -->
-                <div id="catalog-table-wrapper" class="glass-panel table-container hidden">
-                    <table id="catalog-table">
-                        <thead>
-                            <tr>
-                                <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
-                                <th>Фото</th>
-                                <th data-sort="number" style="cursor:pointer;white-space:nowrap;">№ фиг. &#8597;</th>
-                                <th data-sort="name" style="cursor:pointer;white-space:nowrap;">Название &#8597;</th>
-                                <th data-sort="category" style="cursor:pointer;white-space:nowrap;">Категория &#8597;</th>
-                                <th data-sort="series" style="cursor:pointer;white-space:nowrap;">Серия &#8597;</th>
-                                <th data-sort="price" style="cursor:pointer;white-space:nowrap;">Базовая цена &#8597;</th>
-                                <th data-sort="discount" style="cursor:pointer;white-space:nowrap;">Скидка &#8597;</th>
-                                <th data-sort="final_price" style="cursor:pointer;white-space:nowrap;">Итоговая цена &#8597;</th>
-                                <th data-sort="packs" style="cursor:pointer;white-space:nowrap;">Паки &#8597;</th>
-                                <th>Наличие</th>
-                                <th style="min-width:120px; text-align:center;">Действие</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-
-                <p id="no-catalog" class="empty-msg hidden">Товары не найдены</p>
-
-                <!-- Catalog Pagination -->
-                <div class="pagination-bar" id="catalog-pagination">
-                    <div class="pagination-info">
-                        <span>Показано <b id="catalog-page-range">0–0</b> из <b id="catalog-total-count">0</b></span>
+                    <div class="catalog-header-right">
+                        <button type="button" class="btn secondary outline catalog-btn-cart" onclick="window.openCartModal()" style="font-weight:600; margin-right:8px; display:inline-flex; align-items:center; gap:8px;">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            <span>Корзина</span>
+                            <span id="catalog-cart-badge" class="cart-badge-count">0</span>
+                        </button>
+                        <button id="manage-catalog-meta-btn" class="btn secondary outline admin-only hidden" style="font-weight:600; margin-right:8px; display:inline-flex; align-items:center; gap:6px;">
+                            Категории и серии
+                        </button>
+                        <button id="new-product-btn" class="btn primary admin-only hidden" style="font-weight:600; display:inline-flex; align-items:center; gap:6px;">
+                            <span>+</span> Добавить товар
+                        </button>
                     </div>
-                    <div class="pagination-controls">
-                        <button type="button" class="btn-page" id="catalog-prev-btn" onclick="changePage('catalog', -1)">← Назад</button>
-                        <span class="page-indicator" id="catalog-page-indicator">Стр. 1 из 1</span>
-                        <button type="button" class="btn-page" id="catalog-next-btn" onclick="changePage('catalog', 1)">Вперёд →</button>
+                </div>
+
+                <!-- Top Brand / Category Cards Bar (Hidden as requested: no brand logos yet) -->
+                <div class="brand-cards-slider-wrap" style="display: none !important;">
+                    <div class="brand-cards-slider" id="catalog-brand-cards">
+                        <!-- Hidden until logos are added -->
                     </div>
-                    <div class="pagination-size">
-                        <span>На странице:</span>
-                        <div class="page-size-buttons" id="catalog-page-sizes">
-                            <button type="button" class="btn-size" data-size="12" onclick="setPageSize('catalog', 12)">12</button>
-                            <button type="button" class="btn-size active" data-size="24" onclick="setPageSize('catalog', 24)">24</button>
-                            <button type="button" class="btn-size" data-size="48" onclick="setPageSize('catalog', 48)">48</button>
+                </div>
+
+                <!-- Main Content Layout (Sidebar Filters + Main Catalog Area) -->
+                <div class="catalog-body-layout" id="catalog-body-layout">
+                    <!-- Left Collapsible Filter Sidebar -->
+                    <aside class="catalog-filter-sidebar" id="catalog-filter-sidebar">
+                        <div class="sidebar-filter-header">
+                            <button type="button" id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="Скрыть панель фильтров">
+                                <span class="arrow">‹</span> Скрыть фильтр
+                            </button>
                         </div>
-                        <input type="number" min="1" max="200" id="catalog-custom-size" class="custom-size-input" placeholder="Своё" title="Количество товаров на странице" onchange="setCustomPageSize('catalog', this.value)">
+
+                        <div class="filter-block-title">Параметры поиска</div>
+
+                        <!-- Availability Filter (В наличии / Под заказ) -->
+                        <div class="filter-group">
+                            <div class="filter-group-label">Наличие</div>
+                            <div class="stock-toggle-badges">
+                                <label class="stock-badge in-stock-badge">
+                                    <input type="checkbox" id="stock-filter-in" checked>
+                                    <span class="stock-badge-dot"></span>
+                                    <span class="stock-badge-text">В НАЛИЧИИ</span>
+                                    <span class="stock-badge-info" title="Товар в наличии на складе">ⓘ</span>
+                                </label>
+                                <label class="stock-badge preorder-badge">
+                                    <input type="checkbox" id="stock-filter-preorder" checked>
+                                    <span class="stock-badge-dot"></span>
+                                    <span class="stock-badge-text">ПОД ЗАКАЗ</span>
+                                    <span class="stock-badge-info" title="Товар привозится под заказ">ⓘ</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Price Range Filter -->
+                        <div class="filter-group">
+                            <div class="filter-group-label">Розничная цена</div>
+                            <div class="price-range-box">
+                                <input type="number" id="catalog-price-min" class="price-filter-input" placeholder="Цена от" min="0">
+                                <span class="price-range-dash">—</span>
+                                <input type="number" id="catalog-price-max" class="price-filter-input" placeholder="Цена до" min="0">
+                            </div>
+                        </div>
+
+                        <!-- Brand / Category Checkboxes Filter with Counts -->
+                        <div class="filter-group">
+                            <div class="filter-group-label">Бренд</div>
+                            <div class="filter-checkbox-list" id="sidebar-brand-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Series / Universe Checkboxes Filter with Counts -->
+                        <div class="filter-group">
+                            <div class="filter-group-label">Тематика</div>
+                            <div class="filter-checkbox-list" id="sidebar-series-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Reset Filters Button -->
+                        <button type="button" id="catalog-reset-filters-btn" class="btn-reset-all-filters">
+                            ✕ Сбросить фильтры
+                        </button>
+                    </aside>
+
+                    <!-- Main Products Area -->
+                    <div class="catalog-main-area" id="catalog-main-area">
+                        <!-- Top Search Bar, Show Sidebar Button, and Sort Selector -->
+                        <div class="catalog-controls-row">
+                            <button type="button" id="sidebar-open-btn" class="btn-open-sidebar hidden" title="Развернуть параметры поиска">
+                                Фильтры
+                            </button>
+
+                            <div class="catalog-search-box">
+                                <svg class="search-lens-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.6;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="catalog-search" class="catalog-search-input" placeholder="Поиск по названию, серии, номеру..." autocomplete="off">
+                                <button type="button" id="catalog-search-clear" class="search-clear-btn hidden" title="Очистить поиск">✕</button>
+                            </div>
+
+                            <div class="catalog-sort-box">
+                                <select id="catalog-sort-select" class="catalog-sort-select">
+                                    <option value="id_desc">По умолчанию</option>
+                                    <option value="price_asc">Сначала недорогие</option>
+                                    <option value="price_desc">Сначала дорогие</option>
+                                    <option value="discount_desc">По размеру скидки</option>
+                                    <option value="name_asc">По названию (А–Я)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Franchise Quick Filter Chips (Breaking Bad, Coraline, The Boys, Marvel, etc.) -->
+                        <div class="franchise-chips-wrap">
+                            <div class="franchise-chips-bar" id="franchise-chips-bar">
+                                <!-- Populated dynamically by app.js -->
+                            </div>
+                        </div>
+
+                        <!-- Catalog Grid View -->
+                        <div id="catalog-grid" class="catalog-grid"></div>
+
+                        <!-- Catalog Table View -->
+                        <div id="catalog-table-wrapper" class="glass-panel table-container hidden">
+                            <table id="catalog-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
+                                        <th>Фото</th>
+                                        <th data-sort="number" style="cursor:pointer;white-space:nowrap;">№ фиг. &#8597;</th>
+                                        <th data-sort="name" style="cursor:pointer;white-space:nowrap;">Название &#8597;</th>
+                                        <th data-sort="category" style="cursor:pointer;white-space:nowrap;">Категория &#8597;</th>
+                                        <th data-sort="series" style="cursor:pointer;white-space:nowrap;">Серия &#8597;</th>
+                                        <th data-sort="price" style="cursor:pointer;white-space:nowrap;">Базовая цена &#8597;</th>
+                                        <th data-sort="discount" style="cursor:pointer;white-space:nowrap;">Скидка &#8597;</th>
+                                        <th data-sort="final_price" style="cursor:pointer;white-space:nowrap;">Итоговая цена &#8597;</th>
+                                        <th data-sort="packs" style="cursor:pointer;white-space:nowrap;">Паки &#8597;</th>
+                                        <th>Наличие</th>
+                                        <th style="min-width:120px; text-align:center;">Действие</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+
+                        <p id="no-catalog" class="empty-msg hidden">Товары не найдены</p>
+
+                        <!-- Catalog Pagination -->
+                        <div class="pagination-bar" id="catalog-pagination">
+                            <div class="pagination-info">
+                                <span>Показано <b id="catalog-page-range">0–0</b> из <b id="catalog-total-count">0</b></span>
+                            </div>
+                            <div class="pagination-controls">
+                                <button type="button" class="btn-page" id="catalog-prev-btn" onclick="changePage('catalog', -1)">← Назад</button>
+                                <span class="page-indicator" id="catalog-page-indicator">Стр. 1 из 1</span>
+                                <button type="button" class="btn-page" id="catalog-next-btn" onclick="changePage('catalog', 1)">Вперёд →</button>
+                            </div>
+                            <div class="pagination-size">
+                                <span>На странице:</span>
+                                <div class="page-size-buttons" id="catalog-page-sizes">
+                                    <button type="button" class="btn-size" data-size="12" onclick="setPageSize('catalog', 12)">12</button>
+                                    <button type="button" class="btn-size active" data-size="24" onclick="setPageSize('catalog', 24)">24</button>
+                                    <button type="button" class="btn-size" data-size="48" onclick="setPageSize('catalog', 48)">48</button>
+                                </div>
+                                <input type="number" min="1" max="200" id="catalog-custom-size" class="custom-size-input" placeholder="Своё" title="Количество товаров на странице" onchange="setCustomPageSize('catalog', this.value)">
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -459,7 +1259,18 @@
                 </div>
                 <div class="glass-panel table-container">
                     <table id="clients-table">
-                        <thead><tr><th style="width:36px; text-align:center; color:var(--gray-light);">№</th><th>ID</th><th>Пароль</th><th>Telegram ID</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
+                                <th style="width:70px;">ID</th>
+                                <th>Имя</th>
+                                <th>Фамилия</th>
+                                <th>Телефон</th>
+                                <th>Telegram</th>
+                                <th>Пароль</th>
+                                <th style="min-width:100px; text-align:center;">Действия</th>
+                            </tr>
+                        </thead>
                         <tbody></tbody>
                     </table>
                 </div>
@@ -474,10 +1285,68 @@
         <div id="create-client-modal" class="glass-panel modal hidden">
             <h3>Новый клиент</h3>
             <form id="create-client-form">
-                <div class="input-group"><input type="text" id="new-client-password" placeholder="Пароль для клиента" required></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                    <div class="input-group" style="margin:0;">
+                        <label>Имя</label>
+                        <input type="text" id="new-client-first-name" placeholder="Например: Иван">
+                    </div>
+                    <div class="input-group" style="margin:0;">
+                        <label>Фамилия</label>
+                        <input type="text" id="new-client-last-name" placeholder="Например: Иванов">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                    <div class="input-group" style="margin:0;">
+                        <label>Телефон</label>
+                        <input type="tel" id="new-client-phone" placeholder="+7 (999) 000-00-00">
+                    </div>
+                    <div class="input-group" style="margin:0;">
+                        <label>Telegram</label>
+                        <input type="text" id="new-client-tg" placeholder="@username или ID">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Пароль для клиента *</label>
+                    <input type="text" id="new-client-password" placeholder="Например: ABC123" required>
+                </div>
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline close-modal">Отмена</button>
                     <button type="submit" class="btn primary">Создать</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="edit-client-modal" class="glass-panel modal hidden">
+            <h3>Редактирование клиента #<span id="edit-client-id-display"></span></h3>
+            <form id="edit-client-form">
+                <input type="hidden" id="edit-client-id">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                    <div class="input-group" style="margin:0;">
+                        <label>Имя</label>
+                        <input type="text" id="edit-client-first-name" placeholder="Имя клиента">
+                    </div>
+                    <div class="input-group" style="margin:0;">
+                        <label>Фамилия</label>
+                        <input type="text" id="edit-client-last-name" placeholder="Фамилия клиента">
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                    <div class="input-group" style="margin:0;">
+                        <label>Телефон</label>
+                        <input type="tel" id="edit-client-phone" placeholder="+7 (999) 000-00-00">
+                    </div>
+                    <div class="input-group" style="margin:0;">
+                        <label>Telegram</label>
+                        <input type="text" id="edit-client-tg" placeholder="@username или ID">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Пароль (оставьте пустым, если не меняется)</label>
+                    <input type="text" id="edit-client-password" placeholder="Новый пароль">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                    <button type="submit" class="btn primary">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -558,6 +1427,264 @@
                 <button type="button" id="confirm-delete-btn" class="btn danger">Удалить</button>
             </div>
         </div>
+        <!-- Cart Modal -->
+        <div id="cart-modal" class="glass-panel modal hidden" style="max-width: 620px;">
+            <div class="cart-modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0; font-size:1.3rem; display:flex; align-items:center; gap:8px;">
+                    <span>🛒 Корзина товаров</span>
+                    <span id="cart-modal-count-pill" style="font-size:0.8rem; background:rgba(229,9,20,0.15); color:#ff4d4d; padding:2px 8px; border-radius:12px; font-weight:700;">0 шт.</span>
+                </h3>
+                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">✕</button>
+            </div>
+            
+            <div id="cart-items-list" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-right: 4px;">
+                <!-- Filled dynamically by app.js -->
+            </div>
+
+            <div id="cart-empty-view" class="hidden" style="text-align: center; padding: 40px 20px;">
+                <div style="font-size: 3rem; margin-bottom: 12px; opacity: 0.6;">🛒</div>
+                <h4 style="font-size: 1.1rem; color: #fff; margin-bottom: 6px;">В корзине пока пусто</h4>
+                <p style="color: var(--gray); font-size: 0.88rem; margin-bottom: 18px;">Выберите понравившиеся фигурки в каталоге и добавьте их сюда</p>
+                <button type="button" class="btn primary" onclick="closeModals(); window.switchTab('catalog');" style="max-width: 220px; margin: 0 auto;">Перейти в каталог</button>
+            </div>
+
+            <div id="cart-summary-footer" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
+                    <span style="color:var(--gray); font-size:0.92rem;">Итоговая стоимость:</span>
+                    <span id="cart-total-display" style="font-size:1.35rem; font-weight:800; color:#fff;">0 ₽</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px;">
+                    <span style="color:#00ff88; font-size:0.85rem; font-weight:600;">Предоплата 50% при заказе:</span>
+                    <span id="cart-prepay-display" style="font-size:1.05rem; font-weight:700; color:#00ff88;">0 ₽</span>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" class="btn secondary outline" onclick="window.clearCart()" style="width: auto; padding: 12px 18px; font-size: 0.88rem;">Очистить</button>
+                    <button type="button" class="btn primary" id="cart-checkout-btn" onclick="window.openCheckoutModal()" style="flex:1; padding: 12px 20px; font-weight:700; font-size: 1rem; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        <span>К оформлению заказа</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Checkout Modal (Order Placement) -->
+        <div id="checkout-modal" class="glass-panel modal hidden" style="max-width: 640px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <h3 style="margin:0; font-size:1.25rem;">Оформление заказа</h3>
+                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">✕</button>
+            </div>
+
+            <!-- Order mini-recap -->
+            <div id="checkout-items-preview" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 16px; margin-bottom:16px; max-height:120px; overflow-y:auto; font-size:0.86rem; color:#ddd;">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Prepayment selector (50% vs 100%) -->
+            <div style="margin-bottom:18px;">
+                <label style="display:block; font-size:0.85rem; font-weight:600; color:#aaa; margin-bottom:8px;">ВЫБЕРИТЕ ФОРМАТ ОПЛАТЫ:</label>
+                <div class="prepay-options-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div class="prepay-option-card active" id="option-prepay-50" onclick="window.selectPaymentOption('50%')">
+                        <div class="prepay-card-header">
+                            <span class="prepay-radio"></span>
+                            <span class="prepay-pill">Рекомендуется</span>
+                        </div>
+                        <div class="prepay-title">50% предоплата</div>
+                        <div class="prepay-amount" id="checkout-amount-50">0 ₽</div>
+                        <div class="prepay-hint">Фиксация цены. Остаток при получении в Москве</div>
+                    </div>
+
+                    <div class="prepay-option-card" id="option-prepay-100" onclick="window.selectPaymentOption('100%')">
+                        <div class="prepay-card-header">
+                            <span class="prepay-radio"></span>
+                            <span class="prepay-pill green">Полная оплата</span>
+                        </div>
+                        <div class="prepay-title">100% оплата</div>
+                        <div class="prepay-amount" id="checkout-amount-100">0 ₽</div>
+                        <div class="prepay-hint">Бесплатное хранение на складе до 90 дней</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Fields Form -->
+            <form id="checkout-form" onsubmit="window.proceedToPayment(event)">
+                <div style="margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span style="font-size:0.85rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.5px;">Контактные данные покупателя</span>
+                        <span style="font-size:0.75rem; color:#ff4d4d;">* Обязательные поля</span>
+                    </div>
+
+                    <div id="checkout-error-banner" class="checkout-error-banner hidden" style="background:rgba(229,9,20,0.15); border:1px solid rgba(229,9,20,0.4); color:#ff6b6b; padding:8px 12px; border-radius:8px; font-size:0.84rem; margin-bottom:12px;">
+                        Пожалуйста, заполните Имя, Телефон и Telegram для связи!
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <div class="input-group" style="margin:0;">
+                            <label style="font-size:0.82rem; color:#ccc;">Имя <span style="color:#ff4d4d;">*</span></label>
+                            <input type="text" id="checkout-first-name" placeholder="Александр" required autocomplete="given-name" style="padding:10px 14px; font-size:0.9rem;">
+                        </div>
+                        <div class="input-group" style="margin:0;">
+                            <label style="font-size:0.82rem; color:#ccc;">Фамилия <span style="color:#ff4d4d;">*</span></label>
+                            <input type="text" id="checkout-last-name" placeholder="Смирнов" required autocomplete="family-name" style="padding:10px 14px; font-size:0.9rem;">
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+                        <div class="input-group" style="margin:0;">
+                            <label style="font-size:0.82rem; color:#ccc;">Номер телефона <span style="color:#ff4d4d;">*</span></label>
+                            <input type="tel" id="checkout-phone" placeholder="+7 (999) 000-00-00" required autocomplete="tel" style="padding:10px 14px; font-size:0.9rem;">
+                        </div>
+                        <div class="input-group" style="margin:0;">
+                            <label style="font-size:0.82rem; color:#ccc;">Telegram (@ник, ссылка или ID) <span style="color:#ff4d4d;">*</span></label>
+                            <input type="text" id="checkout-tg" placeholder="@username или ссылка/ID" required autocomplete="off" style="padding:10px 14px; font-size:0.9rem;">
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                        <div class="input-group" style="margin:0;">
+                            <label style="font-size:0.82rem; color:#ccc;">Способ доставки / получения</label>
+                            <select id="checkout-delivery" style="padding:10px 14px; font-size:0.88rem;">
+                                <option value="СДЭК">СДЭК (по всей России)</option>
+                                <option value="Почта России">Почта России</option>
+                                <option value="Яндекс / Ozon">Яндекс Доставка / Ozon</option>
+                                <option value="Самовывоз Новокосино">Самовывоз (Москва, м. Новокосино)</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin:0;">
+                            <label style="font-size:0.82rem; color:#ccc;">Комментарий (город / ПВЗ)</label>
+                            <input type="text" id="checkout-comment" placeholder="Город или адрес ПВЗ" style="padding:10px 14px; font-size:0.88rem;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions" style="display:flex; gap:10px; margin-top:16px;">
+                    <button type="button" class="btn secondary outline" onclick="openModal(document.getElementById('cart-modal'))" style="width:auto; padding:12px 18px;">← В корзину</button>
+                    <button type="submit" class="btn primary" id="checkout-submit-btn" style="flex:1; padding:13px; font-size:1rem; font-weight:700;">
+                        Перейти к оплате (<span id="checkout-pay-btn-amount">0 ₽</span>) →
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Online Payment Simulation Screen -->
+        <div id="payment-modal" class="glass-panel modal hidden" style="max-width: 560px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                <h3 style="margin:0; font-size:1.25rem;">Оплата заказа онлайн</h3>
+                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">✕</button>
+            </div>
+
+            <div class="payment-card-box" style="background:linear-gradient(135deg, rgba(229,9,20,0.12) 0%, rgba(255,255,255,0.02) 100%); border:1px solid rgba(229,9,20,0.35); border-radius:14px; padding:18px; margin-bottom:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="font-size:0.88rem; color:#ccc;">К оплате сейчас:</span>
+                    <span id="payment-amount-display" style="font-size:1.6rem; font-weight:900; color:#fff;">0 ₽</span>
+                </div>
+                <div style="font-size:0.82rem; color:#aaa; line-height:1.5;">
+                    <span style="color:#00ff88; font-weight:700;">● Расчётный счёт в Т-Банке (ИП)</span><br>
+                    Официальная оплата с выдачей чека и фиксацией стоимости заказа. Без скрытых комиссий.
+                </div>
+            </div>
+
+            <!-- Payment Methods -->
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                <div class="payment-method-item active" style="display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); cursor:pointer;">
+                    <span style="font-size:1.5rem;">💳</span>
+                    <div>
+                        <div style="font-weight:600; font-size:0.92rem; color:#fff;">Банковская карта / СБП (Т-Банк)</div>
+                        <div style="font-size:0.78rem; color:#888;">Моментальное зачисление и фиксация предзаказа</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="display:flex; gap:10px;">
+                <button type="button" class="btn secondary outline" onclick="openModal(document.getElementById('checkout-modal'))" style="width:auto; padding:12px 18px;">← Назад</button>
+                <button type="button" class="btn primary" id="confirm-pay-btn" onclick="window.confirmOrderPayment()" style="flex:1; padding:13px; font-weight:700; font-size:1rem; box-shadow:0 8px 24px rgba(229,9,20,0.5);">
+                    Подтвердить и оплатить заказ ✓
+                </button>
+            </div>
+        </div>
+
+        <!-- Order Success & Account Creation Modal -->
+        <div id="order-success-modal" class="glass-panel modal hidden" style="max-width: 600px; text-align: center;">
+            <div style="width:64px; height:64px; border-radius:50%; background:rgba(0,255,136,0.15); border:2px solid #00ff88; color:#00ff88; font-size:2rem; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto;">✓</div>
+            <h3 style="font-size:1.4rem; color:#fff; margin-bottom:6px;">Заказ успешно оформлен и оплачен!</h3>
+            <p style="color:var(--gray); font-size:0.9rem; margin-bottom:20px;">Номер вашего заказа: <strong id="success-order-id" style="color:#fff; font-size:1.1rem;">#0</strong></p>
+
+            <!-- Account Credentials Box -->
+            <div id="success-credentials-box" class="credentials-box" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:18px; text-align:left; margin-bottom:18px;">
+                <div style="font-size:0.85rem; font-weight:700; color:#00ff88; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                    <span>Личный кабинет покупателя</span>
+                </div>
+                <p style="font-size:0.84rem; color:#aaa; margin-bottom:12px; line-height:1.45;">Для вас автоматически создан личный кабинет на <strong>funkostop.org</strong>, к которому привязан этот заказ. Сохраните данные для входа:</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; margin-bottom:12px;">
+                    <div>
+                        <span style="font-size:0.75rem; color:#888;">Ваш Логин (ID):</span>
+                        <div id="success-client-id" style="font-size:1.1rem; font-weight:800; color:#fff;">0</div>
+                    </div>
+                    <div>
+                        <span style="font-size:0.75rem; color:#888;">Пароль:</span>
+                        <div id="success-password" style="font-size:1.1rem; font-weight:800; color:#ff4d4d; letter-spacing:1px;">------</div>
+                    </div>
+                </div>
+                <button type="button" id="success-auto-login-btn" class="btn primary" onclick="window.autoLoginFromSuccess()" style="width:100%; padding:10px; font-size:0.88rem; font-weight:600;">
+                    Войти в личный кабинет и открыть «Мои заказы» →
+                </button>
+            </div>
+
+            <!-- Telegram Bot Binding Box -->
+            <div class="tg-binding-box" style="background:rgba(0,136,204,0.08); border:1px solid rgba(0,136,204,0.25); border-radius:14px; padding:16px; text-align:left; margin-bottom:20px;">
+                <div style="font-size:0.85rem; font-weight:700; color:#4dabf7; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                    <span>Telegram-бот @funkostop_bot</span>
+                </div>
+                <p style="font-size:0.84rem; color:#bbb; margin-bottom:10px; line-height:1.45;">
+                    Привяжите заказ в боте, чтобы получать уведомления об изменении статуса и прибытии фигурки в Москву:
+                </p>
+                <a id="success-tg-bot-link" href="https://t.me/funkostop_bot" target="_blank" rel="noopener" class="btn secondary outline" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:10px; font-size:0.88rem; color:#4dabf7; border-color:rgba(0,136,204,0.35);">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
+                    <span>Подключить бота @funkostop_bot</span>
+                </a>
+            </div>
+
+            <div class="modal-actions" style="display:flex; justify-content:center;">
+                <button type="button" class="btn secondary outline" onclick="closeModals(); window.switchTab('catalog');" style="max-width:240px;">Продолжить покупки</button>
+            </div>
+        </div>
+
+        <!-- Manage Categories & Series Modal (Admin Only) -->
+        <div id="catalog-meta-modal" class="glass-panel modal hidden" style="max-width: 600px;">
+            <h3>Управление категориями и сериями</h3>
+            <p style="color:var(--gray); font-size:0.85rem; margin-bottom:16px;">Добавляйте или удаляйте бренды и тематические вселенные каталога</p>
+            
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                <!-- Categories / Brands column -->
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:14px; display:flex; flex-direction:column;">
+                    <h4 style="margin:0 0 10px 0; color:#fff; font-size:0.92rem; display:flex; justify-content:space-between; align-items:center;">
+                        <span>Бренды</span>
+                        <span id="meta-cat-count" style="font-size:0.75rem; color:var(--primary); font-weight:600;">0</span>
+                    </h4>
+                    <form id="add-category-form" style="display:flex; gap:6px; margin-bottom:12px;">
+                        <input type="text" id="new-category-name" placeholder="Новый бренд..." required style="flex:1; padding:7px 10px; font-size:0.85rem; border-radius:6px; background:#181818; border:1px solid rgba(255,255,255,0.2); color:#fff;">
+                        <button type="submit" class="btn primary" style="padding:7px 12px; font-size:0.85rem; font-weight:bold;">+</button>
+                    </form>
+                    <div id="meta-categories-list" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:4px;"></div>
+                </div>
+
+                <!-- Series / Universes column -->
+                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:14px; display:flex; flex-direction:column;">
+                    <h4 style="margin:0 0 10px 0; color:#fff; font-size:0.92rem; display:flex; justify-content:space-between; align-items:center;">
+                        <span>Тематики</span>
+                        <span id="meta-ser-count" style="font-size:0.75rem; color:var(--primary); font-weight:600;">0</span>
+                    </h4>
+                    <form id="add-series-form" style="display:flex; gap:6px; margin-bottom:12px;">
+                        <input type="text" id="new-series-name" placeholder="Новая тематика..." required style="flex:1; padding:7px 10px; font-size:0.85rem; border-radius:6px; background:#181818; border:1px solid rgba(255,255,255,0.2); color:#fff;">
+                        <button type="submit" class="btn primary" style="padding:7px 12px; font-size:0.85rem; font-weight:bold;">+</button>
+                    </form>
+                    <div id="meta-series-list" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:4px;"></div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn secondary outline close-modal">Закрыть</button>
+            </div>
+        </div>
 
         <!-- Product Modal (Add/Edit) -->
         <div id="product-modal" class="glass-panel modal hidden" style="max-width: 580px;">
@@ -624,6 +1751,20 @@
                     </div>
                     <div id="product-photo-preview-wrap" style="margin-top: 10px; display: none;">
                         <img id="product-photo-preview" src="" alt="Превью" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Бейдж / Стикер карточки</label>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="product-badge" placeholder="NEW, GITD, CHASE, EXCLUSIVE..." list="badges-datalist" autocomplete="off" style="flex: 1; min-width: 140px;">
+                        <div class="badge-quick-pills" style="display: flex; gap: 5px; flex-wrap: wrap;">
+                            <button type="button" class="btn-badge-quick" onclick="document.getElementById('product-badge').value='NEW'">NEW</button>
+                            <button type="button" class="btn-badge-quick" onclick="document.getElementById('product-badge').value='GITD'">GITD</button>
+                            <button type="button" class="btn-badge-quick" onclick="document.getElementById('product-badge').value='CHASE'">CHASE</button>
+                            <button type="button" class="btn-badge-quick" onclick="document.getElementById('product-badge').value='EXCLUSIVE'">EXCLUSIVE</button>
+                            <button type="button" class="btn-badge-quick outline" onclick="document.getElementById('product-badge').value=''">✕</button>
+                        </div>
                     </div>
                 </div>
 
@@ -729,48 +1870,44 @@
     <!-- Datalists for Autocomplete -->
     <datalist id="categories-datalist"></datalist>
     <datalist id="series-datalist"></datalist>
+    <datalist id="badges-datalist">
+        <option value="NEW">
+        <option value="GITD">
+        <option value="CHASE">
+        <option value="EXCLUSIVE">
+        <option value="LIGHT & SOUND">
+        <option value="SALE">
+    </datalist>
     <datalist id="clients-datalist"></datalist>
 
-    <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1788129600000"></script>
-
-    <!-- Legal Info Footer (Required by T-Bank Ekvayring) -->
-    <footer id="legal-footer" style="
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background: rgba(10,10,12,0.97);
-        border-top: 1px solid rgba(229,9,20,0.25);
-        padding: 10px 24px;
-        z-index: 9999;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 6px;
-        font-family: 'Outfit', sans-serif;
-        font-size: 0.75rem;
-        color: rgba(255,255,255,0.45);
-        line-height: 1.5;
-        box-sizing: border-box;
-    ">
-        <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
-            <span style="color:rgba(255,255,255,0.65);font-weight:600;">Funko Stop</span>
-            <span>ИП Пелих Иван Валерьевич</span>
-            <span>ОГРН: 326508100489145</span>
-            <span>ИНН: 590587003901</span>
-            <span>Дата регистрации: 21.08.2026</span>
-            <span>📍 г. Москва, ул. Суздальская, 14к1</span>
-        </div>
-        <div style="display:flex;gap:16px;flex-wrap:wrap;">
-            <a href="/static/oferta.html" style="color:rgba(229,9,20,0.7);text-decoration:none;" onmouseover="this.style.color='rgba(229,9,20,1)'" onmouseout="this.style.color='rgba(229,9,20,0.7)'">Публичная оферта</a>
-            <a href="/static/privacy.html" style="color:rgba(229,9,20,0.7);text-decoration:none;" onmouseover="this.style.color='rgba(229,9,20,1)'" onmouseout="this.style.color='rgba(229,9,20,0.7)'">Политика конфиденциальности</a>
+    <!-- Clean Minimalist Footer (Photo 5 Reference) -->
+    <footer id="main-footer" class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-links">
+                <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener">Менеджер @Funko_Stop</a>
+                <span class="footer-dot">•</span>
+                <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener">Отзывы @FunkoStopReviews</a>
+                <span class="footer-dot">•</span>
+                <a href="https://t.me/funkostop_bot" target="_blank" rel="noopener">Telegram-бот</a>
+                <span class="footer-dot">•</span>
+                <a href="/static/privacy.html">Политика конфиденциальности</a>
+                <span class="footer-dot">•</span>
+                <a href="/static/oferta.html">Оферта</a>
+            </div>
+            <div class="footer-copyright">
+                2026 Funko Stop (c) Все права защищены
+            </div>
         </div>
     </footer>
-    <style>
-        /* Push content above legal footer */
-        body { padding-bottom: 46px; }
-    </style>
+
+    <!-- Floating Cart Button -->
+    <div id="floating-cart-btn" class="floating-cart-btn" onclick="window.openCartModal()" title="Открыть корзину">
+        <span class="floating-cart-icon">🛒</span>
+        <span class="floating-cart-text">Корзина</span>
+        <span id="floating-cart-badge" class="cart-badge-count">0</span>
+    </div>
+
+    <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
+    <script src="/static/app.js?v=1788230000000"></script>
 </body>
 </html>
