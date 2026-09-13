@@ -921,6 +921,14 @@ async def get_favicon_png():
 async def get_apple_touch_icon():
     return FileResponse("static/apple-touch-icon.png")
 
+@app.get("/robots.txt")
+async def get_robots_txt():
+    return FileResponse("static/robots.txt", media_type="text/plain")
+
+@app.get("/sitemap.xml")
+async def get_sitemap_xml():
+    return FileResponse("static/sitemap.xml", media_type="application/xml")
+
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
