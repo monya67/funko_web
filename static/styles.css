@@ -94,7 +94,7 @@ body {
 }
 
 .sidebar .logo {
-    padding: 0 0.8rem;
+    padding: 0.3rem 0.8rem 0;
     margin-bottom: 1.8rem;
     display: inline-flex;
     align-items: center;
@@ -107,8 +107,13 @@ body {
     transform: translateY(-2px);
 }
 
+.sidebar .logo .brand-stop-logo {
+    height: 62px;
+    width: auto;
+}
+
 .sidebar .logo:hover .brand-stop-logo {
-    transform: scale(1.04);
+    transform: scale(1.05);
 }
 
 .logo.small h1 {
@@ -2283,7 +2288,7 @@ th.sorted-col {
 }
 
 .brand-stop-logo {
-    height: 44px;
+    height: 52px;
     width: auto;
     display: block;
     flex-shrink: 0;
@@ -2291,7 +2296,7 @@ th.sorted-col {
 }
 
 .landing-logo:hover .brand-stop-logo {
-    transform: scale(1.04);
+    transform: scale(1.05);
 }
 
 .landing-nav-links {
@@ -2830,11 +2835,11 @@ th.sorted-col {
 }
 
 .footer-logo-wrap:hover .brand-stop-logo {
-    transform: scale(1.04);
+    transform: scale(1.05);
 }
 
 .footer-brand-logo {
-    height: 48px;
+    height: 56px;
     width: auto;
 }
 
@@ -3631,7 +3636,7 @@ th.sorted-col {
     }
 
     .brand-stop-logo {
-        height: 38px;
+        height: 42px;
     }
 
     .landing-nav-actions {
