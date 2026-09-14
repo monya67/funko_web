@@ -182,16 +182,24 @@
                 <header class="landing-navbar">
                     <div class="landing-nav-inner">
                         <div class="landing-logo" onclick="window.scrollTo({top:0, behavior:'smooth'})">
-                            <span class="landing-logo-text">FUNKO <span>STOP</span></span>
+                            <!-- Новый логотип: знак СТОП + надпись FUNKO -->
+                            <span class="landing-logo-text">
+                                <span class="logo-stop-icon" aria-hidden="true">
+                                    <svg class="logo-stop-svg" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <polygon points="11,2 21,2 30,11 30,21 21,30 11,30 2,21 2,11" fill="#E50914" stroke="none"/>
+                                        <text x="16" y="22" text-anchor="middle" font-family="'Outfit',sans-serif" font-size="11" font-weight="900" fill="white" letter-spacing="0">STOP</text>
+                                        <!-- Надпись FUNKO над знаком -->
+                                    </svg>
+                                </span>
+                                FUNKO
+                            </span>
                         </div>
                         <nav class="landing-nav-links">
                             <a href="#preorder-section" class="landing-nav-link">Предзаказ</a>
                             <a href="#stock-section" class="landing-nav-link">Наличие (Авито)</a>
                             <a href="#delivery-section" class="landing-nav-link">Оплата и доставка</a>
-                            <a href="#condition-section" class="landing-nav-link">Состояние коробок</a>
-                            <a href="#support-section" class="landing-nav-link">Гарантии</a>
-                            <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="landing-nav-link">Отзывы</a>
                             <a href="#faq-section" class="landing-nav-link">FAQ</a>
+                            <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="landing-nav-link">Отзывы</a>
                         </nav>
                         <div class="landing-nav-actions">
                             <button type="button" class="btn primary landing-btn-catalog" onclick="window.switchTab('catalog')">
@@ -230,7 +238,7 @@
                             </h1>
 
                             <p class="hero-description">
-                                Собрали здесь всё, что стоит знать перед заказом: от 50% предоплаты и фиксации цены до бесплатного 30-дневного хранения на складе в Москве, бережной доставки по всей РФ и гарантий сохранности.
+                                Предзаказы из США и Европы · Гарантия подлинности · 50% предоплата фиксирует цену · Доставка по всей РФ
                             </p>
 
                             <div class="hero-cta-buttons">
@@ -240,24 +248,23 @@
                                 </button>
                                 <a href="https://t.me/Funko_Stop" target="_blank" class="btn secondary outline hero-btn-telegram" rel="noopener">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                                    <span>Менеджер @Funko_Stop</span>
-                                </a>
-                                <a href="https://t.me/FunkoStopReviews" target="_blank" class="btn secondary outline hero-btn-reviews" rel="noopener">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                    <span>Отзывы @FunkoStopReviews</span>
-                                </a>
-                                <a href="https://t.me/funkostop_bot" target="_blank" class="btn secondary outline hero-btn-bot" rel="noopener">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 0 1 2 2v2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4V4a2 2 0 0 1 2-2z"></path><line x1="9" y1="12" x2="9" y2="12"></line><line x1="15" y1="12" x2="15" y2="12"></line></svg>
-                                    <span>Telegram-бот @funkostop_bot</span>
-                                </a>
-                                <a href="https://www.avito.ru/user/8736383a1370c438418994b93f35c736/profile?src=sharing" target="_blank" class="btn secondary outline hero-btn-avito" rel="noopener">
-                                    <span>Наличие на Авито</span>
+                                    <span>Написать @Funko_Stop</span>
                                 </a>
                             </div>
                         </div>
 
-                        <!-- Hero Stats Strip -->
+                        <!-- Hero Stats Strip — доставка первой -->
                         <div class="hero-stats-strip">
+                            <div class="stat-item">
+                                <div class="stat-icon-wrap">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                                </div>
+                                <div class="stat-text">
+                                    <span class="stat-title">Доставка по всей РФ</span>
+                                    <span class="stat-sub">СДЭК, Яндекс, Авито, Ozon, Почта</span>
+                                </div>
+                            </div>
+                            <div class="stat-divider"></div>
                             <div class="stat-item">
                                 <div class="stat-icon-wrap">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M16 8l-8 8"></path><circle cx="9" cy="9" r="1.5"></circle><circle cx="15" cy="15" r="1.5"></circle></svg>
@@ -280,16 +287,6 @@
                             <div class="stat-divider"></div>
                             <div class="stat-item">
                                 <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">Доставка по всей РФ</span>
-                                    <span class="stat-sub">СДЭК, Почта, Ozon, Яндекс, Авито</span>
-                                </div>
-                            </div>
-                            <div class="stat-divider"></div>
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
                                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
                                 </div>
                                 <div class="stat-text">
@@ -300,19 +297,8 @@
                         </div>
                     </div>
 
-                    <!-- Quick Hub Cards -->
+                    <!-- Quick Hub Cards — без карточки менеджера (дублируется с hero) -->
                     <div class="home-hub-grid">
-                        <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" class="hub-card glass-panel">
-                            <div class="hub-card-icon red">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                            </div>
-                            <div class="hub-card-content">
-                                <span class="hub-card-tag">Менеджер в Telegram</span>
-                                <h4>@Funko_Stop</h4>
-                                <p>Оформление предзаказов, согласование доставки, вопросы по состоянию и поиск фигурок.</p>
-                            </div>
-                        </a>
-
                         <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="hub-card glass-panel">
                             <div class="hub-card-icon amber">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -526,91 +512,6 @@
                     </section>
 
                     <!-- BOX CONDITION & VINYL PROTECTORS SECTION -->
-                    <section id="condition-section" class="landing-section">
-                        <div class="home-section-header">
-                            <span class="section-label">Честность и стандарты</span>
-                            <h2 class="section-title">Состояние коробок и упаковка</h2>
-                            <p class="section-subtitle">Мы заботимся о сохранности вашей коллекции и честно говорим обо всех нюансах.</p>
-                        </div>
-
-                        <div class="landing-info-triad">
-                            <div class="info-card glass-panel">
-                                <div class="info-card-header">
-                                    <div class="info-card-icon red">
-                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                                    </div>
-                                    <h3>Честно о Mint-состоянии</h3>
-                                </div>
-                                <p>Сразу честно: мы не гарантируем Mint-состояние. Мы стараемся привозить фигурки максимально аккуратно и в большинстве случаев они приезжают в отличном состоянии.</p>
-                                <p class="info-card-sub">Но Funko — массовое фабричное производство, поэтому небольшие заводские особенности покраски или картона иногда встречаются. Мы не можем повлиять на то, как производитель изготовил конкретную коробку. Небольшие заводские дефекты не являются основанием для компенсации.</p>
-                            </div>
-
-                            <div class="info-card glass-panel">
-                                <div class="info-card-header">
-                                    <div class="info-card-icon amber">
-                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                                    </div>
-                                    <h3>Фото перед отправкой</h3>
-                                </div>
-                                <p><strong>Конечно!</strong> Если вам важно состояние конкретной фигурки или коробки — просто попросите менеджера <strong>@Funko_Stop</strong> прислать детальные фотографии перед упаковкой.</p>
-                                <p class="info-card-sub">Мы покажем коробку со всех ракурсов, проверим углы, окошко и стикеры, чтобы вы были уверены в покупке на 100%.</p>
-                            </div>
-
-                            <div class="info-card glass-panel">
-                                <div class="info-card-header">
-                                    <div class="info-card-icon green">
-                                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                                    </div>
-                                    <h3>Протекторы Vaulted Vinyl</h3>
-                                </div>
-                                <p><strong>Да, есть в наличии!</strong> В наличии оригинальные стандартные пластиковые протекторы <strong>Vaulted Vinyl</strong> высшего качества.</p>
-                                <p class="info-card-sub">Стоимость — <strong>250 ₽ за штуку</strong>. Если хотите упаковать фигурку в протектор для дополнительной защиты при пересылке или хранения на полке — сообщите менеджеру при оформлении.</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    <!-- SUPPORT & GUARANTEES SECTION -->
-                    <section id="support-section" class="landing-section">
-                        <div class="home-section-header">
-                            <span class="section-label">Забота о покупателях</span>
-                            <h2 class="section-title">Если с заказом что-то не так</h2>
-                            <p class="section-subtitle">Главное — не паниковать. Мы всегда на стороне клиента и находим честное решение.</p>
-                        </div>
-
-                        <div class="home-features-grid">
-                            <div class="feature-card glass-panel">
-                                <div class="feature-icon green">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
-                                </div>
-                                <h3>Утеря посылки до Москвы</h3>
-                                <p>Если при доставке до нашего склада в Москве посылка потерялась — мы либо <strong>полностью вернём предоплату</strong>, либо <strong>перезакажем товар за свой счёт</strong>. К счастью, таких случаев у нас пока не было.</p>
-                            </div>
-
-                            <div class="feature-card glass-panel">
-                                <div class="feature-icon amber">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                                </div>
-                                <h3>Повреждение или брак</h3>
-                                <p>Если фигурка повреждена или коробка получила серьёзное повреждение, влияющее на коллекционную ценность — напишите <strong>@Funko_Stop</strong> и приложите фото. Мы рассмотрим ситуацию индивидуально, согласуем компенсацию или полную отмену заказа.</p>
-                            </div>
-
-                            <div class="feature-card glass-panel">
-                                <div class="feature-icon red">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
-                                </div>
-                                <h3>Видео распаковки</h3>
-                                <p><strong>Очень желательно!</strong> Видео непрерывной распаковки посылки поможет быстрее разобраться и объективно подтвердить ситуацию, если с заказом что-то произошло во время доставки.</p>
-                            </div>
-
-                            <div class="feature-card glass-panel">
-                                <div class="feature-icon blue">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                </div>
-                                <h3>Срок обращения: 5 дней</h3>
-                                <p>Пожалуйста, обращайтесь в течение <strong>5 дней с момента получения</strong> посылки в пункте выдачи. Напишите <strong>@Funko_Stop</strong> с подробным описанием и медиафайлами.</p>
-                            </div>
-                        </div>
-                    </section>
 
                     <!-- ACCORDION FAQ SECTION -->
                     <section id="faq-section" class="landing-section">
@@ -709,11 +610,11 @@
 
                             <div class="faq-accordion-item glass-panel">
                                 <button type="button" class="faq-question-btn">
-                                    <span>Можно ли запросить фото коробки и добавить протектор?</span>
+                                    <span>Гарантируете ли вы Mint-состояние коробки?</span>
                                     <span class="faq-icon">+</span>
                                 </button>
                                 <div class="faq-answer-panel">
-                                    <p>Да! Если вам важно состояние коробки — просто попросите менеджера @Funko_Stop прислать фотографии перед отправкой. Также в наличии есть фирменные протекторы Vaulted Vinyl по 250 ₽ за штуку.</p>
+                                    <p>Честно: мы не гарантируем Mint-состояние. В большинстве случаев фигурки приезжают в отличном состоянии, но Funko — массовое производство. Небольшие заводские особенности покраски или картона иногда встречаются и не являются основанием для компенсации. Если для вас критично состояние — попросите менеджера <strong>@Funko_Stop</strong> прислать детальные фото перед упаковкой. Мы покажем коробку со всех ракурсов.</p>
                                 </div>
                             </div>
 
@@ -723,7 +624,17 @@
                                     <span class="faq-icon">+</span>
                                 </button>
                                 <div class="faq-answer-panel">
-                                    <p>Главное — не паниковать. Напишите менеджеру @Funko_Stop в течение 5 дней после получения, приложите фото и видео распаковки. При утере до Москвы мы вернём предоплату либо перезакажем товар за свой счёт. При повреждениях — индивидуально согласуем компенсацию или отмену.</p>
+                                    <p>Главное — не паниковать. Напишите менеджеру <strong>@Funko_Stop</strong> в течение 5 дней после получения, приложите фото и видео непрерывной распаковки. При утере до Москвы мы вернём предоплату либо перезакажем товар за свой счёт. При повреждениях — индивидуально согласуем компенсацию или отмену заказа.</p>
+                                </div>
+                            </div>
+
+                            <div class="faq-accordion-item glass-panel">
+                                <button type="button" class="faq-question-btn">
+                                    <span>Можно ли запросить фото коробки и добавить протектор?</span>
+                                    <span class="faq-icon">+</span>
+                                </button>
+                                <div class="faq-answer-panel">
+                                    <p>Да! Если вам важно состояние коробки — просто попросите менеджера @Funko_Stop прислать фотографии перед отправкой. Также в наличии есть фирменные протекторы Vaulted Vinyl по 250 ₽ за штуку для дополнительной защиты при пересылке.</p>
                                 </div>
                             </div>
                         </div>
@@ -764,7 +675,14 @@
                     <footer class="landing-footer">
                         <div class="landing-footer-inner">
                             <div class="footer-col-brand">
-                                <span class="footer-logo">FUNKO <span>STOP</span></span>
+                                <!-- Новый footer логотип: знак СТОП + FUNKO -->
+                                <span class="footer-logo" style="display:inline-flex; align-items:center; gap:10px;">
+                                    <svg viewBox="0 0 32 32" width="26" height="26" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;filter:drop-shadow(0 2px 6px rgba(229,9,20,0.6))">
+                                        <polygon points="11,2 21,2 30,11 30,21 21,30 11,30 2,21 2,11" fill="#E50914"/>
+                                        <text x="16" y="22" text-anchor="middle" font-family="'Outfit',sans-serif" font-size="11" font-weight="900" fill="white">STOP</text>
+                                    </svg>
+                                    FUNKO
+                                </span>
                                 <p>Оригинальные фигурки Funko POP, эксклюзивы и предзаказы из США и Европы. Доставка по всей России.</p>
                             </div>
                             <div class="footer-col-links">
@@ -789,7 +707,6 @@
                                     <a href="#preorder-section">Условия предзаказа</a>
                                     <a href="#stock-section">Наличие на Авито</a>
                                     <a href="#delivery-section">Оплата и доставка</a>
-                                    <a href="#condition-section">Состояние коробок</a>
                                     <a href="#faq-section">Вопрос-ответ (FAQ)</a>
                                 </div>
                                 <div class="footer-link-group">
