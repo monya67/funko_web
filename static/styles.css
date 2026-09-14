@@ -96,8 +96,19 @@ body {
 .sidebar .logo {
     padding: 0 0.8rem;
     margin-bottom: 1.8rem;
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidebar .logo:hover {
+    transform: translateY(-2px);
+}
+
+.sidebar .logo:hover .brand-stop-logo {
+    transform: scale(1.04);
 }
 
 .logo.small h1 {
