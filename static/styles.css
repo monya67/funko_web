@@ -2259,30 +2259,28 @@ th.sorted-col {
 }
 
 .landing-logo {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     cursor: pointer;
     user-select: none;
+    text-decoration: none;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.landing-logo-text {
-    font-size: 1.25rem;
-    font-weight: 900;
-    letter-spacing: 1.2px;
-    color: #fff;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+.landing-logo:hover {
+    transform: translateY(-2px);
 }
 
-.landing-logo-text span {
-    color: #fff;
-    background: var(--primary);
-    padding: 2px 7px;
-    border-radius: 6px;
-    font-size: 0.84rem;
-    font-weight: 900;
-    box-shadow: 0 2px 8px rgba(229, 9, 20, 0.4);
+.brand-stop-logo {
+    height: 44px;
+    width: auto;
+    display: block;
+    flex-shrink: 0;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), filter 0.22s ease;
+}
+
+.landing-logo:hover .brand-stop-logo {
+    transform: scale(1.04);
 }
 
 .landing-nav-links {
@@ -2808,18 +2806,25 @@ th.sorted-col {
 }
 
 
-/* Логотип-стоп-знак: SVG иконка в navbar и footer */
-.logo-stop-icon {
+/* Фирменный логотип FUNKO STOP: знак STOP + надпись FUNKO сверху */
+.footer-logo-wrap {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.logo-stop-svg {
-    width: 28px;
-    height: 28px;
-    filter: drop-shadow(0 2px 6px rgba(229,9,20,0.5));
+.footer-logo-wrap:hover {
+    transform: translateY(-2px);
+}
+
+.footer-logo-wrap:hover .brand-stop-logo {
+    transform: scale(1.04);
+}
+
+.footer-brand-logo {
+    height: 48px;
+    width: auto;
 }
 
 /* Landing Footer */
@@ -3610,8 +3615,12 @@ th.sorted-col {
     }
 
     .landing-logo {
-        font-size: 1.12rem;
-        letter-spacing: -0.01em;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .brand-stop-logo {
+        height: 38px;
     }
 
     .landing-nav-actions {
