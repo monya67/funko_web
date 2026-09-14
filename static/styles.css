@@ -2086,6 +2086,15 @@ th.sorted-col {
     margin-bottom: 38px;
 }
 
+/* Базовое правило: все .btn на лендинге — не на всю ширину */
+.hero-cta-buttons .btn,
+.avito-actions .btn,
+.cta-btns .btn,
+.landing-nav-actions .btn {
+    width: auto !important;
+    min-width: unset !important;
+}
+
 /* Hero primary — компактная ширина fit-content */
 .hero-cta-buttons .btn.primary {
     width: fit-content;
@@ -2317,6 +2326,7 @@ th.sorted-col {
     align-items: center;
     gap: 8px;
     cursor: pointer;
+    width: auto !important;
 }
 
 .landing-btn-login {
@@ -2325,6 +2335,7 @@ th.sorted-col {
     font-weight: 600;
     border-radius: 10px;
     cursor: pointer;
+    width: auto !important;
 }
 
 .landing-user-chip {
@@ -3515,9 +3526,12 @@ th.sorted-col {
     padding: 11px 20px;
     font-size: 0.9rem;
     font-weight: 600;
+    width: auto !important;
+    min-width: unset !important;
     flex-shrink: 0;
     white-space: nowrap;
     text-decoration: none;
+    border-radius: 12px;
 }
 
 /* Hub Tracking Card Dynamic Styles */
