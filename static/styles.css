@@ -94,26 +94,10 @@ body {
 }
 
 .sidebar .logo {
-    padding: 0.3rem 0.8rem 0;
+    padding: 0 0.8rem;
     margin-bottom: 1.8rem;
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    cursor: pointer;
-    user-select: none;
-    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.sidebar .logo:hover {
-    transform: translateY(-2px);
-}
-
-.sidebar .logo .brand-stop-logo {
-    height: 62px;
-    width: auto;
-}
-
-.sidebar .logo:hover .brand-stop-logo {
-    transform: scale(1.05);
 }
 
 .logo.small h1 {
@@ -2275,28 +2259,30 @@ th.sorted-col {
 }
 
 .landing-logo {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     cursor: pointer;
     user-select: none;
-    text-decoration: none;
-    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.landing-logo:hover {
-    transform: translateY(-2px);
+.landing-logo-text {
+    font-size: 1.25rem;
+    font-weight: 900;
+    letter-spacing: 1.2px;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.brand-stop-logo {
-    height: 52px;
-    width: auto;
-    display: block;
-    flex-shrink: 0;
-    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), filter 0.22s ease;
-}
-
-.landing-logo:hover .brand-stop-logo {
-    transform: scale(1.05);
+.landing-logo-text span {
+    color: #fff;
+    background: var(--primary);
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 0.84rem;
+    font-weight: 900;
+    box-shadow: 0 2px 8px rgba(229, 9, 20, 0.4);
 }
 
 .landing-nav-links {
@@ -2822,25 +2808,17 @@ th.sorted-col {
 }
 
 
-/* Фирменный логотип FUNKO STOP: знак STOP + надпись FUNKO сверху */
-.footer-logo-wrap {
-    display: inline-flex;
-    align-items: center;
-    cursor: pointer;
-    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+.footer-logo {
+    font-size: 1.35rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #fff;
+    display: inline-block;
+    margin-bottom: 12px;
 }
 
-.footer-logo-wrap:hover {
-    transform: translateY(-2px);
-}
-
-.footer-logo-wrap:hover .brand-stop-logo {
-    transform: scale(1.05);
-}
-
-.footer-brand-logo {
-    height: 56px;
-    width: auto;
+.footer-logo span {
+    color: var(--primary);
 }
 
 /* Landing Footer */
@@ -3631,12 +3609,8 @@ th.sorted-col {
     }
 
     .landing-logo {
-        display: inline-flex;
-        align-items: center;
-    }
-
-    .brand-stop-logo {
-        height: 42px;
+        font-size: 1.12rem;
+        letter-spacing: -0.01em;
     }
 
     .landing-nav-actions {
