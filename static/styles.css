@@ -287,8 +287,8 @@ input[type="date"] {
 
 /* Buttons */
 .btn {
-    width: 100%;
-    padding: 0.9rem;
+    width: auto;
+    padding: 0.9rem 1.4rem;
     border: none;
     border-radius: 10px;
     font-size: 0.95rem;
@@ -296,6 +296,18 @@ input[type="date"] {
     cursor: pointer;
     transition: transform 0.15s ease, background-color var(--transition), opacity var(--transition);
     letter-spacing: 0.3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+/* Модификатор для мест, где кнопка должна занять всю ширину контейнера */
+.btn.full-width,
+.sidebar-auth-box .btn,
+#login-view .btn {
+    width: 100%;
 }
 
 .btn:active {
@@ -455,7 +467,6 @@ input[type="date"] {
 }
 
 .header-flex .btn {
-    width: auto;
     padding: 0.65rem 1.4rem;
     font-size: 0.85rem;
 }
@@ -2086,31 +2097,12 @@ th.sorted-col {
     margin-bottom: 38px;
 }
 
-/* Базовое правило: все .btn на лендинге — не на всю ширину */
-.hero-cta-buttons .btn,
-.avito-actions .btn,
-.cta-btns .btn,
-.landing-nav-actions .btn {
-    width: auto !important;
-    min-width: unset !important;
-}
-
-/* Hero primary — компактная ширина fit-content */
-.hero-cta-buttons .btn.primary {
-    width: fit-content;
-}
-
 .hero-btn-main {
     padding: 12px 22px;
     font-size: 0.97rem;
     font-weight: 700;
     border-radius: 12px;
-    display: inline-flex;
-    align-items: center;
     gap: 9px;
-    cursor: pointer;
-    width: fit-content !important;
-    min-width: unset !important;
     box-shadow: 0 6px 20px rgba(229, 9, 20, 0.4);
     transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -2322,11 +2314,7 @@ th.sorted-col {
     font-size: 0.86rem;
     font-weight: 700;
     border-radius: 10px;
-    display: inline-flex;
-    align-items: center;
     gap: 8px;
-    cursor: pointer;
-    width: auto !important;
 }
 
 .landing-btn-login {
@@ -2334,8 +2322,6 @@ th.sorted-col {
     font-size: 0.86rem;
     font-weight: 600;
     border-radius: 10px;
-    cursor: pointer;
-    width: auto !important;
 }
 
 .landing-user-chip {
@@ -2557,8 +2543,8 @@ th.sorted-col {
 }
 
 .info-card-sub {
-    font-size: 0.82rem !important;
-    color: rgba(255, 255, 255, 0.5) !important;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .info-card-list {
@@ -2656,8 +2642,8 @@ th.sorted-col {
 }
 
 .reserve-sub {
-    font-size: 0.8rem !important;
-    color: rgba(255, 255, 255, 0.5) !important;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 /* Feature Cards Grid */
@@ -2711,8 +2697,8 @@ th.sorted-col {
 }
 
 .feature-sub {
-    font-size: 0.82rem !important;
-    color: rgba(255, 255, 255, 0.5) !important;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 /* FAQ Accordion */
@@ -2821,26 +2807,6 @@ th.sorted-col {
     margin-top: 8px;
 }
 
-/* CTA-блок hero: кнопки компактные (fit-content), не на всю ширину */
-.home-cta-card .hero-btn-main {
-    width: fit-content !important;
-    min-width: unset;
-    padding: 13px 28px !important;
-    font-size: 1rem !important;
-    font-weight: 700 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 10px !important;
-    border-radius: 13px !important;
-    box-shadow: 0 8px 24px rgba(229, 9, 20, 0.4);
-    transition: all 0.25s ease !important;
-}
-
-.home-cta-card .hero-btn-main:hover {
-    box-shadow: 0 12px 30px rgba(229, 9, 20, 0.6);
-    transform: translateY(-2px);
-}
 
 /* Логотип-стоп-знак: SVG иконка в navbar и footer */
 .logo-stop-icon {
@@ -3520,14 +3486,9 @@ th.sorted-col {
 }
 
 .faq-callout-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
     padding: 11px 20px;
     font-size: 0.9rem;
     font-weight: 600;
-    width: auto !important;
-    min-width: unset !important;
     flex-shrink: 0;
     white-space: nowrap;
     text-decoration: none;

@@ -820,7 +820,7 @@
                 <!-- Admin Notification Banner when Catalog is in Dev Mode -->
                 <div id="catalog-admin-dev-notice" class="admin-only hidden" style="background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #fff;">
-                        <span style="font-size: 1.25rem;">👑</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                         <span><strong>Режим администратора:</strong> Каталог открыт для вас. Для обычных посетителей включена заглушка <em>«В разработке»</em>.</span>
                     </div>
                     <span style="font-size: 0.78rem; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; color: #ff9999; white-space: nowrap;">Доступ админа</span>
@@ -840,17 +840,23 @@
 
                         <div class="under-dev-highlights">
                             <div class="under-dev-feature">
-                                <div class="feature-icon">✈️</div>
+                                <div class="feature-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                </div>
                                 <div class="feature-title">Предзаказ через менеджера</div>
                                 <div class="feature-desc">Напишите нам в Telegram — найдём и доставим любую фигурку из США и Европы с фиксированной ценой и предоплатой 50%.</div>
                             </div>
                             <div class="under-dev-feature">
-                                <div class="feature-icon">📦</div>
+                                <div class="feature-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+                                </div>
                                 <div class="feature-title">В наличии в Москве</div>
                                 <div class="feature-desc">Более 150 оригинальных позиций с отправкой через Авито Доставку в день заказа в бронебойной упаковке.</div>
                             </div>
                             <div class="under-dev-feature">
-                                <div class="feature-icon">🤖</div>
+                                <div class="feature-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                </div>
                                 <div class="feature-title">Отслеживание в боте</div>
                                 <div class="feature-desc">Статусы всех ваших предзаказов и посылок обновляются онлайн через официальный Telegram-бот @funkostop_bot.</div>
                             </div>
@@ -1366,7 +1372,8 @@
         <div id="cart-modal" class="glass-panel modal hidden" style="max-width: 620px;">
             <div class="cart-modal-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                 <h3 style="margin:0; font-size:1.3rem; display:flex; align-items:center; gap:8px;">
-                    <span>🛒 Корзина товаров</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    <span>Корзина</span>
                     <span id="cart-modal-count-pill" style="font-size:0.8rem; background:rgba(229,9,20,0.15); color:#ff4d4d; padding:2px 8px; border-radius:12px; font-weight:700;">0 шт.</span>
                 </h3>
                 <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">✕</button>
@@ -1377,7 +1384,7 @@
             </div>
 
             <div id="cart-empty-view" class="hidden" style="text-align: center; padding: 40px 20px;">
-                <div style="font-size: 3rem; margin-bottom: 12px; opacity: 0.6;">🛒</div>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" style="margin-bottom:12px;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                 <h4 style="font-size: 1.1rem; color: #fff; margin-bottom: 6px;">В корзине пока пусто</h4>
                 <p style="color: var(--gray); font-size: 0.88rem; margin-bottom: 18px;">Выберите понравившиеся фигурки в каталоге и добавьте их сюда</p>
                 <button type="button" class="btn primary" onclick="closeModals(); window.switchTab('catalog');" style="max-width: 220px; margin: 0 auto;">Перейти в каталог</button>
@@ -1521,7 +1528,7 @@
             <!-- Payment Methods -->
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
                 <div class="payment-method-item active" style="display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); cursor:pointer;">
-                    <span style="font-size:1.5rem;">💳</span>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                     <div>
                         <div style="font-weight:600; font-size:0.92rem; color:#fff;">Банковская карта / СБП (Т-Банк)</div>
                         <div style="font-size:0.78rem; color:#888;">Моментальное зачисление и фиксация предзаказа</div>
@@ -1837,7 +1844,9 @@
 
     <!-- Floating Cart Button -->
     <div id="floating-cart-btn" class="floating-cart-btn" onclick="window.openCartModal()" title="Открыть корзину">
-        <span class="floating-cart-icon">🛒</span>
+        <span class="floating-cart-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        </span>
         <span class="floating-cart-text">Корзина</span>
         <span id="floating-cart-badge" class="cart-badge-count">0</span>
     </div>
