@@ -254,7 +254,12 @@ class CheckoutRequest(BaseModel):
     delivery_method: str = ""
     comment: str = ""
 
-# --- API Routes ---
+# --- Public Health / Ping (for cron-job keep-alive) ---
+@app.get("/health")
+@app.get("/ping")
+async def health_check():
+    return Response(content="OK", media_type="text/plain")
+
 @app.post("/api/ping")
 async def ping_user(request: Request, user: dict = Depends(get_current_user)):
     update_user_session(request, user)
