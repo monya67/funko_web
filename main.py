@@ -934,6 +934,18 @@ async def get_robots_txt():
 async def get_sitemap_xml():
     return FileResponse("static/sitemap.xml", media_type="application/xml")
 
+@app.get("/privacy")
+async def get_privacy():
+    return FileResponse("static/privacy.html")
+
+@app.get("/oferta")
+async def get_oferta():
+    return FileResponse("static/oferta.html")
+
+@app.get("/returns")
+async def get_returns():
+    return FileResponse("static/returns.html")
+
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")

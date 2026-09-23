@@ -135,6 +135,7 @@ window.saveInlineStatus = async function(orderId, newStatus) {
 
 // Init
 function init() {
+    window.initCookieConsent();
     loadCartFromStorage();
     loadCatalogMeta();
     loadCatalog();
@@ -2709,6 +2710,45 @@ window.openCheckoutModal = function() {
     openModal(document.getElementById('checkout-modal'));
 };
 
+// --- Cookie Consent (152-FZ Compliance) ---
+window.initCookieConsent = function() {
+    try {
+        const consent = localStorage.getItem('funko_cookie_consent');
+        const banner = document.getElementById('cookie-consent-banner');
+        if (!banner) return;
+        if (!consent) {
+            setTimeout(() => {
+                banner.classList.remove('hidden');
+            }, 600);
+        }
+    } catch (e) {
+        console.warn('Cookie consent init error:', e);
+    }
+};
+
+window.acceptCookies = function(type) {
+    try {
+        localStorage.setItem('funko_cookie_consent', type || 'all');
+        localStorage.setItem('funko_cookie_consent_date', new Date().toISOString());
+    } catch (e) {}
+    const banner = document.getElementById('cookie-consent-banner');
+    if (banner) {
+        banner.classList.add('closing');
+        setTimeout(() => {
+            banner.classList.add('hidden');
+            banner.classList.remove('closing');
+        }, 320);
+    }
+};
+
+window.showCookieBanner = function() {
+    const banner = document.getElementById('cookie-consent-banner');
+    if (banner) {
+        banner.classList.remove('closing');
+        banner.classList.remove('hidden');
+    }
+};
+
 window.proceedToPayment = function(event) {
     if (event) event.preventDefault();
 
@@ -2718,6 +2758,8 @@ window.proceedToPayment = function(event) {
     const tgInput = document.getElementById('checkout-tg');
     const deliveryInput = document.getElementById('checkout-delivery');
     const commentInput = document.getElementById('checkout-comment');
+    const consentInput = document.getElementById('checkout-pd-consent');
+    const consentContainer = document.getElementById('checkout-consent-container');
     const errBanner = document.getElementById('checkout-error-banner');
 
     const firstName = (fnInput?.value || '').trim();
@@ -2727,6 +2769,7 @@ window.proceedToPayment = function(event) {
 
     // Reset previous error classes
     [fnInput, lnInput, phoneInput, tgInput].forEach(inp => inp?.classList.remove('field-error'));
+    if (consentContainer) consentContainer.classList.remove('field-error');
     if (errBanner) errBanner.classList.add('hidden');
 
     // STRICT VALIDATION: First Name, Last Name, Phone, and Telegram are MANDATORY
@@ -2754,9 +2797,20 @@ window.proceedToPayment = function(event) {
         if (!firstInvalid) firstInvalid = tgInput;
     }
 
+    // 152-FZ Mandatory Consent Check
+    if (consentInput && !consentInput.checked) {
+        if (consentContainer) consentContainer.classList.add('field-error');
+        hasError = true;
+        if (!firstInvalid) firstInvalid = consentInput;
+    }
+
     if (hasError) {
         if (errBanner) {
-            errBanner.textContent = 'Обязательно укажите Имя, Фамилию, Телефон и Telegram для связи перед оплатой!';
+            if (consentInput && !consentInput.checked) {
+                errBanner.textContent = 'Для продолжения необходимо подтвердить согласие на обработку персональных данных (152-ФЗ)!';
+            } else {
+                errBanner.textContent = 'Обязательно укажите Имя, Фамилию, Телефон и Telegram для связи перед оплатой!';
+            }
             errBanner.classList.remove('hidden');
             errBanner.classList.add('shake-it');
             setTimeout(() => errBanner.classList.remove('shake-it'), 500);

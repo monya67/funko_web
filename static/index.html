@@ -55,7 +55,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1789312000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1789320000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -1479,6 +1479,14 @@
                             <input type="text" id="checkout-comment" placeholder="Город или адрес ПВЗ" style="padding:10px 14px; font-size:0.88rem;">
                         </div>
                     </div>
+
+                    <!-- 152-FZ Consent for Processing Personal Data -->
+                    <div id="checkout-consent-container" class="checkout-consent-container" style="margin-top:12px; margin-bottom:12px; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:10px;">
+                        <label for="checkout-pd-consent" style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:0.83rem; color:#bbb; line-height:1.45; margin:0;">
+                            <input type="checkbox" id="checkout-pd-consent" required checked style="width:18px; height:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer; flex-shrink:0;">
+                            <span>Я даю согласие на обработку моих <a href="/static/privacy.html" target="_blank" style="color:var(--primary); text-decoration:underline;">персональных данных</a> (152-ФЗ) и принимаю условия <a href="/static/oferta.html" target="_blank" style="color:var(--primary); text-decoration:underline;">Публичной оферты</a> и <a href="/static/returns.html" target="_blank" style="color:var(--primary); text-decoration:underline;">Правил возврата</a></span>
+                        </label>
+                    </div>
                 </div>
 
                 <div class="modal-actions" style="display:flex; gap:10px; margin-top:16px;">
@@ -1759,7 +1767,10 @@
                     <button type="submit" class="btn primary" style="flex: 1.4;">Войти</button>
                 </div>
             </form>
-            <div style="margin-top: 18px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.82rem; color: var(--gray);">
+            <div style="margin-top: 12px; font-size: 0.74rem; color: #888; line-height: 1.4;">
+                Авторизуясь, вы подтверждаете согласие с <a href="/static/privacy.html" target="_blank" style="color: var(--primary); text-decoration: underline;">Политикой конфиденциальности</a>
+            </div>
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.82rem; color: var(--gray);">
                 <span>Вопросы по заказам? </span>
                 <a href="https://t.me/Funko_Stop" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Менеджер @Funko_Stop</a>
             </div>
@@ -1817,10 +1828,14 @@
                 <span class="footer-dot">•</span>
                 <a href="/static/privacy.html">Политика конфиденциальности</a>
                 <span class="footer-dot">•</span>
-                <a href="/static/oferta.html">Оферта</a>
+                <a href="/static/oferta.html">Публичная оферта</a>
+                <span class="footer-dot">•</span>
+                <a href="/static/returns.html">Правила возврата (ЗоЗПП)</a>
+                <span class="footer-dot">•</span>
+                <a href="javascript:void(0)" onclick="window.showCookieBanner()">Настройки cookie</a>
             </div>
-            <div class="footer-copyright">
-                2026 Funko Stop (c) Все права защищены
+            <div class="footer-copyright" style="font-size: 0.78rem; color: rgba(255,255,255,0.45); line-height: 1.5; margin-top: 8px;">
+                © 2026 Funko Stop • ИП Пелих Иван Валерьевич • ИНН 590587003901 • ОГРНИП 326508100489145
             </div>
         </div>
     </footer>
@@ -1834,7 +1849,31 @@
         <span id="floating-cart-badge" class="cart-badge-count">0</span>
     </div>
 
+    <!-- Cookie & Personal Data Consent Banner (152-FZ Compliance) -->
+    <div id="cookie-consent-banner" class="cookie-banner hidden">
+        <div class="cookie-banner-content">
+            <div class="cookie-banner-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2a10 10 0 0 1 10 10 1.5 1.5 0 0 1-1.5 1.5 1.5 1.5 0 0 0-1.5 1.5 1.5 1.5 0 0 1-1.5 1.5 1.5 1.5 0 0 0-1.5 1.5 1.5 1.5 0 0 1-1.5 1.5A10 10 0 0 1 12 2z"></path>
+                    <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"></circle>
+                    <circle cx="16" cy="11" r="1" fill="currentColor"></circle>
+                    <circle cx="10" cy="15" r="1" fill="currentColor"></circle>
+                </svg>
+            </div>
+            <div class="cookie-banner-text">
+                <p>
+                    Мы используем файлы cookie и локальные данные браузера для авторизации, сохранения корзины и улучшения работы сайта. Оставаясь на сайте, вы даете согласие на обработку данных в соответствии с <a href="/static/privacy.html" target="_blank">Политикой конфиденциальности</a> (152-ФЗ).
+                </p>
+            </div>
+            <div class="cookie-banner-actions">
+                <button type="button" class="btn secondary outline cookie-btn-essential" onclick="window.acceptCookies('essential')">Только необходимые</button>
+                <button type="button" class="btn primary cookie-btn-accept" onclick="window.acceptCookies('all')">Принять все</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1789312000000"></script>
+    <script src="/static/app.js?v=1789320000000"></script>
 </body>
 </html>
