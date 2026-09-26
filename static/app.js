@@ -3020,7 +3020,7 @@ function renderLedger() {
                 ${isIncome ? '+' : '−'}${e.amount.toLocaleString('ru')} ₽
             </td>
             <td>${isIncome ? 'Доход' : 'Расход'}</td>
-            <td><button class="delete-btn" onclick="window.deleteLedgerEntry(${e.id})" title="Удалить">✕</button></td>
+            <td><button class="delete-btn" onclick="window.deleteLedgerEntry(${e.id}, this)" title="Нажми ещё раз для подтверждения">✕</button></td>
         `;
         tbody.appendChild(tr);
     });
@@ -3084,8 +3084,26 @@ window.addLedgerEntry = async function() {
     }
 };
 
-window.deleteLedgerEntry = async function(id) {
-    if (!confirm('Удалить запись?')) return;
+window.deleteLedgerEntry = async function(id, btn) {
+    if (btn) {
+        if (btn.dataset.confirming) {
+            btn.dataset.confirming = '';
+            btn.textContent = '✕';
+            btn.style.background = '';
+        } else {
+            btn.dataset.confirming = '1';
+            btn.textContent = '✓?';
+            btn.style.background = 'rgba(224,49,49,0.5)';
+            setTimeout(() => {
+                if (btn.dataset.confirming) {
+                    btn.dataset.confirming = '';
+                    btn.textContent = '✕';
+                    btn.style.background = '';
+                }
+            }, 2000);
+            return;
+        }
+    }
     try {
         await fetchAPI(`/ledger/${id}`, { method: 'DELETE' });
         await loadLedger();
