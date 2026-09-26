@@ -2023,34 +2023,37 @@ function renderCatalog() {
                 ? `<span class="card-badge card-badge-discount">-${p.discount_percent}%</span>`
                 : '';
 
-            const priceDisplay = p.discount_percent > 0
-                ? `<span class="price-final discounted">${(p.final_price || p.price).toLocaleString('ru')} &#8381;</span>
-                   <span class="price-original">${p.price.toLocaleString('ru')} &#8381;</span>`
-                : `<span class="price-final">${p.price.toLocaleString('ru')} &#8381;</span>`;
+            const finalPrice = (p.final_price || p.price).toLocaleString('ru');
+            const origPrice = p.price.toLocaleString('ru');
 
-            const stockDot = p.in_stock
+            const priceHtml = p.discount_percent > 0
+                ? `<div class="price-row">
+                       <span class="price-final discounted">${finalPrice} &#8381;</span>
+                       <span class="price-original">${origPrice} &#8381;</span>
+                   </div>`
+                : `<div class="price-row">
+                       <span class="price-final">${finalPrice} &#8381;</span>
+                   </div>`;
+
+            const stockHtml = p.in_stock
                 ? `<span class="stock-indicator in-stock">В наличии</span>`
                 : `<span class="stock-indicator out-of-stock">Под заказ</span>`;
+
+            const cartIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>`;
 
             let actionsHtml = '';
             if (role === 'admin') {
                 actionsHtml = `
                     <div class="product-card-actions">
-                        <button type="button" class="card-action-btn primary" onclick="window.addToCart(${p.id}, 1)" title="Добавить в корзину">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                            В корзину
-                        </button>
+                        <button type="button" class="card-action-btn primary" onclick="window.addToCart(${p.id}, 1)">${cartIcon} В корзину</button>
                         <button type="button" class="card-action-btn icon" onclick="window.openEditProductModal(${p.id})" title="Редактировать">✎</button>
-                        <button type="button" class="card-action-btn icon danger" onclick="window.confirmDeleteProduct(${p.id})" title="Удалить">&#10005;</button>
+                        <button type="button" class="card-action-btn icon danger" onclick="window.confirmDeleteProduct(${p.id})" title="Удалить">✕</button>
                     </div>
                 `;
             } else {
                 actionsHtml = `
                     <div class="product-card-actions">
-                        <button type="button" class="card-action-btn primary" onclick="window.addToCart(${p.id}, 1)">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                            В корзину
-                        </button>
+                        <button type="button" class="card-action-btn primary" onclick="window.addToCart(${p.id}, 1)">${cartIcon} В корзину</button>
                         <button type="button" class="card-action-btn secondary" onclick="window.quickBuy(${p.id})">Купить</button>
                     </div>
                 `;
@@ -2067,16 +2070,12 @@ function renderCatalog() {
                     ${discountBadge}
                 </div>
                 <div class="product-card-body">
-                    <div class="card-tags-row">
-                        ${categoryTag}${seriesTag}
-                    </div>
-                    <div class="product-card-title" title="${p.name}">
-                        ${numberTag}${p.name}
-                    </div>
+                    <div class="card-tags-row">${categoryTag}${seriesTag}</div>
+                    <div class="product-card-title" title="${p.name}">${numberTag}${p.name}</div>
                     <div class="product-card-footer">
                         <div class="product-price-box">
-                            ${priceDisplay}
-                            ${stockDot}
+                            ${priceHtml}
+                            ${stockHtml}
                         </div>
                         ${actionsHtml}
                     </div>
@@ -2085,22 +2084,6 @@ function renderCatalog() {
             catalogGrid.appendChild(card);
         });
 
-        // 3D tilt on mouse move
-        catalogGrid.querySelectorAll('.product-card').forEach(card => {
-            card.addEventListener('mousemove', (e) => {
-                const rect = card.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width;
-                const y = (e.clientY - rect.top) / rect.height;
-                const rotY = (x - 0.5) * 8;
-                const rotX = (0.5 - y) * 6;
-                card.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateY(-6px)`;
-                card.style.setProperty('--mx', `${x * 100}%`);
-                card.style.setProperty('--my', `${y * 100}%`);
-            });
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = '';
-            });
-        });
 
     updatePaginationUI('catalog', products.length);
 }
