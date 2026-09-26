@@ -22,6 +22,16 @@
     font-family: 'Outfit', sans-serif;
 }
 
+/* Hide native number spinners globally */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
@@ -941,14 +951,6 @@ tr:hover td {
 .custom-size-input:focus {
     border-color: var(--primary);
 }
-.custom-size-input::-webkit-outer-spin-button,
-.custom-size-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-.custom-size-input[type=number] {
-    -moz-appearance: textfield;
-}
 
 /* ===== TABLE SORT INDICATORS ===== */
 th[data-sort] {
@@ -1332,15 +1334,6 @@ th.sorted-col {
     box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.15);
 }
 
-.price-filter-input::-webkit-inner-spin-button,
-.price-filter-input::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.price-filter-input[type="number"] {
-    -moz-appearance: textfield;
-}
 
 .price-range-dash {
     color: #64748b;
