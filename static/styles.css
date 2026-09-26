@@ -1222,22 +1222,29 @@ th.sorted-col {
 /* --- Catalog Body Layout (Collapsible Sidebar + Main) --- */
 .catalog-body-layout {
     display: flex;
-    gap: 22px;
+    gap: 0;
     align-items: flex-start;
     position: relative;
 }
 
-/* --- Collapsible Filter Sidebar (Photo 1) --- */
+/* --- Collapsible Filter Sidebar --- */
 .catalog-filter-sidebar {
-    width: 260px;
+    width: 240px;
     flex-shrink: 0;
-    background: #141414;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 18px;
-    backdrop-filter: blur(14px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    background: transparent;
+    border: none;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 0;
+    padding: 16px 20px 16px 0;
+    backdrop-filter: none;
+    box-shadow: none;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: sticky;
+    top: 10px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
 }
 
 .catalog-filter-sidebar.collapsed {
@@ -1490,6 +1497,7 @@ th.sorted-col {
 .catalog-main-area {
     flex: 1;
     min-width: 0;
+    padding-left: 20px;
 }
 
 .catalog-controls-row {
@@ -1646,15 +1654,15 @@ th.sorted-col {
 /* --- Product Cards Grid --- */
 .catalog-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
 }
 
 /* Product Card */
 .product-card {
-    background: linear-gradient(180deg, #181818 0%, #111111 100%);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1666,18 +1674,18 @@ th.sorted-col {
 }
 
 .product-card:hover {
-    transform: perspective(800px) translateY(-6px) rotateX(2deg);
-    border-color: rgba(229, 9, 20, 0.5);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(229, 9, 20, 0.12);
+    transform: perspective(800px) translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
 }
 
 .product-card::after {
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 14px;
+    border-radius: 16px;
     opacity: 0;
-    background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(229, 9, 20, 0.08) 0%, transparent 60%);
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.04) 0%, transparent 60%);
     transition: opacity 0.3s ease;
     pointer-events: none;
     z-index: 1;
@@ -1690,8 +1698,8 @@ th.sorted-col {
 /* Image Box */
 .product-image-box {
     width: 100%;
-    height: 220px;
-    background: radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.08) 0%, rgba(24, 24, 28, 0.8) 60%, rgba(14, 14, 16, 0.95) 100%);
+    height: 240px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
     position: relative;
     overflow: hidden;
     display: flex;
@@ -1753,10 +1761,14 @@ th.sorted-col {
     animation: card-enter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
 }
 
-/* Price pulse on hover */
+/* Hover effects */
 .product-card:hover .price-final {
     color: var(--primary);
     transition: color 0.2s ease;
+}
+
+.product-card:hover .product-card-title {
+    color: #fff;
 }
 
 .product-image-placeholder {
