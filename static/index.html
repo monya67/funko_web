@@ -144,6 +144,44 @@
             cursor: pointer;
             border-radius: 4px;
         }
+
+        /* New orders badge on nav */
+        .orders-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: #e03131; color: #fff; font-size: 0.7rem; font-weight: 700;
+            min-width: 18px; height: 18px; border-radius: 9px; padding: 0 4px;
+            margin-left: 4px; vertical-align: middle;
+        }
+        .orders-badge.hidden { display: none; }
+
+        /* New order row highlight */
+        tr.new-order-row td { border-left: 3px solid #e03131 !important; }
+        tr.new-order-row { background: rgba(224,49,49,0.07) !important; }
+
+        /* Ledger section */
+        .ledger-summary { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+        .ledger-summary-card { background: rgba(255,255,255,0.06); border-radius: 10px; padding: 12px 20px; min-width: 140px; }
+        .ledger-summary-card .label { font-size: 0.78rem; color: var(--gray-light); margin-bottom: 4px; }
+        .ledger-summary-card .value { font-size: 1.2rem; font-weight: 700; }
+        .ledger-summary-card.income .value { color: #00ff88; }
+        .ledger-summary-card.expense .value { color: #ff4d4d; }
+        .ledger-summary-card.net .value { color: #ffb400; }
+
+        .ledger-add-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
+        .ledger-add-form input, .ledger-add-form select {
+            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+            color: #fff; font-family: inherit; font-size: 0.9rem; padding: 7px 12px;
+            border-radius: 8px; outline: none;
+        }
+        .ledger-add-form input::placeholder { color: var(--gray-light); }
+
+        /* Inline editable cell */
+        .inline-edit-cell { cursor: pointer; }
+        .inline-edit-cell:hover { text-decoration: underline dotted; opacity: 0.8; }
+        .inline-edit-input {
+            width: 90px; background: rgba(255,255,255,0.1); border: 1px solid var(--primary);
+            color: #fff; font-family: inherit; font-size: 0.9rem; padding: 3px 6px; border-radius: 6px;
+        }
     </style>
 </head>
 <body>
@@ -155,7 +193,7 @@
             <nav>
                 <a href="#" class="nav-item active" data-tab="home">Главная</a>
                 <a href="#" class="nav-item" data-tab="catalog">Каталог</a>
-                <a href="#" class="nav-item auth-only hidden" data-tab="orders">Заказы</a>
+                <a href="#" class="nav-item auth-only hidden" data-tab="orders">Заказы <span id="orders-new-badge" class="orders-badge hidden"></span></a>
                 <a href="#" class="nav-item auth-only hidden" data-tab="archived">Архив</a>
                 <a href="#" class="nav-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
                 <a href="#" class="nav-item admin-only hidden" data-tab="clients">Клиенты</a>
@@ -723,7 +761,7 @@
         <div class="mass-action-right" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <select id="orders-mass-edit-status" class="mass-status-select" style="padding: 8px 12px; border-radius: 8px; background: #161616; border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit; font-size: 0.88rem; min-width: 220px; cursor: pointer;">
                 <option value="">— Выберите новый статус —</option>
-                <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
+                <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Ожидает рассылки из США">Ожидает рассылки из США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
             </select>
             <button id="orders-mass-edit-btn" class="btn primary" style="padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">Применить статус</button>
             <button type="button" onclick="window.clearMassSelection('orders')" class="btn secondary outline" style="padding: 8px 14px; cursor: pointer;">✕ Снять выбор</button>
@@ -750,7 +788,7 @@
             <div class="filter-dropdown-menu" id="orders-status-menu">
                 <div class="filter-clear-all" id="orders-status-clear">&#10005; Сбросить фильтр</div>
                 <div class="filter-divider"></div>
-                <label><input type="checkbox" value="Заказ принят в обработку">Заказ принят в обработку</label><label><input type="checkbox" value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</label><label><input type="checkbox" value="Заказ едет на склад США">Заказ едет на склад США</label><label><input type="checkbox" value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</label><label><input type="checkbox" value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</label><label><input type="checkbox" value="Ожидает выхода в продажу">Ожидает выхода в продажу</label><label><input type="checkbox" value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</label><label><input type="checkbox" value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</label>
+                <label><input type="checkbox" value="Заказ принят в обработку">Заказ принят в обработку</label><label><input type="checkbox" value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</label><label><input type="checkbox" value="Заказ едет на склад США">Заказ едет на склад США</label><label><input type="checkbox" value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</label><label><input type="checkbox" value="Ожидает рассылки из США">Ожидает рассылки из США</label><label><input type="checkbox" value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</label><label><input type="checkbox" value="Ожидает выхода в продажу">Ожидает выхода в продажу</label><label><input type="checkbox" value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</label><label><input type="checkbox" value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</label>
             </div>
         </div>
         <input type="text" id="orders-search" class="filter-input wide" placeholder="Поиск (ID, товар, клиент)...">
@@ -1051,7 +1089,7 @@
         <div class="mass-action-right" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
             <select id="archived-mass-edit-status" class="mass-status-select" style="padding: 8px 12px; border-radius: 8px; background: #161616; border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit; font-size: 0.88rem; min-width: 220px; cursor: pointer;">
                 <option value="">— Выберите новый статус —</option>
-                <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
+                <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Ожидает рассылки из США">Ожидает рассылки из США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
             </select>
             <button id="archived-mass-edit-btn" class="btn primary" style="padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer;">Применить статус</button>
             <button type="button" onclick="window.clearMassSelection('archived')" class="btn secondary outline" style="padding: 8px 14px; cursor: pointer;">✕ Снять выбор</button>
@@ -1119,6 +1157,39 @@
             <!-- ACCOUNTING TAB -->
             <section id="accounting-tab" class="tab-content">
                 <div class="header-flex"><h2>Бухгалтерия</h2></div>
+
+                <!-- Ledger: manual income/expense -->
+                <div class="glass-panel" style="margin-bottom:20px;padding:16px 20px;">
+                    <h3 style="margin:0 0 14px;font-size:1rem;color:var(--gray-light);">Прочие доходы и расходы</h3>
+                    <div class="ledger-summary" id="ledger-summary">
+                        <div class="ledger-summary-card income"><div class="label">Доходы</div><div class="value" id="ledger-income-total">0 ₽</div></div>
+                        <div class="ledger-summary-card expense"><div class="label">Расходы</div><div class="value" id="ledger-expense-total">0 ₽</div></div>
+                        <div class="ledger-summary-card net"><div class="label">Итог</div><div class="value" id="ledger-net-total">0 ₽</div></div>
+                    </div>
+                    <div class="ledger-add-form">
+                        <input type="date" id="ledger-date" style="width:140px;">
+                        <input type="text" id="ledger-desc" placeholder="Описание" style="flex:1;min-width:160px;">
+                        <input type="number" id="ledger-amount" placeholder="Сумма ₽" style="width:120px;" min="1">
+                        <select id="ledger-type">
+                            <option value="income">Доход</option>
+                            <option value="expense" selected>Расход</option>
+                        </select>
+                        <button class="btn primary" onclick="window.addLedgerEntry()" style="white-space:nowrap;">+ Добавить</button>
+                    </div>
+                    <div class="table-container" style="max-height:300px;overflow-y:auto;">
+                        <table id="ledger-table" style="min-width:500px;">
+                            <thead><tr>
+                                <th>ДАТА</th>
+                                <th>ОПИСАНИЕ</th>
+                                <th>СУММА</th>
+                                <th>ТИП</th>
+                                <th></th>
+                            </tr></thead>
+                            <tbody id="ledger-table-body"></tbody>
+                        </table>
+                        <p id="no-ledger" class="empty-msg">Записи отсутствуют</p>
+                    </div>
+                </div>
                 <div class="accounting-filters">
                     <select id="accounting-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
                     <select id="accounting-month-filter" class="filter-input narrow">
@@ -1316,7 +1387,7 @@
                 <div class="input-group flex-row">
                     <div style="width:100%;">
                         <label>Статус</label>
-                        <select id="edit-order-status" required><option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option></select>
+                        <select id="edit-order-status" required><option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Ожидает рассылки из США">Ожидает рассылки из США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option></select>
                     </div>
                     <div style="width:100%;">
                         <label>Photo ID</label>

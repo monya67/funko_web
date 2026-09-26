@@ -90,6 +90,18 @@ async def startup():
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS tg_username TEXT DEFAULT ''")
 
+        # Ledger (manual income/expense entries)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS ledger_entries (
+                id SERIAL PRIMARY KEY,
+                entry_date TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                amount INTEGER NOT NULL,
+                entry_type TEXT NOT NULL DEFAULT 'expense',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         # Catalog tables
         await db.execute("""
             CREATE TABLE IF NOT EXISTS categories (
@@ -229,6 +241,12 @@ class ProductUpdate(BaseModel):
     photo_id: str = ""
     in_stock: bool = True
     badge: str = ""
+
+class LedgerEntryCreate(BaseModel):
+    entry_date: str
+    description: str = ""
+    amount: int
+    entry_type: str = "expense"  # 'income' or 'expense'
 
 class QuickOrderCreate(BaseModel):
     client_id: int
@@ -788,6 +806,29 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
             "paid_amount": paid_amount,
             "payment_type": checkout.payment_type
         }
+
+@app.get("/api/ledger")
+async def get_ledger(admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        entries = await db.fetch("SELECT id, entry_date, description, amount, entry_type FROM ledger_entries ORDER BY id DESC")
+        return {"entries": [dict(e) for e in entries]}
+
+@app.post("/api/ledger")
+async def create_ledger_entry(entry: LedgerEntryCreate, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        new_id = await db.fetchval(
+            "INSERT INTO ledger_entries (entry_date, description, amount, entry_type) VALUES ($1, $2, $3, $4) RETURNING id",
+            entry.entry_date, entry.description, entry.amount, entry.entry_type
+        )
+        return {"success": True, "id": new_id}
+
+@app.delete("/api/ledger/{entry_id}")
+async def delete_ledger_entry(entry_id: int, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        res = await db.execute("DELETE FROM ledger_entries WHERE id = $1", entry_id)
+        if res == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Entry not found")
+        return {"success": True}
 
 def convert_to_webp(content):
     if len(content) > 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":

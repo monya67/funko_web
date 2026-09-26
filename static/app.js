@@ -67,6 +67,29 @@ let isSidebarCollapsed = localStorage.getItem('funko_sidebar_collapsed') === 'tr
 window.marginMode = 'rub';
 window.taxesExpanded = false;
 
+// New orders tracking
+function getSeenOrderIds() {
+    try { return new Set(JSON.parse(localStorage.getItem('funko_seen_order_ids') || '[]')); } catch { return new Set(); }
+}
+function markOrdersSeen(orderIds) {
+    const seen = getSeenOrderIds();
+    orderIds.forEach(id => seen.add(id));
+    try { localStorage.setItem('funko_seen_order_ids', JSON.stringify([...seen])); } catch {}
+}
+function updateOrdersBadge() {
+    if (currentRole !== 'admin') return;
+    const seen = getSeenOrderIds();
+    const newCount = rawActiveOrders.filter(o => !seen.has(o.id)).length;
+    const badge = document.getElementById('orders-new-badge');
+    if (!badge) return;
+    if (newCount > 0) {
+        badge.textContent = newCount;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
 // Global Mass Edit Functions (defined early so they are available immediately)
 window.updateMassEditPanel = function(tab) {
     const checkboxes = document.querySelectorAll(`.${tab}-row-checkbox:checked`);
@@ -368,6 +391,14 @@ window.switchTab = function(tabName) {
             loadCatalogMeta();
         }
     }
+    if (tabName === 'orders' && currentRole === 'admin') {
+        markOrdersSeen(rawActiveOrders.map(o => o.id));
+        updateOrdersBadge();
+        renderOrders();
+    }
+    if (tabName === 'accounting' && currentRole === 'admin') {
+        loadLedger();
+    }
     window.scrollTo({ top: 0, behavior: 'auto' });
 };
 
@@ -474,11 +505,13 @@ async function loadDashboardData() {
         rawArchivedOrders = data.archived || [];
         allOrders = [...rawActiveOrders, ...rawArchivedOrders];
         populateYearFilters(rawActiveOrders, rawArchivedOrders);
+        updateOrdersBadge();
         renderOrders();
         renderArchivedOrders();
         if (data.role === 'admin') {
             renderClients(data.clients);
             renderAccounting();
+            loadLedger();
             populateClientsDatalist(data.clients || []);
         }
         loadCatalog();
@@ -550,6 +583,7 @@ const ALL_STATUSES_LIST = [
     'Заказ ожидает отправки из магазина',
     'Заказ едет на склад США',
     'Заказ начал сортировку на складе США',
+    'Ожидает рассылки из США',
     'Заказ отправлен из США на наш склад в Россию',
     'Ожидает выхода в продажу',
     'Заказ проходит таможенное оформление',
@@ -749,9 +783,11 @@ function renderOrders() {
     const startIdx = (state.page - 1) * state.pageSize;
     const pageOrders = orders.slice(startIdx, startIdx + state.pageSize);
 
+    const seenIds = getSeenOrderIds();
     pageOrders.forEach((order, i) => {
         const tr = document.createElement('tr');
-        tr.className = 'row-animate';
+        const isNew = role === 'admin' && !seenIds.has(order.id);
+        tr.className = 'row-animate' + (isNew ? ' new-order-row' : '');
         tr.style.animationDelay = `${i * 0.02}s`;
 
         let html = '';
@@ -1020,8 +1056,8 @@ function renderAccounting() {
                 </div>
             </td>
             <td style="white-space:nowrap;">${order.price.toLocaleString('ru')} &#8381;</td>
-            <td style="white-space:nowrap;">${order.cost.toLocaleString('ru')} &#8381;</td>
-            <td style="white-space:nowrap;">${order.delivery.toLocaleString('ru')} &#8381;</td>
+            <td class="inline-edit-cell" style="white-space:nowrap;" title="Нажмите для редактирования" onclick="window.startInlineEdit(${order.id}, 'cost_price', ${order.cost}, this)">${order.cost.toLocaleString('ru')} &#8381;</td>
+            <td class="inline-edit-cell" style="white-space:nowrap;" title="Нажмите для редактирования" onclick="window.startInlineEdit(${order.id}, 'delivery_cost', ${order.delivery}, this)">${order.delivery.toLocaleString('ru')} &#8381;</td>
             <td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>
             <td style="color:#ff9999;font-weight:bold;white-space:nowrap;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.usn.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
@@ -2933,6 +2969,157 @@ window.autoLoginFromSuccess = async function() {
         closeModals();
         window.switchTab('orders');
     }
+};
+
+// Ledger (manual income/expense entries)
+let rawLedgerEntries = [];
+
+async function loadLedger() {
+    // Set default date to today if empty
+    const dateEl = document.getElementById('ledger-date');
+    if (dateEl && !dateEl.value) {
+        const now = new Date();
+        dateEl.value = now.toISOString().split('T')[0];
+    }
+    try {
+        const data = await fetchAPI('/ledger');
+        rawLedgerEntries = data.entries || [];
+        renderLedger();
+    } catch (e) {
+        console.error('Ошибка загрузки леджера:', e);
+    }
+}
+
+function renderLedger() {
+    const tbody = document.getElementById('ledger-table-body');
+    const noMsg = document.getElementById('no-ledger');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (rawLedgerEntries.length === 0) {
+        if (noMsg) noMsg.classList.remove('hidden');
+        updateLedgerSummary(0, 0);
+        return;
+    }
+    if (noMsg) noMsg.classList.add('hidden');
+
+    let totalIncome = 0, totalExpense = 0;
+    rawLedgerEntries.forEach(e => {
+        if (e.entry_type === 'income') totalIncome += e.amount;
+        else totalExpense += e.amount;
+    });
+    updateLedgerSummary(totalIncome, totalExpense);
+
+    rawLedgerEntries.forEach(e => {
+        const tr = document.createElement('tr');
+        const isIncome = e.entry_type === 'income';
+        tr.innerHTML = `
+            <td style="white-space:nowrap;">${e.entry_date}</td>
+            <td>${e.description || '—'}</td>
+            <td style="white-space:nowrap;color:${isIncome ? '#00ff88' : '#ff4d4d'};font-weight:600;">
+                ${isIncome ? '+' : '−'}${e.amount.toLocaleString('ru')} ₽
+            </td>
+            <td>${isIncome ? 'Доход' : 'Расход'}</td>
+            <td><button class="delete-btn" onclick="window.deleteLedgerEntry(${e.id})" title="Удалить">✕</button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function updateLedgerSummary(income, expense) {
+    const net = income - expense;
+    const incEl = document.getElementById('ledger-income-total');
+    const expEl = document.getElementById('ledger-expense-total');
+    const netEl = document.getElementById('ledger-net-total');
+    if (incEl) incEl.textContent = income.toLocaleString('ru') + ' ₽';
+    if (expEl) expEl.textContent = expense.toLocaleString('ru') + ' ₽';
+    if (netEl) {
+        netEl.textContent = (net >= 0 ? '+' : '') + net.toLocaleString('ru') + ' ₽';
+        netEl.style.color = net >= 0 ? '#00ff88' : '#ff4d4d';
+    }
+}
+
+window.addLedgerEntry = async function() {
+    const dateEl = document.getElementById('ledger-date');
+    const descEl = document.getElementById('ledger-desc');
+    const amountEl = document.getElementById('ledger-amount');
+    const typeEl = document.getElementById('ledger-type');
+    const dateVal = dateEl?.value.trim();
+    const desc = descEl?.value.trim();
+    const amount = parseInt(amountEl?.value);
+    const entry_type = typeEl?.value || 'expense';
+
+    if (!dateVal || !amount || amount <= 0) {
+        alert('Укажите дату и сумму');
+        return;
+    }
+    // Convert date from yyyy-mm-dd to dd.mm.yyyy for display
+    const [y, m, d] = dateVal.split('-');
+    const displayDate = `${d}.${m}.${y}`;
+
+    try {
+        await fetchAPI('/ledger', {
+            method: 'POST',
+            body: JSON.stringify({ entry_date: displayDate, description: desc, amount, entry_type })
+        });
+        if (descEl) descEl.value = '';
+        if (amountEl) amountEl.value = '';
+        await loadLedger();
+    } catch (err) {
+        alert('Ошибка: ' + err.message);
+    }
+};
+
+window.deleteLedgerEntry = async function(id) {
+    if (!confirm('Удалить запись?')) return;
+    try {
+        await fetchAPI(`/ledger/${id}`, { method: 'DELETE' });
+        await loadLedger();
+    } catch (err) {
+        alert('Ошибка: ' + err.message);
+    }
+};
+
+// Inline editing for cost_price and delivery_cost in accounting table
+window.startInlineEdit = function(orderId, field, currentVal, cellEl) {
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'inline-edit-input';
+    input.value = currentVal;
+    input.min = 0;
+    cellEl.innerHTML = '';
+    cellEl.appendChild(input);
+    input.focus();
+    input.select();
+
+    async function save() {
+        const newVal = parseInt(input.value) || 0;
+        const order = allOrders.find(o => o.id === orderId);
+        if (!order) return;
+        const payload = {
+            items: order.items,
+            total_price: order.total_price,
+            paid_amount: order.paid_amount,
+            status: order.status,
+            photo_id: order.photo_id,
+            order_date: order.order_date,
+            cost_price: field === 'cost_price' ? newVal : (order.cost_price || 0),
+            delivery_cost: field === 'delivery_cost' ? newVal : (order.delivery_cost || 0)
+        };
+        try {
+            await fetchAPI(`/orders/${orderId}`, { method: 'PUT', body: JSON.stringify(payload) });
+            await loadDashboardData();
+        } catch (err) {
+            alert('Ошибка: ' + err.message);
+            renderAccounting();
+        }
+    }
+
+    input.addEventListener('blur', save);
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { input.blur(); }
+        if (e.key === 'Escape') { renderAccounting(); }
+    });
 };
 
 // Initialize application
