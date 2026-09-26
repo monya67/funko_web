@@ -1332,6 +1332,16 @@ th.sorted-col {
     box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.15);
 }
 
+.price-filter-input::-webkit-inner-spin-button,
+.price-filter-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.price-filter-input[type="number"] {
+    -moz-appearance: textfield;
+}
+
 .price-range-dash {
     color: #64748b;
     font-size: 0.9rem;
