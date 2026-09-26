@@ -1154,20 +1154,18 @@ th.sorted-col {
 
 /* --- Catalog Body Layout (Collapsible Sidebar + Main) --- */
 .catalog-body-layout {
-    display: flex;
-    flex-flow: row nowrap;
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
     gap: 24px;
-    align-items: flex-start;
-    width: 100%;
+    align-items: start;
+}
+
+.catalog-body-layout.sidebar-hidden {
+    grid-template-columns: minmax(0, 1fr);
 }
 
 /* --- Collapsible Filter Sidebar --- */
 .catalog-filter-sidebar {
-    width: 250px;
-    min-width: 250px;
-    max-width: 250px;
-    flex-shrink: 0;
-    flex-grow: 0;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 14px;
@@ -1427,10 +1425,7 @@ th.sorted-col {
 
 /* --- Main Products Area --- */
 .catalog-main-area {
-    flex: 1 1 auto;
     min-width: 0;
-    overflow: visible;
-    box-sizing: border-box;
 }
 
 .catalog-controls-row {
@@ -1884,6 +1879,7 @@ th.sorted-col {
     background: var(--primary);
     color: #fff;
     box-shadow: 0 2px 8px rgba(229, 9, 20, 0.3);
+    white-space: nowrap;
 }
 
 .card-action-btn.primary:hover {
@@ -2024,11 +2020,9 @@ th.sorted-col {
 
 /* Responsive adjustments */
 @media (max-width: 900px) {
-    .catalog-body-layout {
-        flex-direction: column;
-    }
-    .catalog-filter-sidebar {
-        width: 100%;
+    .catalog-body-layout,
+    .catalog-body-layout.sidebar-hidden {
+        grid-template-columns: 1fr;
     }
 }
 

@@ -1600,6 +1600,16 @@ const catalogSortSelect = document.getElementById('catalog-sort-select');
 const catalogResetFiltersBtn = document.getElementById('catalog-reset-filters-btn');
 
 // --- Sidebar Collapse / Expand ---
+const catalogBodyLayout = document.getElementById('catalog-body-layout');
+
+function updateLayoutClass() {
+    if (isSidebarCollapsed) {
+        catalogBodyLayout?.classList.add('sidebar-hidden');
+    } else {
+        catalogBodyLayout?.classList.remove('sidebar-hidden');
+    }
+}
+
 function initSidebar() {
     if (isSidebarCollapsed) {
         catalogFilterSidebar?.classList.add('collapsed');
@@ -1608,6 +1618,7 @@ function initSidebar() {
         catalogFilterSidebar?.classList.remove('collapsed');
         sidebarOpenBtn?.classList.add('hidden');
     }
+    updateLayoutClass();
 }
 
 sidebarToggleBtn?.addEventListener('click', () => {
@@ -1615,6 +1626,7 @@ sidebarToggleBtn?.addEventListener('click', () => {
     sidebarOpenBtn?.classList.remove('hidden');
     isSidebarCollapsed = true;
     localStorage.setItem('funko_sidebar_collapsed', 'true');
+    updateLayoutClass();
 });
 
 sidebarOpenBtn?.addEventListener('click', () => {
@@ -1622,6 +1634,7 @@ sidebarOpenBtn?.addEventListener('click', () => {
     sidebarOpenBtn?.classList.add('hidden');
     isSidebarCollapsed = false;
     localStorage.setItem('funko_sidebar_collapsed', 'false');
+    updateLayoutClass();
 });
 
 
