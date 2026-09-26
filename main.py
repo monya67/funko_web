@@ -1098,3 +1098,24 @@ async def get_returns():
 async def root():
     return FileResponse("static/index.html")
 
+# SPA client-side routes — serve index.html for frontend navigation
+@app.get("/catalog")
+async def spa_catalog():
+    return FileResponse("static/index.html")
+
+@app.get("/orders")
+async def spa_orders():
+    return FileResponse("static/index.html")
+
+@app.get("/archive")
+async def spa_archive():
+    return FileResponse("static/index.html")
+
+@app.get("/accounting")
+async def spa_accounting():
+    return FileResponse("static/index.html")
+
+@app.get("/clients")
+async def spa_clients():
+    return FileResponse("static/index.html")
+

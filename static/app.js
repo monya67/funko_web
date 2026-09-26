@@ -163,15 +163,22 @@ function init() {
     loadCatalogMeta();
     loadCatalog();
 
+    const initialTab = getTabFromURL();
+
     if (token) {
-        loadDashboardData().catch(() => {
+        loadDashboardData().then(() => {
+            window.switchTab(initialTab, false);
+        }).catch(() => {
             handleLogout();
         });
         startHeartbeat();
     } else {
         updateRoleUI('guest');
-        window.switchTab('home');
+        const guestAllowed = ['home', 'catalog'];
+        window.switchTab(guestAllowed.includes(initialTab) ? initialTab : 'home', false);
     }
+
+    history.replaceState({ tab: initialTab }, '', window.location.pathname);
 }
 
 function updateRoleUI(role) {
@@ -362,8 +369,25 @@ loginForm.addEventListener('submit', async (e) => {
     }
 });
 
+// URL routing
+const TAB_ROUTES = {
+    home: '/',
+    catalog: '/catalog',
+    orders: '/orders',
+    archived: '/archive',
+    accounting: '/accounting',
+    clients: '/clients'
+};
+const ROUTE_TO_TAB = {};
+Object.entries(TAB_ROUTES).forEach(([tab, path]) => { ROUTE_TO_TAB[path] = tab; });
+
+function getTabFromURL() {
+    const path = window.location.pathname;
+    return ROUTE_TO_TAB[path] || 'home';
+}
+
 // Navigation between tabs with smooth page transition animations
-window.switchTab = function(tabName) {
+window.switchTab = function(tabName, pushState = true) {
     const dashboard = document.getElementById('dashboard-view');
     if (dashboard) {
         if (tabName === 'home') {
@@ -399,8 +423,21 @@ window.switchTab = function(tabName) {
     if (tabName === 'accounting' && currentRole === 'admin') {
         loadLedger();
     }
+
+    if (pushState) {
+        const url = TAB_ROUTES[tabName] || '/';
+        if (window.location.pathname !== url) {
+            history.pushState({ tab: tabName }, '', url);
+        }
+    }
+
     window.scrollTo({ top: 0, behavior: 'auto' });
 };
+
+window.addEventListener('popstate', (e) => {
+    const tab = (e.state && e.state.tab) ? e.state.tab : getTabFromURL();
+    window.switchTab(tab, false);
+});
 
 navItems.forEach(item => {
     item.addEventListener('click', (e) => {
