@@ -3044,19 +3044,31 @@ window.addLedgerEntry = async function() {
     const descEl = document.getElementById('ledger-desc');
     const amountEl = document.getElementById('ledger-amount');
     const typeEl = document.getElementById('ledger-type');
-    const dateVal = dateEl?.value.trim();
-    const desc = descEl?.value.trim();
+    const addBtn = document.querySelector('.ledger-add-form .btn.primary');
+
+    const dateVal = (dateEl?.value || '').trim();
+    const desc = (descEl?.value || '').trim();
     const amount = parseInt(amountEl?.value);
     const entry_type = typeEl?.value || 'expense';
 
-    if (!dateVal || !amount || amount <= 0) {
-        alert('Укажите дату и сумму');
+    if (!dateVal) {
+        if (dateEl) dateEl.style.border = '1.5px solid #e03131';
         return;
-    }
-    // Convert date from yyyy-mm-dd to dd.mm.yyyy for display
-    const [y, m, d] = dateVal.split('-');
-    const displayDate = `${d}.${m}.${y}`;
+    } else if (dateEl) dateEl.style.border = '';
 
+    if (!amount || amount <= 0) {
+        if (amountEl) { amountEl.style.border = '1.5px solid #e03131'; amountEl.focus(); }
+        return;
+    } else if (amountEl) amountEl.style.border = '';
+
+    // Convert date from yyyy-mm-dd to dd.mm.yyyy
+    let displayDate = dateVal;
+    if (dateVal.includes('-')) {
+        const [y, m, d] = dateVal.split('-');
+        displayDate = `${d}.${m}.${y}`;
+    }
+
+    if (addBtn) { addBtn.disabled = true; addBtn.textContent = '...'; }
     try {
         await fetchAPI('/ledger', {
             method: 'POST',
@@ -3066,7 +3078,9 @@ window.addLedgerEntry = async function() {
         if (amountEl) amountEl.value = '';
         await loadLedger();
     } catch (err) {
-        alert('Ошибка: ' + err.message);
+        alert('Ошибка при добавлении: ' + err.message);
+    } finally {
+        if (addBtn) { addBtn.disabled = false; addBtn.textContent = '+ Добавить'; }
     }
 };
 
