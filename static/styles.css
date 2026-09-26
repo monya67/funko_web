@@ -1659,14 +1659,32 @@ th.sorted-col {
     display: flex;
     flex-direction: column;
     position: relative;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-    transform: translateZ(0);
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease, border-color 0.3s ease;
+    transform: perspective(800px) translateZ(0);
+    transform-style: preserve-3d;
+    will-change: transform;
 }
 
 .product-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(229, 9, 20, 0.45);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(229, 9, 20, 0.15);
+    transform: perspective(800px) translateY(-6px) rotateX(2deg);
+    border-color: rgba(229, 9, 20, 0.5);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(229, 9, 20, 0.12);
+}
+
+.product-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    opacity: 0;
+    background: radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(229, 9, 20, 0.08) 0%, transparent 60%);
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.product-card:hover::after {
+    opacity: 1;
 }
 
 /* Image Box */
@@ -1687,12 +1705,83 @@ th.sorted-col {
     max-width: 90%;
     max-height: 90%;
     object-fit: contain;
-    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.3s ease;
     filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.65));
 }
 
 .product-card:hover .product-image-box img {
-    transform: scale(1.07);
+    transform: scale(1.1) translateY(-4px);
+    filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 12px rgba(229, 9, 20, 0.15));
+}
+
+/* Shimmer effect on image box */
+.product-image-box::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 55%, transparent 60%);
+    transform: translateX(-100%);
+    transition: none;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.product-card:hover .product-image-box::before {
+    animation: card-shimmer 0.8s ease forwards;
+}
+
+@keyframes card-shimmer {
+    to { transform: translateX(100%); }
+}
+
+/* Card entrance animation */
+@keyframes card-enter {
+    from {
+        opacity: 0;
+        transform: perspective(800px) translateY(30px) rotateX(8deg) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: perspective(800px) translateY(0) rotateX(0) scale(1);
+    }
+}
+
+.product-card {
+    animation: card-enter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+/* Stock badge pulse */
+.card-badge-stock {
+    bottom: 10px;
+    left: 10px;
+    font-size: 0.72rem;
+}
+
+.card-badge-stock.in-stock {
+    background: rgba(0, 255, 136, 0.15);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    color: #00ff88;
+}
+
+.card-badge-stock.out-of-stock {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #888;
+}
+
+/* Button hover glow */
+.product-card-actions .btn:hover,
+.product-card-actions .btn-quick-order:hover {
+    box-shadow: 0 0 16px rgba(229, 9, 20, 0.4);
+}
+
+/* Price pulse on hover */
+.product-card:hover .price-final {
+    color: var(--primary);
+    transition: color 0.2s ease;
 }
 
 .product-image-placeholder {

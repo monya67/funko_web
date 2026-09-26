@@ -1569,10 +1569,10 @@
             </form>
         </div>
 
-        <!-- Online Payment Simulation Screen -->
+        <!-- Payment Confirmation Screen -->
         <div id="payment-modal" class="glass-panel modal hidden" style="max-width: 560px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                <h3 style="margin:0; font-size:1.25rem;">Оплата заказа онлайн</h3>
+                <h3 style="margin:0; font-size:1.25rem;">Оплата заказа</h3>
                 <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">✕</button>
             </div>
 
@@ -1582,26 +1582,27 @@
                     <span id="payment-amount-display" style="font-size:1.6rem; font-weight:900; color:#fff;">0 ₽</span>
                 </div>
                 <div style="font-size:0.82rem; color:#aaa; line-height:1.5;">
-                    <span style="color:#00ff88; font-weight:700;">● Расчётный счёт в Т-Банке (ИП)</span><br>
-                    Официальная оплата с выдачей чека и фиксацией стоимости заказа. Без скрытых комиссий.
+                    <span style="color:#00ff88; font-weight:700;">● Безопасная оплата через Т-Банк</span><br>
+                    Вы будете перенаправлены на защищённую страницу Т-Банка для оплаты картой или через СБП. Чек придёт на email.
                 </div>
             </div>
 
-            <!-- Payment Methods -->
-            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-                <div class="payment-method-item active" style="display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); cursor:pointer;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                    <div>
-                        <div style="font-weight:600; font-size:0.92rem; color:#fff;">Банковская карта / СБП (Т-Банк)</div>
-                        <div style="font-size:0.78rem; color:#888;">Моментальное зачисление и фиксация предзаказа</div>
-                    </div>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+                <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <span style="font-size:0.84rem; color:#bbb;">Данные карты защищены шифрованием PCI DSS</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    <span style="font-size:0.84rem; color:#bbb;">Visa, MasterCard, МИР, СБП</span>
                 </div>
             </div>
 
             <div class="modal-actions" style="display:flex; gap:10px;">
                 <button type="button" class="btn secondary outline" onclick="openModal(document.getElementById('checkout-modal'))" style="width:auto; padding:12px 18px;">← Назад</button>
-                <button type="button" class="btn primary" id="confirm-pay-btn" onclick="window.confirmOrderPayment()" style="flex:1; padding:13px; font-weight:700; font-size:1rem; box-shadow:0 8px 24px rgba(229,9,20,0.5);">
-                    Подтвердить и оплатить заказ ✓
+                <button type="button" class="btn primary" id="confirm-pay-btn" onclick="window.confirmOrderPayment()" style="flex:1; padding:13px; font-weight:700; font-size:1rem; box-shadow:0 8px 24px rgba(229,9,20,0.5); display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    Перейти к оплате →
                 </button>
             </div>
         </div>

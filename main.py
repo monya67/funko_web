@@ -3,6 +3,7 @@ import asyncpg
 import jwt
 import httpx
 import ssl
+import hashlib
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -24,6 +25,9 @@ if not DATABASE_URL:
 SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-me")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
+
+TBANK_TERMINAL_KEY = os.getenv("TBANK_TERMINAL_KEY", "")
+TBANK_PASSWORD = os.getenv("TBANK_PASSWORD", "")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365  # 1 year (persistent login)
@@ -84,6 +88,8 @@ async def startup():
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_phone TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_tg TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_type TEXT DEFAULT '50%'")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tbank_payment_id TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending'")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS full_name TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT ''")
@@ -271,6 +277,26 @@ class CheckoutRequest(BaseModel):
     payment_type: str = "50%"
     delivery_method: str = ""
     comment: str = ""
+
+# --- T-Bank Payment Helpers ---
+def tbank_generate_token(params: dict) -> str:
+    filtered = {k: v for k, v in params.items() if k not in ("Shops", "DATA", "Receipt", "Items")}
+    filtered["Password"] = TBANK_PASSWORD
+    sorted_pairs = sorted(filtered.items(), key=lambda x: x[0])
+    concat = "".join(str(v) for _, v in sorted_pairs)
+    return hashlib.sha256(concat.encode("utf-8")).hexdigest()
+
+async def tbank_init_payment(amount_kopecks: int, order_id: int, description: str) -> dict:
+    params = {
+        "TerminalKey": TBANK_TERMINAL_KEY,
+        "Amount": amount_kopecks,
+        "OrderId": str(order_id),
+        "Description": description[:250],
+    }
+    params["Token"] = tbank_generate_token(params)
+    async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
+        resp = await client.post("https://securepay.tinkoff.ru/v2/Init", json=params, timeout=15)
+        return resp.json()
 
 # --- Public Health / Ping (for cron-job keep-alive) ---
 @app.get("/health")
@@ -766,18 +792,37 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 name, first_name, last_name, phone, telegram, client_id
             )
 
-        status_text = "Заказ принят в обработку"
+        status_text = "Ожидает оплаты"
         order_id = await db.fetchval(
-            """INSERT INTO orders 
-               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type) 
-               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11) RETURNING id""",
+            """INSERT INTO orders
+               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status)
+               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending') RETURNING id""",
             client_id, items_text, total_price, paid_amount, status_text, first_photo, order_date,
             name, phone, telegram, checkout.payment_type
         )
 
+        payment_url = None
+        if TBANK_TERMINAL_KEY and TBANK_PASSWORD:
+            try:
+                amount_kopecks = paid_amount * 100
+                desc = f"Заказ #{order_id} на funkostop.org"
+                tbank_resp = await tbank_init_payment(amount_kopecks, order_id, desc)
+                if tbank_resp.get("Success"):
+                    payment_url = tbank_resp.get("PaymentURL")
+                    tbank_pid = str(tbank_resp.get("PaymentId", ""))
+                    await db.execute(
+                        "UPDATE orders SET tbank_payment_id = $1 WHERE id = $2",
+                        tbank_pid, order_id
+                    )
+                else:
+                    print(f"T-Bank Init error: {tbank_resp}")
+            except Exception as e:
+                print(f"T-Bank Init exception: {e}")
+
         # Notify admin in Telegram
         if BOT_TOKEN and ADMIN_IDS:
             try:
+                pay_status = "⏳ Ожидает оплаты" if payment_url else "⚠️ Без онлайн-оплаты"
                 admin_msg = (
                     f"🔥 **Новый заказ #{order_id} на сайте funkostop.org!**\n\n"
                     f"👤 Клиент #{client_id}: {name}\n"
@@ -786,7 +831,8 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                     f"📦 Доставка: {checkout.delivery_method or 'Не указан'}\n\n"
                     f"🛒 **Позиции:**\n{items_text}\n\n"
                     f"💰 Сумма: {total_price} ₽\n"
-                    f"💳 Оплачено: {paid_amount} ₽ ({checkout.payment_type})\n"
+                    f"💳 К оплате: {paid_amount} ₽ ({checkout.payment_type})\n"
+                    f"{pay_status}\n"
                 )
                 if checkout.comment:
                     admin_msg += f"💬 Комментарий: {checkout.comment}\n"
@@ -807,8 +853,66 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
             "is_new_client": is_new_client,
             "total_price": total_price,
             "paid_amount": paid_amount,
-            "payment_type": checkout.payment_type
+            "payment_type": checkout.payment_type,
+            "payment_url": payment_url
         }
+
+# --- T-Bank Payment Notification Webhook ---
+@app.post("/api/tbank/notification")
+async def tbank_notification(req: Request):
+    data = await req.json()
+    received_token = data.get("Token", "")
+    check_params = {k: v for k, v in data.items() if k != "Token"}
+    expected_token = tbank_generate_token(check_params)
+    if received_token != expected_token:
+        return Response(content="INVALID_TOKEN", status_code=400)
+
+    tbank_status = data.get("Status", "")
+    order_id_str = data.get("OrderId", "")
+    payment_id = str(data.get("PaymentId", ""))
+
+    if not order_id_str:
+        return Response(content="OK")
+
+    try:
+        oid = int(order_id_str)
+    except ValueError:
+        return Response(content="OK")
+
+    async with pool.acquire() as db:
+        order = await db.fetchrow("SELECT id, status, client_id, items, total_price, paid_amount, customer_name FROM orders WHERE id = $1", oid)
+        if not order:
+            return Response(content="OK")
+
+        if tbank_status == "CONFIRMED":
+            await db.execute(
+                "UPDATE orders SET payment_status = 'paid', status = 'Заказ принят в обработку', tbank_payment_id = $1 WHERE id = $2",
+                payment_id, oid
+            )
+            if BOT_TOKEN and ADMIN_IDS:
+                try:
+                    msg = f"✅ **Оплата подтверждена! Заказ #{oid}**\n\n💳 Сумма: {order['paid_amount']} ₽\n👤 {order['customer_name']}"
+                    async with httpx.AsyncClient() as http_client:
+                        await http_client.post(
+                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            json={"chat_id": ADMIN_IDS[0], "text": msg, "parse_mode": "Markdown"}
+                        )
+                except Exception:
+                    pass
+        elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
+            await db.execute(
+                "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
+            )
+
+    return Response(content="OK")
+
+@app.get("/api/payment-status/{order_id}")
+async def get_payment_status(order_id: int):
+    async with pool.acquire() as db:
+        row = await db.fetchrow("SELECT payment_status FROM orders WHERE id = $1", order_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Order not found")
+        return {"status": row["payment_status"]}
 
 @app.get("/api/ledger")
 async def get_ledger(admin: dict = Depends(require_admin)):

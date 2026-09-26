@@ -2004,8 +2004,8 @@ function renderCatalog() {
     if (catalogView === 'grid') {
         pageProducts.forEach((p, i) => {
             const card = document.createElement('div');
-            card.className = 'product-card row-animate';
-            card.style.animationDelay = `${i * 0.02}s`;
+            card.className = 'product-card';
+            card.style.animationDelay = `${i * 0.06}s`;
 
             const photoSrc = p.photo_id 
                 ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
@@ -2082,6 +2082,23 @@ function renderCatalog() {
                 </div>
             `;
             catalogGrid.appendChild(card);
+        });
+
+        // 3D tilt on mouse move
+        catalogGrid.querySelectorAll('.product-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const y = (e.clientY - rect.top) / rect.height;
+                const rotY = (x - 0.5) * 8;
+                const rotX = (0.5 - y) * 6;
+                card.style.transform = `perspective(800px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateY(-6px)`;
+                card.style.setProperty('--mx', `${x * 100}%`);
+                card.style.setProperty('--my', `${y * 100}%`);
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = '';
+            });
         });
     } else {
         // Table view
@@ -2368,6 +2385,11 @@ quickOrderForm?.addEventListener('submit', async (e) => {
     } catch (err) {
         alert('Ошибка оформления заказа: ' + err.message);
     }
+});
+
+// --- Add Product Button (Admin Only) ---
+newProductBtn?.addEventListener('click', () => {
+    window.openAddProductModal();
 });
 
 // --- Category & Series Meta Manager (Admin Only) ---
@@ -2900,7 +2922,7 @@ window.confirmOrderPayment = async function() {
     const payBtn = document.getElementById('confirm-pay-btn');
     if (payBtn) {
         payBtn.disabled = true;
-        payBtn.textContent = 'Обработка платежа в Т-Банке...';
+        payBtn.textContent = 'Создание платежа...';
     }
 
     try {
@@ -2915,48 +2937,74 @@ window.confirmOrderPayment = async function() {
 
         const data = await res.json();
         if (!res.ok) {
-            throw new Error(data.detail || 'Ошибка проведения платежа');
+            throw new Error(data.detail || 'Ошибка создания заказа');
         }
 
-        // Success! Clear cart
+        // Save order info for return from payment
+        localStorage.setItem('funko_pending_order', JSON.stringify({
+            order_id: data.order_id,
+            client_id: data.client_id,
+            password: data.password,
+            token: data.token,
+            is_new_client: data.is_new_client
+        }));
+
         funkoCart = [];
         saveCartToStorage();
 
-        closeModals();
-
-        // Populate Success Modal
-        const orderIdDisplay = document.getElementById('success-order-id');
-        const credBox = document.getElementById('success-credentials-box');
-        const clientIdDisplay = document.getElementById('success-client-id');
-        const passwordDisplay = document.getElementById('success-password');
-        const botLink = document.getElementById('success-tg-bot-link');
-
-        if (orderIdDisplay) orderIdDisplay.textContent = `#${data.order_id}`;
-
-        if (data.is_new_client) {
-            if (credBox) credBox.classList.remove('hidden');
-            if (clientIdDisplay) clientIdDisplay.textContent = data.client_id;
-            if (passwordDisplay) passwordDisplay.textContent = data.password;
-            window.lastCreatedClientToken = data.token;
+        if (data.payment_url) {
+            window.location.href = data.payment_url;
         } else {
-            if (credBox) credBox.classList.add('hidden');
-            window.lastCreatedClientToken = null;
+            closeModals();
+            showOrderSuccess(data);
         }
-
-        if (botLink) {
-            botLink.href = `https://t.me/funkostop_bot?start=order_${data.order_id}`;
-        }
-
-        openModal(document.getElementById('order-success-modal'));
     } catch (err) {
         alert('Ошибка при оформлении заказа: ' + err.message);
-    } finally {
         if (payBtn) {
             payBtn.disabled = false;
-            payBtn.textContent = 'Подтвердить и оплатить заказ ✓';
+            payBtn.textContent = 'Перейти к оплате →';
         }
     }
 };
+
+function showOrderSuccess(data) {
+    const orderIdDisplay = document.getElementById('success-order-id');
+    const credBox = document.getElementById('success-credentials-box');
+    const clientIdDisplay = document.getElementById('success-client-id');
+    const passwordDisplay = document.getElementById('success-password');
+    const botLink = document.getElementById('success-tg-bot-link');
+
+    if (orderIdDisplay) orderIdDisplay.textContent = `#${data.order_id}`;
+
+    if (data.is_new_client) {
+        if (credBox) credBox.classList.remove('hidden');
+        if (clientIdDisplay) clientIdDisplay.textContent = data.client_id;
+        if (passwordDisplay) passwordDisplay.textContent = data.password;
+        window.lastCreatedClientToken = data.token;
+    } else {
+        if (credBox) credBox.classList.add('hidden');
+        window.lastCreatedClientToken = data.token || null;
+    }
+
+    if (botLink) {
+        botLink.href = `https://t.me/funkostop_bot?start=order_${data.order_id}`;
+    }
+
+    openModal(document.getElementById('order-success-modal'));
+}
+
+// Check if returning from T-Bank payment
+(function checkPaymentReturn() {
+    const pending = localStorage.getItem('funko_pending_order');
+    if (!pending) return;
+    try {
+        const orderData = JSON.parse(pending);
+        localStorage.removeItem('funko_pending_order');
+        setTimeout(() => showOrderSuccess(orderData), 500);
+    } catch(e) {
+        localStorage.removeItem('funko_pending_order');
+    }
+})();
 
 window.autoLoginFromSuccess = async function() {
     if (window.lastCreatedClientToken) {
