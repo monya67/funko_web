@@ -1155,6 +1155,7 @@ th.sorted-col {
 /* --- Catalog Body Layout (Collapsible Sidebar + Main) --- */
 .catalog-body-layout {
     display: flex;
+    flex-flow: row nowrap;
     gap: 24px;
     align-items: flex-start;
     width: 100%;
@@ -1166,15 +1167,13 @@ th.sorted-col {
     min-width: 250px;
     max-width: 250px;
     flex-shrink: 0;
+    flex-grow: 0;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 14px;
     padding: 18px;
     box-sizing: border-box;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: sticky;
-    top: 10px;
-    max-height: calc(100vh - 80px);
+    position: relative;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.1) transparent;
@@ -1428,9 +1427,9 @@ th.sorted-col {
 
 /* --- Main Products Area --- */
 .catalog-main-area {
-    flex: 1 1 0%;
+    flex: 1 1 auto;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
     box-sizing: border-box;
 }
 
