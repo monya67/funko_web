@@ -2007,78 +2007,82 @@ function renderCatalog() {
             card.className = 'product-card';
             card.style.animationDelay = `${i * 0.06}s`;
 
-            const photoSrc = p.photo_id 
+            const photoSrc = p.photo_id
                 ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
                 : '';
 
             const imgHtml = photoSrc
                 ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">`
-                : `<div class="product-image-placeholder"><span style="font-size:0.75rem;color:var(--gray);">Нет фото</span></div>`;
+                : `<div class="product-image-placeholder">
+                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                       <span>Фото скоро</span>
+                   </div>`;
 
-            // Badges
-            const customBadgeHtml = p.badge 
-                ? `<span class="${getBadgeClass(p.badge)}">${p.badge}</span>` 
+            // Badges — only meaningful ones on the image
+            const customBadgeHtml = p.badge
+                ? `<span class="${getBadgeClass(p.badge)}">${p.badge}</span>`
                 : '';
             const discountBadge = p.discount_percent > 0
                 ? `<span class="card-badge card-badge-discount">-${p.discount_percent}%</span>`
                 : '';
-            const packsBadge = p.packs_count > 0
-                ? `<span class="card-badge card-badge-packs">+${p.packs_count} ${p.packs_count === 1 ? 'пак' : (p.packs_count < 5 ? 'пака' : 'паков')}</span>`
-                : '';
-            const numberBadge = p.figure_number
-                ? `<span class="card-badge card-badge-number">#${p.figure_number}</span>`
-                : '';
-            const stockBadge = p.in_stock
-                ? `<span class="card-badge card-badge-stock in-stock">● В наличии</span>`
-                : `<span class="card-badge card-badge-stock out-stock">○ Под заказ</span>`;
 
             const priceDisplay = p.discount_percent > 0
                 ? `<span class="price-final discounted">${(p.final_price || p.price).toLocaleString('ru')} &#8381;</span>
                    <span class="price-original">${p.price.toLocaleString('ru')} &#8381;</span>`
                 : `<span class="price-final">${p.price.toLocaleString('ru')} &#8381;</span>`;
 
+            const stockDot = p.in_stock
+                ? `<span class="stock-indicator in-stock">В наличии</span>`
+                : `<span class="stock-indicator out-of-stock">Под заказ</span>`;
+
             let actionsHtml = '';
             if (role === 'admin') {
                 actionsHtml = `
                     <div class="product-card-actions">
-                        <button type="button" class="btn-quick-order" onclick="window.addToCart(${p.id}, 1)" title="Добавить в корзину">+ В корзину</button>
-                        <button type="button" class="btn-card-icon" onclick="window.openEditProductModal(${p.id})" title="Редактировать">✎</button>
-                        <button type="button" class="btn-card-icon delete" onclick="window.confirmDeleteProduct(${p.id})" title="Удалить">&#10005;</button>
+                        <button type="button" class="card-action-btn primary" onclick="window.addToCart(${p.id}, 1)" title="Добавить в корзину">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            В корзину
+                        </button>
+                        <button type="button" class="card-action-btn icon" onclick="window.openEditProductModal(${p.id})" title="Редактировать">✎</button>
+                        <button type="button" class="card-action-btn icon danger" onclick="window.confirmDeleteProduct(${p.id})" title="Удалить">&#10005;</button>
                     </div>
                 `;
             } else {
                 actionsHtml = `
-                    <div class="product-card-actions" style="display:flex; gap:6px; width:100%;">
-                        <button type="button" class="btn primary" onclick="window.addToCart(${p.id}, 1)" style="flex:1; padding:8px 12px; font-size:0.85rem; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                            <span>В корзину</span>
+                    <div class="product-card-actions">
+                        <button type="button" class="card-action-btn primary" onclick="window.addToCart(${p.id}, 1)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            В корзину
                         </button>
-                        <button type="button" class="btn secondary outline" onclick="window.quickBuy(${p.id})" style="padding:8px 12px; font-size:0.82rem; font-weight:600; border-radius:8px; width:auto;" title="Купить сразу">Купить</button>
+                        <button type="button" class="card-action-btn secondary" onclick="window.quickBuy(${p.id})">Купить</button>
                     </div>
                 `;
             }
+
+            const categoryTag = p.category ? `<span class="card-tag">${p.category}</span>` : '';
+            const seriesTag = p.series ? `<span class="card-tag series">${p.series}</span>` : '';
+            const numberTag = p.figure_number ? `<span class="card-number">#${p.figure_number}</span>` : '';
 
             card.innerHTML = `
                 <div class="product-image-box" onclick="${photoSrc ? `window.viewPhoto('${p.photo_id}')` : ''}">
                     ${imgHtml}
                     ${customBadgeHtml}
                     ${discountBadge}
-                    ${packsBadge}
-                    ${numberBadge}
-                    ${stockBadge}
                 </div>
                 <div class="product-card-body">
-                    <div class="product-card-meta">
-                        ${p.category ? `<span class="meta-chip meta-chip-category">${p.category}</span>` : ''}
-                        ${p.series ? `<span class="meta-chip meta-chip-series">${p.series}</span>` : ''}
+                    <div class="card-tags-row">
+                        ${categoryTag}${seriesTag}
                     </div>
                     <div class="product-card-title" title="${p.name}">
-                        ${p.figure_number ? `<span style="color:var(--primary);margin-right:4px;">#${p.figure_number}</span>` : ''}${p.name}
+                        ${numberTag}${p.name}
                     </div>
-                    <div class="product-price-box">
-                        ${priceDisplay}
+                    <div class="product-card-footer">
+                        <div class="product-price-box">
+                            ${priceDisplay}
+                            ${stockDot}
+                        </div>
+                        ${actionsHtml}
                     </div>
-                    ${actionsHtml}
                 </div>
             `;
             catalogGrid.appendChild(card);
