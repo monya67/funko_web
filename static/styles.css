@@ -1222,26 +1222,24 @@ th.sorted-col {
 /* --- Catalog Body Layout (Collapsible Sidebar + Main) --- */
 .catalog-body-layout {
     display: flex;
-    gap: 0;
+    gap: 24px;
     align-items: flex-start;
     position: relative;
 }
 
 /* --- Collapsible Filter Sidebar --- */
 .catalog-filter-sidebar {
-    width: 240px;
+    width: 250px;
     flex-shrink: 0;
-    background: transparent;
-    border: none;
-    border-right: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 0;
-    padding: 16px 20px 16px 0;
-    backdrop-filter: none;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 14px;
+    padding: 18px;
     box-shadow: none;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: sticky;
     top: 10px;
-    max-height: calc(100vh - 100px);
+    max-height: calc(100vh - 80px);
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255,255,255,0.1) transparent;
@@ -1497,7 +1495,7 @@ th.sorted-col {
 .catalog-main-area {
     flex: 1;
     min-width: 0;
-    padding-left: 20px;
+    overflow: hidden;
 }
 
 .catalog-controls-row {
