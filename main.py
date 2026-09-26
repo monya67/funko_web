@@ -736,6 +736,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
         except Exception:
             client_id = None
 
+    is_new_client = False
     async with pool.acquire() as db:
         if not client_id:
             existing_client = await db.fetchrow(
@@ -746,6 +747,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 client_id = existing_client["id"]
                 generated_pwd = existing_client["password"]
             else:
+                is_new_client = True
                 generated_pwd = str(random.randint(100000, 999999))
                 client_id = await db.fetchval(
                     "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
@@ -801,7 +803,8 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
             "order_id": order_id,
             "client_id": client_id,
             "password": generated_pwd,
-            "access_token": new_token,
+            "token": new_token,
+            "is_new_client": is_new_client,
             "total_price": total_price,
             "paid_amount": paid_amount,
             "payment_type": checkout.payment_type
