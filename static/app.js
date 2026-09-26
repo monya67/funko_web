@@ -58,8 +58,6 @@ let selectedCatalogCategory = '';
 let selectedBrands = [];
 let selectedSeries = [];
 let activeFranchiseChip = '';
-let catalogSort = { key: 'id', desc: true };
-let catalogView = 'grid';
 let deleteProductTargetId = null;
 let isSidebarCollapsed = localStorage.getItem('funko_sidebar_collapsed') === 'true';
 
@@ -1160,7 +1158,6 @@ function bindSortListeners(tableId, sortState, renderFn, defaultKey = 'id') {
 bindSortListeners('orders-table', ordersSort, renderOrders, 'id');
 bindSortListeners('archived-table', archivedSort, renderArchivedOrders, 'id');
 bindSortListeners('accounting-table', accountingSort, renderAccounting, 'id');
-bindSortListeners('catalog-table', catalogSort, renderCatalog, 'id');
 
 // Filter listeners with ALL filters included
 ['orders-year-filter', 'orders-month-filter', 'orders-client-filter', 'orders-price-min', 'orders-price-max', 'orders-paid-min', 'orders-paid-max', 'orders-search'].forEach(id => {
@@ -1584,8 +1581,6 @@ if (editOrderPhotoUpload) editOrderPhotoUpload.addEventListener('change', (e) =>
 
 // ===== CATALOG MODULE =====
 const catalogGrid = document.getElementById('catalog-grid');
-const catalogTableBody = document.querySelector('#catalog-table tbody');
-const catalogTableWrapper = document.getElementById('catalog-table-wrapper');
 const productModal = document.getElementById('product-modal');
 const productForm = document.getElementById('product-form');
 const quickOrderModal = document.getElementById('quick-order-modal');
@@ -1629,20 +1624,6 @@ sidebarOpenBtn?.addEventListener('click', () => {
     localStorage.setItem('funko_sidebar_collapsed', 'false');
 });
 
-// --- View Switcher (Grid / Table) ---
-window.switchCatalogView = function(view) {
-    catalogView = view;
-    document.getElementById('view-grid-btn')?.classList.toggle('active', view === 'grid');
-    document.getElementById('view-table-btn')?.classList.toggle('active', view === 'table');
-    if (view === 'grid') {
-        catalogGrid?.classList.remove('hidden');
-        catalogTableWrapper?.classList.add('hidden');
-    } else {
-        catalogGrid?.classList.add('hidden');
-        catalogTableWrapper?.classList.remove('hidden');
-    }
-    renderCatalog();
-};
 
 // --- Brand Cards Slider (Hidden as requested: no brand logos yet) ---
 function renderBrandCards() {
@@ -1924,9 +1905,8 @@ function getBadgeClass(badge) {
 
 // --- Catalog Rendering ---
 function renderCatalog() {
-    if (!catalogGrid || !catalogTableBody) return;
+    if (!catalogGrid) return;
     catalogGrid.innerHTML = '';
-    catalogTableBody.innerHTML = '';
     const emptyMsg = document.getElementById('no-catalog');
     const role = currentRole;
     let products = [...rawCatalogProducts];
@@ -1973,43 +1953,24 @@ function renderCatalog() {
     }
 
     // Sort products
-    if (catalogView === 'table' && catalogSort.key && catalogSort.key !== 'id') {
-        products.sort((a, b) => {
-            let valA, valB;
-            const k = catalogSort.key;
-            if (k === 'number') { valA = a.figure_number || ''; valB = b.figure_number || ''; }
-            else if (k === 'name') { valA = a.name || ''; valB = b.name || ''; }
-            else if (k === 'category') { valA = a.category || ''; valB = b.category || ''; }
-            else if (k === 'series') { valA = a.series || ''; valB = b.series || ''; }
-            else if (k === 'price') { valA = a.price || 0; valB = b.price || 0; }
-            else if (k === 'discount') { valA = a.discount_percent || 0; valB = b.discount_percent || 0; }
-            else if (k === 'final_price') { valA = a.final_price || a.price || 0; valB = b.final_price || b.price || 0; }
-            else if (k === 'packs') { valA = a.packs_count || 0; valB = b.packs_count || 0; }
-            else { valA = a.id; valB = b.id; }
-            if (valA < valB) return catalogSort.desc ? 1 : -1;
-            if (valA > valB) return catalogSort.desc ? -1 : 1;
-            return 0;
-        });
-    } else {
-        const sortSelect = document.getElementById('catalog-sort-select')?.value || 'id_desc';
-        products.sort((a, b) => {
-            if (sortSelect === 'price_asc') {
-                const pa = a.final_price || a.price || 0;
-                const pb = b.final_price || b.price || 0;
-                return pa - pb;
-            } else if (sortSelect === 'price_desc') {
-                const pa = a.final_price || a.price || 0;
-                const pb = b.final_price || b.price || 0;
-                return pb - pa;
-            } else if (sortSelect === 'discount_desc') {
-                return (b.discount_percent || 0) - (a.discount_percent || 0);
-            } else if (sortSelect === 'name_asc') {
-                return a.name.localeCompare(b.name, 'ru');
-            } else {
-                return b.id - a.id;
-            }
-        });
-    }
+    const sortSelect = document.getElementById('catalog-sort-select')?.value || 'id_desc';
+    products.sort((a, b) => {
+        if (sortSelect === 'price_asc') {
+            const pa = a.final_price || a.price || 0;
+            const pb = b.final_price || b.price || 0;
+            return pa - pb;
+        } else if (sortSelect === 'price_desc') {
+            const pa = a.final_price || a.price || 0;
+            const pb = b.final_price || b.price || 0;
+            return pb - pa;
+        } else if (sortSelect === 'discount_desc') {
+            return (b.discount_percent || 0) - (a.discount_percent || 0);
+        } else if (sortSelect === 'name_asc') {
+            return a.name.localeCompare(b.name, 'ru');
+        } else {
+            return b.id - a.id;
+        }
+    });
 
     if (products.length === 0) {
         if (emptyMsg) {
@@ -2038,8 +1999,7 @@ function renderCatalog() {
     const startIdx = (state.page - 1) * state.pageSize;
     const pageProducts = products.slice(startIdx, startIdx + state.pageSize);
 
-    if (catalogView === 'grid') {
-        pageProducts.forEach((p, i) => {
+    pageProducts.forEach((p, i) => {
             const card = document.createElement('div');
             card.className = 'product-card';
             card.style.animationDelay = `${i * 0.06}s`;
@@ -2141,60 +2101,6 @@ function renderCatalog() {
                 card.style.transform = '';
             });
         });
-    } else {
-        // Table view
-        pageProducts.forEach((p, i) => {
-            const tr = document.createElement('tr');
-            tr.className = 'row-animate';
-            tr.style.animationDelay = `${i * 0.02}s`;
-
-            const photoCell = makePhotoCell(p.photo_id);
-            const discountText = p.discount_percent > 0 ? `<span style="color:#ff4d4d;font-weight:600;">-${p.discount_percent}%</span>` : '—';
-            const finalPriceVal = (p.final_price || p.price || 0).toLocaleString('ru');
-            const packsText = p.packs_count > 0 ? `<span style="color:#ffb400;font-weight:600;">+${p.packs_count}</span>` : '0';
-            const stockHtml = p.in_stock 
-                ? `<span style="color:#00ff88;font-size:0.85rem;">● В наличии</span>`
-                : `<span style="color:#888;font-size:0.85rem;">○ Под заказ</span>`;
-
-            let actionsHtml = '';
-            if (role === 'admin') {
-                actionsHtml = `
-                    <td class="admin-only actions-cell" style="white-space:nowrap;">
-                        <button class="edit-btn" onclick="window.addToCart(${p.id}, 1)" title="Добавить в корзину">+ В корзину</button>
-                        <button class="edit-btn" onclick="window.openEditProductModal(${p.id})" title="Редактировать">Ред.</button>
-                        <button class="delete-btn" onclick="window.confirmDeleteProduct(${p.id})" title="Удалить">&#10005;</button>
-                    </td>
-                `;
-            } else {
-                actionsHtml = `
-                    <td class="actions-cell" style="white-space:nowrap; text-align:center;">
-                        <button type="button" class="btn primary" onclick="window.addToCart(${p.id}, 1)" style="padding:6px 14px; font-size:0.82rem; font-weight:700; width:auto; display:inline-flex; align-items:center; gap:6px;">
-                            <span>В корзину</span>
-                        </button>
-                    </td>
-                `;
-            }
-
-            tr.innerHTML = `
-                <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>
-                ${photoCell}
-                <td style="font-family:monospace;font-weight:600;">${p.figure_number || '—'}</td>
-                <td style="font-weight:600;">
-                    ${p.badge ? `<span class="${getBadgeClass(p.badge)}" style="position:static;display:inline-block;margin-right:6px;font-size:0.68rem;padding:2px 6px;">${p.badge}</span>` : ''}
-                    ${p.name}
-                </td>
-                <td><span class="meta-chip meta-chip-category">${p.category || '—'}</span></td>
-                <td><span class="meta-chip meta-chip-series">${p.series || '—'}</span></td>
-                <td style="white-space:nowrap;">${(p.price || 0).toLocaleString('ru')} &#8381;</td>
-                <td>${discountText}</td>
-                <td style="white-space:nowrap;font-weight:700;color:var(--primary);">${finalPriceVal} &#8381;</td>
-                <td>${packsText}</td>
-                <td>${stockHtml}</td>
-                ${actionsHtml}
-            `;
-            catalogTableBody.appendChild(tr);
-        });
-    }
 
     updatePaginationUI('catalog', products.length);
 }

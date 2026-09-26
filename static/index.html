@@ -901,10 +901,6 @@
                 <div class="catalog-header-bar" id="catalog-header-bar">
                     <div class="catalog-header-left">
                         <h2>Каталог товаров</h2>
-                        <div class="view-toggle" id="catalog-view-toggle">
-                            <button type="button" class="btn-toggle active" id="view-grid-btn" title="Сетка карточек" onclick="switchCatalogView('grid')">⊞ Карточки</button>
-                            <button type="button" class="btn-toggle" id="view-table-btn" title="Таблица" onclick="switchCatalogView('table')">☰ Таблица</button>
-                        </div>
                     </div>
                     <div class="catalog-header-right">
                         <button type="button" class="btn secondary outline catalog-btn-cart" onclick="window.openCartModal()" style="font-weight:600; margin-right:8px; display:inline-flex; align-items:center; gap:8px;">
@@ -1026,28 +1022,6 @@
                         <!-- Catalog Grid View -->
                         <div id="catalog-grid" class="catalog-grid"></div>
 
-                        <!-- Catalog Table View -->
-                        <div id="catalog-table-wrapper" class="glass-panel table-container hidden">
-                            <table id="catalog-table">
-                                <thead>
-                                    <tr>
-                                        <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
-                                        <th>Фото</th>
-                                        <th data-sort="number" style="cursor:pointer;white-space:nowrap;">№ фиг. &#8597;</th>
-                                        <th data-sort="name" style="cursor:pointer;white-space:nowrap;">Название &#8597;</th>
-                                        <th data-sort="category" style="cursor:pointer;white-space:nowrap;">Категория &#8597;</th>
-                                        <th data-sort="series" style="cursor:pointer;white-space:nowrap;">Серия &#8597;</th>
-                                        <th data-sort="price" style="cursor:pointer;white-space:nowrap;">Базовая цена &#8597;</th>
-                                        <th data-sort="discount" style="cursor:pointer;white-space:nowrap;">Скидка &#8597;</th>
-                                        <th data-sort="final_price" style="cursor:pointer;white-space:nowrap;">Итоговая цена &#8597;</th>
-                                        <th data-sort="packs" style="cursor:pointer;white-space:nowrap;">Паки &#8597;</th>
-                                        <th>Наличие</th>
-                                        <th style="min-width:120px; text-align:center;">Действие</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
 
                         <p id="no-catalog" class="empty-msg hidden">Товары не найдены</p>
 

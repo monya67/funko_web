@@ -810,13 +810,6 @@ tr:hover td {
         flex: 1 1 calc(50% - 6px);
         min-width: 120px;
     }
-    .view-toggle {
-        width: 100%;
-        justify-content: center;
-    }
-    .btn-toggle {
-        flex: 1;
-        text-align: center;
     }
 }
 
@@ -983,33 +976,6 @@ th.sorted-col {
 }
 
 /* ===== CATALOG STYLES ===== */
-.view-toggle {
-    display: flex;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 2px;
-    gap: 2px;
-}
-.btn-toggle {
-    background: transparent;
-    border: none;
-    color: var(--gray);
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.btn-toggle:hover {
-    color: #fff;
-}
-.btn-toggle.active {
-    background: rgba(255, 255, 255, 0.12);
-    color: #fff;
-    font-weight: 600;
-}
 
 /* Category Pills */
 .category-pills-bar {
@@ -1044,39 +1010,6 @@ th.sorted-col {
     color: #fff;
     margin: 0;
     letter-spacing: -0.5px;
-}
-
-.view-toggle {
-    display: inline-flex;
-    background: #141414;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 3px;
-    gap: 3px;
-}
-
-.btn-toggle {
-    background: transparent;
-    border: none;
-    color: #888888;
-    padding: 6px 13px;
-    border-radius: 7px;
-    font-size: 0.84rem;
-    font-weight: 600;
-    font-family: inherit;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-toggle:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.06);
-}
-
-.btn-toggle.active {
-    background: var(--primary);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(229, 9, 20, 0.35);
 }
 
 /* --- Top Brand Cards Slider (Photo 1) --- */
@@ -1224,18 +1157,20 @@ th.sorted-col {
     display: flex;
     gap: 24px;
     align-items: flex-start;
-    position: relative;
+    width: 100%;
 }
 
 /* --- Collapsible Filter Sidebar --- */
 .catalog-filter-sidebar {
     width: 250px;
+    min-width: 250px;
+    max-width: 250px;
     flex-shrink: 0;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 14px;
     padding: 18px;
-    box-shadow: none;
+    box-sizing: border-box;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: sticky;
     top: 10px;
@@ -1493,9 +1428,10 @@ th.sorted-col {
 
 /* --- Main Products Area --- */
 .catalog-main-area {
-    flex: 1;
+    flex: 1 1 0%;
     min-width: 0;
     overflow: hidden;
+    box-sizing: border-box;
 }
 
 .catalog-controls-row {
