@@ -176,7 +176,7 @@ function init() {
         window.switchTab(guestAllowed.includes(initialTab) ? initialTab : 'home', false);
     }
 
-    history.replaceState({ tab: initialTab }, '', window.location.pathname);
+    history.replaceState({ tab: initialTab }, '', window.location.pathname + window.location.search);
 }
 
 function updateRoleUI(role) {
@@ -408,10 +408,16 @@ window.switchTab = function(tabName, pushState = true) {
     });
     if (tabName === 'catalog') {
         window.updateCatalogDevMode();
-        if (currentRole === 'admin') {
+        if (currentRole === 'admin' && rawCatalogProducts.length === 0) {
             loadCatalog();
             loadCatalogMeta();
         }
+    }
+    if (tabName === 'product') {
+        // highlight catalog nav item as active for product page
+        navItems.forEach(nav => {
+            if (nav.getAttribute('data-tab') === 'catalog') nav.classList.add('active');
+        });
     }
     if (tabName === 'orders' && currentRole === 'admin') {
         markOrdersSeen(rawActiveOrders.map(o => o.id));
@@ -424,7 +430,7 @@ window.switchTab = function(tabName, pushState = true) {
 
     if (pushState) {
         const url = TAB_ROUTES[tabName] || '/';
-        if (window.location.pathname !== url) {
+        if (window.location.pathname + window.location.search !== url) {
             history.pushState({ tab: tabName }, '', url);
         }
     }
@@ -434,6 +440,10 @@ window.switchTab = function(tabName, pushState = true) {
 
 window.addEventListener('popstate', (e) => {
     const tab = (e.state && e.state.tab) ? e.state.tab : getTabFromURL();
+    if (tab === 'product' && e.state && e.state.product) {
+        window.openProductDetail(e.state.product);
+        return;
+    }
     window.switchTab(tab, false);
 });
 
@@ -758,7 +768,8 @@ function updatePaginationUI(tab, totalCount) {
 
     const customInput = document.getElementById(`${tab}-custom-size`);
     if (customInput) {
-        if (![10, 20, 50, 100].includes(state.pageSize)) {
+        const presetSizes = Array.from(sizeBtns).map(b => parseInt(b.getAttribute('data-size')));
+        if (!presetSizes.includes(state.pageSize)) {
             customInput.value = state.pageSize;
         } else {
             customInput.value = '';
@@ -1279,9 +1290,24 @@ function closeModals() {
     const overlay = document.getElementById('modal-overlay');
     if (overlay) overlay.classList.add('hidden');
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+    // Clear ?product= from URL if product detail was open
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('product')) {
+        url.searchParams.delete('product');
+        history.pushState({ tab: 'catalog' }, '', url.toString());
+    }
 }
 window.openModal = openModal;
 window.closeModals = closeModals;
+
+if (modalOverlay) {
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeModals();
+    });
+}
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeModals();
+});
 createClientBtn.addEventListener('click', () => openModal(createClientModal));
 createOrderBtn.addEventListener('click', () => {
     openModal(createOrderModal);
@@ -2016,6 +2042,7 @@ function renderCatalog() {
             const card = document.createElement('div');
             card.className = 'product-card';
             card.style.animationDelay = `${i * 0.06}s`;
+            card.addEventListener('click', () => window.openProductDetail(p.id));
 
             const photoSrc = p.photo_id
                 ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
@@ -2024,74 +2051,64 @@ function renderCatalog() {
             const imgHtml = photoSrc
                 ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">`
                 : `<div class="product-image-placeholder">
-                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                        <span>Фото скоро</span>
                    </div>`;
 
-            // Badges — only meaningful ones on the image
             const customBadgeHtml = p.badge
-                ? `<span class="${getBadgeClass(p.badge)}">${p.badge}</span>`
-                : '';
+                ? `<span class="${getBadgeClass(p.badge)}">${p.badge}</span>` : '';
             const discountBadge = p.discount_percent > 0
-                ? `<span class="card-badge card-badge-discount">-${p.discount_percent}%</span>`
-                : '';
+                ? `<span class="card-badge card-badge-discount">-${p.discount_percent}%</span>` : '';
 
             const finalPrice = (p.final_price || p.price).toLocaleString('ru');
             const origPrice = p.price.toLocaleString('ru');
 
-            const priceHtml = p.discount_percent > 0
-                ? `<div class="price-row">
-                       <span class="price-final discounted">${finalPrice} &#8381;</span>
-                       <span class="price-original">${origPrice} &#8381;</span>
-                   </div>`
-                : `<div class="price-row">
-                       <span class="price-final">${finalPrice} &#8381;</span>
-                   </div>`;
-
-            const stockHtml = p.in_stock
-                ? `<span class="stock-indicator in-stock">В наличии</span>`
-                : `<span class="stock-indicator out-of-stock">Под заказ</span>`;
-
-            const cartIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>`;
-
-            let actionsHtml = '';
+            // Admin overlay (edit/delete) — appears on hover top-right
+            let adminOverlay = '';
             if (role === 'admin') {
-                actionsHtml = `
-                    <div class="product-card-actions">
-                        <button type="button" class="card-action-btn primary" onclick="window.addToCart(${p.id}, 1)">${cartIcon} В корзину</button>
-                        <button type="button" class="card-action-btn icon" onclick="window.openEditProductModal(${p.id})" title="Редактировать">✎</button>
-                        <button type="button" class="card-action-btn icon danger" onclick="window.confirmDeleteProduct(${p.id})" title="Удалить">✕</button>
-                    </div>
-                `;
-            } else {
-                actionsHtml = `
-                    <div class="product-card-actions">
-                        <button type="button" class="card-action-btn primary" onclick="window.addToCart(${p.id}, 1)">${cartIcon} В корзину</button>
-                        <button type="button" class="card-action-btn secondary" onclick="window.quickBuy(${p.id})">Купить</button>
-                    </div>
-                `;
+                adminOverlay = `
+                    <div class="card-image-overlay">
+                        <button type="button" class="card-overlay-btn icon" onclick="event.stopPropagation(); window.openEditProductModal(${p.id})" title="Редактировать">✎</button>
+                        <button type="button" class="card-overlay-btn icon danger" onclick="event.stopPropagation(); window.confirmDeleteProduct(${p.id})" title="Удалить">✕</button>
+                    </div>`;
             }
 
             const categoryTag = p.category ? `<span class="card-tag">${p.category}</span>` : '';
             const seriesTag = p.series ? `<span class="card-tag series">${p.series}</span>` : '';
-            const numberTag = p.figure_number ? `<span class="card-number">#${p.figure_number}</span>` : '';
+            const numberTag = p.figure_number ? `<span class="card-number">#${p.figure_number} </span>` : '';
+
+            // Price / sold-out row
+            let priceRowHtml;
+            if (!p.in_stock) {
+                priceRowHtml = `
+                    <div class="product-card-price-row sold-out">
+                        <span class="card-sold-out-label">Распродано</span>
+                        <a class="card-subscribe-link" href="https://t.me/Funko_Stop" target="_blank" onclick="event.stopPropagation()">Подписаться на обновления</a>
+                    </div>`;
+            } else {
+                const priceInner = p.discount_percent > 0
+                    ? `<span class="price-final discounted">${finalPrice} ₽</span><span class="price-original">${origPrice} ₽</span>`
+                    : `<span class="price-final">${finalPrice} ₽</span>`;
+                priceRowHtml = `
+                    <div class="product-card-price-row">
+                        <div class="price-group">${priceInner}</div>
+                        <button type="button" class="card-cart-btn" onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)" title="В корзину">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        </button>
+                    </div>`;
+            }
 
             card.innerHTML = `
-                <div class="product-image-box" onclick="${photoSrc ? `window.viewPhoto('${p.photo_id}')` : ''}">
+                <div class="product-image-box">
                     ${imgHtml}
                     ${customBadgeHtml}
                     ${discountBadge}
+                    ${adminOverlay}
                 </div>
                 <div class="product-card-body">
                     <div class="card-tags-row">${categoryTag}${seriesTag}</div>
                     <div class="product-card-title" title="${p.name}">${numberTag}${p.name}</div>
-                    <div class="product-card-footer">
-                        <div class="product-price-box">
-                            ${priceHtml}
-                            ${stockHtml}
-                        </div>
-                        ${actionsHtml}
-                    </div>
+                    ${priceRowHtml}
                 </div>
             `;
             catalogGrid.appendChild(card);
@@ -2099,7 +2116,92 @@ function renderCatalog() {
 
 
     updatePaginationUI('catalog', products.length);
+
+    // Auto-open product page from URL ?product=ID
+    const urlProduct = new URLSearchParams(window.location.search).get('product');
+    if (urlProduct) {
+        const targetId = parseInt(urlProduct);
+        if (rawCatalogProducts.find(p => p.id === targetId)) {
+            window.openProductDetail(targetId);
+        }
+    }
 }
+
+// --- Product Page ---
+window._ppCurrentId = null;
+
+window.openProductDetail = function(productId) {
+    const p = rawCatalogProducts.find(x => x.id === productId);
+    if (!p) return;
+    window._ppCurrentId = productId;
+
+    const photoSrc = p.photo_id
+        ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
+        : '';
+
+    const img = document.getElementById('pp-img');
+    const placeholder = document.getElementById('pp-img-placeholder');
+    if (photoSrc) {
+        img.src = photoSrc;
+        img.alt = p.name;
+        img.style.display = 'block';
+        if (placeholder) placeholder.style.display = 'none';
+    } else {
+        img.style.display = 'none';
+        if (placeholder) placeholder.style.display = 'flex';
+    }
+
+    document.getElementById('pp-breadcrumb-name').textContent = p.name;
+    document.getElementById('pp-tags').innerHTML =
+        (p.category ? `<span class="card-tag">${p.category}</span>` : '') +
+        (p.series   ? `<span class="card-tag series">${p.series}</span>` : '');
+    document.getElementById('pp-number').textContent = p.figure_number ? `#${p.figure_number}` : '';
+    document.getElementById('pp-title').textContent = p.name;
+
+    const finalPrice = (p.final_price || p.price).toLocaleString('ru');
+    const origPrice = p.price.toLocaleString('ru');
+    const priceRow = document.getElementById('pp-price-row');
+    if (p.discount_percent > 0) {
+        priceRow.innerHTML = `<span>${finalPrice} ₽</span> <span style="font-size:1.1rem;font-weight:400;text-decoration:line-through;color:var(--gray);margin-left:10px;">${origPrice} ₽</span> <span style="font-size:0.9rem;color:var(--accent);margin-left:8px;font-weight:600;">-${p.discount_percent}%</span>`;
+    } else {
+        priceRow.innerHTML = `<span>${finalPrice} ₽</span>`;
+    }
+
+    document.getElementById('pp-stock').innerHTML = p.in_stock
+        ? `<span style="color:#4ade80;">● В наличии</span>`
+        : `<span style="color:#facc15;">● Под заказ</span>`;
+
+    const actions = document.getElementById('pp-actions');
+    const role = currentRole;
+    if (role === 'admin') {
+        actions.innerHTML = `
+            <button type="button" class="btn primary pp-btn" onclick="window.addToCart(${p.id},1)">В корзину</button>
+            <button type="button" class="btn secondary outline pp-btn" onclick="window.openEditProductModal(${p.id})">Редактировать</button>
+            <button type="button" class="btn danger outline pp-btn" onclick="window.confirmDeleteProduct(${p.id})">Удалить</button>`;
+    } else {
+        actions.innerHTML = `
+            <button type="button" class="btn primary pp-btn" onclick="window.addToCart(${p.id},1)">В корзину</button>
+            <button type="button" class="btn secondary outline pp-btn" onclick="window.quickBuy(${p.id})">Купить сразу</button>`;
+    }
+
+    // Update URL and switch to product page tab
+    history.pushState({ tab: 'product', product: productId }, '', `/catalog?product=${productId}`);
+    window.switchTab('product', false);
+};
+
+window.closeProductPage = function() {
+    window.switchTab('catalog', true);
+};
+
+// --- Copy Product Link ---
+window.copyProductLink = function(productId) {
+    const url = `${window.location.origin}/catalog?product=${productId}`;
+    navigator.clipboard.writeText(url).then(() => {
+        window.showToast('Ссылка скопирована');
+    }).catch(() => {
+        prompt('Скопируй ссылку:', url);
+    });
+};
 
 // --- Order Inquiry Modal for Clients & Guests ---
 window.openOrderInquiryModal = function(id) {
