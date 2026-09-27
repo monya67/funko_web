@@ -2936,17 +2936,45 @@ function showOrderSuccess(data) {
     openModal(document.getElementById('order-success-modal'));
 }
 
-// Check if returning from T-Bank payment
-(function checkPaymentReturn() {
+// Check if returning from T-Bank payment — poll real status before showing success
+(async function checkPaymentReturn() {
     const pending = localStorage.getItem('funko_pending_order');
     if (!pending) return;
+    let orderData;
     try {
-        const orderData = JSON.parse(pending);
-        localStorage.removeItem('funko_pending_order');
-        setTimeout(() => showOrderSuccess(orderData), 500);
+        orderData = JSON.parse(pending);
     } catch(e) {
         localStorage.removeItem('funko_pending_order');
+        return;
     }
+
+    // Poll /api/payment-status up to ~30s waiting for T-Bank webhook
+    const maxAttempts = 10;
+    const delayMs = 3000;
+    for (let i = 0; i < maxAttempts; i++) {
+        try {
+            const res = await fetch(`/api/payment-status/${orderData.order_id}`);
+            if (res.ok) {
+                const { status } = await res.json();
+                if (status === 'paid') {
+                    localStorage.removeItem('funko_pending_order');
+                    showOrderSuccess(orderData);
+                    return;
+                }
+                if (status === 'failed') {
+                    localStorage.removeItem('funko_pending_order');
+                    alert('Оплата не прошла или была отменена. Попробуйте снова.');
+                    return;
+                }
+                // status === 'pending' — wait and retry
+            }
+        } catch(_) {}
+        if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, delayMs));
+    }
+
+    // After timeout — payment still pending (user may have closed T-Bank without paying)
+    localStorage.removeItem('funko_pending_order');
+    // Don't show success — order exists but not paid yet
 })();
 
 window.autoLoginFromSuccess = async function() {
