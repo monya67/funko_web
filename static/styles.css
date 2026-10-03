@@ -865,14 +865,14 @@ tr:hover td {
         margin-top: 12px;
     }
     .product-card-body {
-        padding: 10px;
+        padding: 10px 2px 0;
     }
     .product-card-title {
-        font-size: 0.88rem;
-        margin-bottom: 6px;
+        font-size: 0.84rem;
+        margin-bottom: 8px;
     }
     .price-final {
-        font-size: 1.1rem;
+        font-size: 0.9rem;
     }
     .category-pills-bar {
         padding-bottom: 8px;
@@ -903,7 +903,6 @@ tr:hover td {
         flex: 1 1 calc(50% - 6px);
         min-width: 120px;
     }
-    }
 }
 
 @media (max-width: 420px) {
@@ -921,62 +920,52 @@ tr:hover td {
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 12px;
-    padding: 12px 18px;
-    margin-top: 14px;
-    background: rgba(17, 17, 17, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    backdrop-filter: blur(8px);
-    font-size: 0.88rem;
+    padding: 16px 2px 0;
+    margin-top: 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    font-size: 0.84rem;
     color: var(--light);
 }
 
 .pagination-info {
-    color: var(--gray);
-    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.8rem;
 }
 .pagination-info b {
-    color: #fff;
+    color: rgba(255, 255, 255, 0.85);
+    font-weight: 500;
 }
 
 .pagination-controls {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 16px;
 }
 
 .btn-page {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #fff;
-    padding: 6px 14px;
-    border-radius: 8px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    padding: 4px 2px;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-family: inherit;
+    font-size: 0.82rem;
     font-weight: 500;
-    transition: all 0.2s ease;
+    transition: color 0.18s ease;
     user-select: none;
 }
 .btn-page:hover:not(:disabled) {
-    background: rgba(229, 9, 20, 0.2);
-    border-color: rgba(229, 9, 20, 0.5);
     color: #fff;
-    transform: translateY(-1px);
-}
-.btn-page:active:not(:disabled) {
-    transform: translateY(0);
 }
 .btn-page:disabled {
-    opacity: 0.3;
+    opacity: 0.25;
     cursor: not-allowed;
-    background: rgba(255, 255, 255, 0.02);
-    border-color: rgba(255, 255, 255, 0.05);
 }
 
 .page-indicator {
-    font-weight: 600;
-    font-size: 0.88rem;
-    color: var(--light);
+    font-weight: 500;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.55);
     min-width: 90px;
     text-align: center;
 }
@@ -984,52 +973,52 @@ tr:hover td {
 .pagination-size {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    color: var(--gray);
+    gap: 10px;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.4);
 }
 
 .page-size-buttons {
     display: flex;
-    gap: 4px;
+    gap: 2px;
 }
 
 .btn-size {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #aaa;
-    padding: 5px 9px;
-    border-radius: 6px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 4px 9px;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 0.82rem;
-    font-weight: 600;
-    transition: all 0.15s ease;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: color 0.15s ease, background 0.15s ease;
 }
 .btn-size:hover {
     color: #fff;
-    background: rgba(255, 255, 255, 0.12);
 }
 .btn-size.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #fff;
-    box-shadow: 0 0 10px rgba(229, 9, 20, 0.4);
+    background: #fff;
+    color: #000;
+    font-weight: 600;
 }
 
 .custom-size-input {
-    width: 62px;
-    padding: 5px 6px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 6px;
+    width: 58px;
+    padding: 4px 6px;
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 4px;
     color: #fff;
-    font-size: 0.82rem;
+    font-family: inherit;
+    font-size: 0.78rem;
     text-align: center;
     outline: none;
     transition: border-color 0.2s;
 }
 .custom-size-input:focus {
-    border-color: var(--primary);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* ===== TABLE SORT INDICATORS ===== */
@@ -1087,11 +1076,11 @@ th.sorted-col {
 }
 
 .catalog-header-bar h2 {
-    font-size: 1.6rem;
-    font-weight: 800;
+    font-size: 1.5rem;
+    font-weight: 500;
     color: #fff;
     margin: 0;
-    letter-spacing: -0.5px;
+    letter-spacing: -0.2px;
 }
 
 /* --- Top Brand Cards Slider (Photo 1) --- */
@@ -1248,10 +1237,10 @@ th.sorted-col {
 
 /* --- Collapsible Filter Sidebar --- */
 .catalog-filter-sidebar {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 14px;
-    padding: 18px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 2px 0 0;
     box-sizing: border-box;
     position: relative;
     overflow-y: auto;
@@ -1267,57 +1256,59 @@ th.sorted-col {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 20px;
 }
 
 .sidebar-toggle-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    color: #cbd5e1;
-    padding: 7px 12px;
-    font-size: 0.82rem;
-    font-weight: 600;
+    background: none;
+    border: none;
+    border-radius: 0;
+    color: rgba(255, 255, 255, 0.45);
+    padding: 2px 1px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     font-family: inherit;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
+    gap: 7px;
+    transition: color 0.18s ease;
 }
 
 .sidebar-toggle-btn:hover {
-    background: rgba(229, 9, 20, 0.15);
-    border-color: rgba(229, 9, 20, 0.4);
+    background: none;
     color: #fff;
 }
 
 .sidebar-toggle-btn .arrow {
-    font-size: 1.1rem;
+    font-size: 1rem;
     line-height: 0.8;
 }
 
 .filter-block-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: -0.2px;
-    margin-bottom: 16px;
-    padding-bottom: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .filter-group {
-    margin-bottom: 20px;
+    margin-bottom: 28px;
 }
 
 .filter-group-label {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: #94a3b8;
+    font-size: 0.69rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.32);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 10px;
+    letter-spacing: 1.1px;
+    margin-bottom: 12px;
 }
 
 /* Stock Badges (In Stock / Preorder) */
@@ -1330,18 +1321,18 @@ th.sorted-col {
 .stock-badge {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 9px;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    border: none;
     cursor: pointer;
     user-select: none;
-    transition: all 0.2s ease;
+    transition: opacity 0.2s ease, color 0.2s ease;
 }
 
 .stock-badge:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: none;
 }
 
 .stock-badge input[type="checkbox"] {
@@ -1349,8 +1340,8 @@ th.sorted-col {
 }
 
 .stock-badge-dot {
-    width: 10px;
-    height: 10px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     flex-shrink: 0;
     transition: all 0.2s;
@@ -1358,34 +1349,36 @@ th.sorted-col {
 
 .in-stock-badge .stock-badge-dot {
     background: #40c057;
-    box-shadow: 0 0 6px rgba(64, 192, 87, 0.6);
 }
 
 .preorder-badge .stock-badge-dot {
     background: #ffb400;
-    box-shadow: 0 0 6px rgba(255, 180, 0, 0.6);
 }
 
 .stock-badge-text {
-    font-size: 0.82rem;
-    font-weight: 700;
-    letter-spacing: 0.3px;
-    color: #e2e8f0;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.stock-badge:hover .stock-badge-text {
+    color: #fff;
 }
 
 .stock-badge-info {
     margin-left: auto;
-    color: #64748b;
-    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 0.78rem;
 }
 
 .stock-badge:has(input:checked) {
-    border-color: rgba(255, 255, 255, 0.25);
-    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    background: none;
 }
 
 .stock-badge:has(input:not(:checked)) {
-    opacity: 0.45;
+    opacity: 0.32;
 }
 
 /* Price Range Box */
@@ -1486,23 +1479,26 @@ th.sorted-col {
 }
 
 .btn-reset-all-filters {
-    width: 100%;
-    margin-top: 10px;
-    padding: 9px;
-    border-radius: 8px;
-    background: rgba(229, 9, 20, 0.08);
-    border: 1px solid rgba(229, 9, 20, 0.25);
-    color: #ff6b6b;
-    font-size: 0.82rem;
-    font-weight: 600;
+    width: auto;
+    margin-top: 4px;
+    padding: 2px 1px;
+    border-radius: 0;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.74rem;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
     font-family: inherit;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: color 0.18s ease, border-color 0.18s ease;
 }
 
 .btn-reset-all-filters:hover {
-    background: rgba(229, 9, 20, 0.2);
-    border-color: rgba(229, 9, 20, 0.6);
+    background: none;
+    border-bottom-color: #fff;
     color: #fff;
 }
 
@@ -1620,7 +1616,7 @@ th.sorted-col {
     width: 100%;
     overflow-x: auto;
     padding-bottom: 6px;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
     scrollbar-width: none;
 }
 
@@ -1630,75 +1626,71 @@ th.sorted-col {
 
 .franchise-chips-bar {
     display: flex;
-    gap: 8px;
+    gap: 22px;
     min-width: min-content;
 }
 
 .franchise-chip {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    color: #cbd5e1;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 600;
+    background: none;
+    border: none;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    color: rgba(255, 255, 255, 0.42);
+    padding: 3px 1px;
+    font-family: inherit;
+    font-size: 0.77rem;
+    font-weight: 500;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
     cursor: pointer;
     white-space: nowrap;
     user-select: none;
-    transition: all 0.2s ease;
+    transition: color 0.18s ease, border-color 0.18s ease;
 }
 
 .franchise-chip:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: none;
     color: #fff;
-    border-color: rgba(255, 255, 255, 0.25);
-    transform: translateY(-1px);
+    transform: none;
 }
 
 .franchise-chip.active {
-    background: var(--primary);
-    border-color: var(--primary);
+    background: none;
     color: #fff;
-    box-shadow: 0 0 12px rgba(229, 9, 20, 0.45);
+    border-bottom-color: #fff;
+    box-shadow: none;
 }
 
 /* --- Product Cards Grid --- */
 .catalog-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 38px 24px;
 }
 
-/* Product Card */
 @keyframes card-enter {
-    from { opacity: 0; transform: translateY(12px); }
+    from { opacity: 0; transform: translateY(10px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Card is just image + text — no frame, no fill */
 .product-card {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px;
-    overflow: hidden;
+    background: none;
+    border: none;
+    border-radius: 0;
     display: flex;
     flex-direction: column;
     cursor: pointer;
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-    animation: card-enter 0.3s ease backwards;
     position: relative;
+    animation: card-enter 0.3s ease backwards;
 }
 
-.product-card:hover {
-    border-color: rgba(255,255,255,0.18);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-    transform: translateY(-2px);
-}
-
-/* Image Box */
+/* Image */
 .product-image-box {
     width: 100%;
     aspect-ratio: 1 / 1;
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.035);
+    border-radius: 6px;
     position: relative;
     overflow: hidden;
     display: flex;
@@ -1707,17 +1699,17 @@ th.sorted-col {
 }
 
 .product-image-box img {
-    width: 82%;
-    height: 82%;
+    width: 86%;
+    height: 86%;
     object-fit: contain;
-    transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .product-card:hover .product-image-box img {
-    transform: scale(1.07);
+    transform: scale(1.06);
 }
 
-/* Admin actions overlay (edit/delete) — on hover */
+/* Admin edit/delete — only on hover, stays out of the way */
 .card-image-overlay {
     position: absolute;
     top: 8px;
@@ -1729,42 +1721,34 @@ th.sorted-col {
     z-index: 3;
 }
 
-.product-card:hover .card-image-overlay {
-    opacity: 1;
-}
+.product-card:hover .card-image-overlay { opacity: 1; }
 
 .card-overlay-btn {
     font-family: inherit;
     cursor: pointer;
     border: none;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     transition: background 0.15s, color 0.15s;
-    white-space: nowrap;
-    padding: 6px 10px;
 }
 
 .card-overlay-btn.icon {
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    background: rgba(10,10,20,0.82);
-    color: #ccc;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-    backdrop-filter: blur(4px);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.6);
+    color: #d4d4d4;
+    font-size: 0.8rem;
+    backdrop-filter: blur(6px);
 }
 
-.card-overlay-btn.icon:hover { background: rgba(60,60,80,0.95); color: #fff; }
-.card-overlay-btn.icon.danger:hover { background: rgba(229,9,20,0.9); color: #fff; }
+.card-overlay-btn.icon:hover { background: rgba(0, 0, 0, 0.85); color: #fff; }
+.card-overlay-btn.icon.danger:hover { background: var(--accent); color: #fff; }
 
-/* Card Body */
+/* Text block — aligned flush with the image edge */
 .product-card-body {
-    padding: 12px 14px 14px;
+    padding: 13px 2px 0;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -1773,133 +1757,149 @@ th.sorted-col {
 .card-tags-row {
     display: flex;
     gap: 4px;
-    margin-bottom: 4px;
+    margin-bottom: 5px;
 }
 
 .card-tag {
-    font-size: 0.62rem;
-    font-weight: 600;
+    font-size: 0.63rem;
+    font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: rgba(255,255,255,0.3);
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.34);
 }
 
-.card-tag.series { color: rgba(229,9,20,0.55); }
+.card-tag.series { color: rgba(255, 255, 255, 0.22); }
 
 .card-tag + .card-tag::before {
     content: '·';
     margin-right: 4px;
-    color: rgba(255,255,255,0.18);
+    color: rgba(255, 255, 255, 0.18);
 }
 
 .card-number {
-    font-size: 0.68rem;
-    color: rgba(255,255,255,0.25);
-    margin-right: 3px;
+    color: rgba(255, 255, 255, 0.28);
+    margin-right: 4px;
 }
 
 .product-card-title {
-    font-size: 0.92rem;
-    font-weight: 700;
-    color: #fff;
-    line-height: 1.35;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
+    font-size: 0.88rem;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.45;
+    letter-spacing: 0.1px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    margin-bottom: 10px;
+    margin-bottom: 11px;
     flex: 1;
 }
 
-/* Price row */
+/* Price + cart — always visible */
 .product-card-price-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
     margin-top: auto;
 }
 
 .product-card-price-row.sold-out {
     flex-direction: column;
     align-items: flex-start;
-    gap: 4px;
+    gap: 3px;
 }
 
-.price-group { display: flex; align-items: baseline; gap: 6px; }
+.price-group {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+}
 
 .price-final {
-    font-size: 1rem;
-    font-weight: 700;
+    font-size: 0.95rem;
+    font-weight: 600;
     color: #fff;
+    letter-spacing: 0.2px;
 }
 
 .price-final.discounted { color: var(--accent); }
 
 .price-original {
-    font-size: 0.78rem;
-    color: rgba(255,255,255,0.3);
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.28);
     text-decoration: line-through;
 }
 
 .card-sold-out-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.8px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 1px;
     text-transform: uppercase;
-    color: rgba(255,255,255,0.35);
+    color: rgba(255, 255, 255, 0.32);
 }
 
 .card-subscribe-link {
-    font-size: 0.73rem;
-    color: var(--accent);
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.55);
     text-decoration: none;
-    letter-spacing: 0.2px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 1px;
 }
-.card-subscribe-link:hover { text-decoration: underline; }
 
-/* Cart icon button */
+.card-subscribe-link:hover { color: #fff; border-bottom-color: #fff; }
+
 .card-cart-btn {
     flex-shrink: 0;
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.08);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.75);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s, border-color 0.2s;
+    transition: background 0.18s, border-color 0.18s, color 0.18s;
 }
-.card-cart-btn:hover { background: var(--accent); border-color: var(--accent); }
 
-/* Badges */
+.card-cart-btn:hover {
+    background: #fff;
+    border-color: #fff;
+    color: #000;
+}
+
+/* Badges — flat, quiet, no gradients */
 .card-badge {
     position: absolute;
     z-index: 2;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 800;
-    letter-spacing: 0.5px;
+    top: 10px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 0.63rem;
+    font-weight: 600;
+    letter-spacing: 0.7px;
     text-transform: uppercase;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
 }
 
-.card-badge-new    { top: 10px; right: 10px; background: #e50914; color: #fff; }
-.card-badge-gitd   { top: 10px; right: 10px; background: linear-gradient(135deg,#10b981,#059669); color: #fff; }
-.card-badge-chase  { top: 10px; right: 10px; background: linear-gradient(135deg,#f59e0b,#d97706); color: #000; }
-.card-badge-exclusive { top: 10px; right: 10px; background: linear-gradient(135deg,#8b5cf6,#6d28d9); color: #fff; }
-.card-badge-special   { top: 10px; right: 10px; background: linear-gradient(135deg,#eab308,#ca8a04); color: #000; }
-.card-badge-custom    { top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #fff; border: 1px solid rgba(255,255,255,0.2); }
-.card-badge-discount  { top: 10px; left: 10px; background: #e50914; color: #fff; }
+.card-badge-new,
+.card-badge-gitd,
+.card-badge-chase,
+.card-badge-exclusive,
+.card-badge-special,
+.card-badge-custom {
+    right: 10px;
+    background: rgba(0, 0, 0, 0.62);
+    color: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+}
+
+.card-badge-new { background: var(--accent); color: #fff; }
+.card-badge-discount { left: 10px; background: var(--accent); color: #fff; }
 
 /* Highlighted card (from shared link) */
-.product-card--highlighted {
+.product-card--highlighted .product-image-box {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
@@ -1913,10 +1913,10 @@ th.sorted-col {
     gap: 8px;
     width: 100%;
     height: 100%;
-    color: rgba(255,255,255,0.18);
+    color: rgba(255, 255, 255, 0.16);
 }
 .product-image-placeholder svg { opacity: 0.25; }
-.product-image-placeholder span { font-size: 0.75rem; color: rgba(255,255,255,0.18); }
+.product-image-placeholder span { font-size: 0.73rem; letter-spacing: 0.5px; }
 
 /* Legacy — hide old classes */
 .card-action-btn, .product-card-actions, .btn-cart-action,

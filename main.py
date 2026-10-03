@@ -46,6 +46,28 @@ def get_ssl_context():
 
 SSL_VERIFY = get_ssl_context()
 
+
+async def notify_admins(text: str):
+    """Message every admin in ADMIN_IDS. One admin failing (e.g. never pressed
+    Start on the bot) must not stop the others from being notified."""
+    if not BOT_TOKEN or not ADMIN_IDS:
+        print("TG notify skipped: BOT_TOKEN or ADMIN_IDS not set")
+        return
+    async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
+        for admin_id in ADMIN_IDS:
+            try:
+                res = await client.post(
+                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                    json={"chat_id": admin_id, "text": text, "parse_mode": "Markdown"},
+                    timeout=15,
+                )
+                data = res.json()
+                if not data.get("ok"):
+                    print(f"TG notify {admin_id} rejected: {data.get('description')}")
+            except Exception as e:
+                print(f"TG notify {admin_id} failed: {e}")
+
+
 IMAGE_CACHE = {}
 CACHE_LIMIT = 500
 
@@ -836,11 +858,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 )
                 if checkout.comment:
                     admin_msg += f"💬 Комментарий: {checkout.comment}\n"
-                async with httpx.AsyncClient() as http_client:
-                    await http_client.post(
-                        f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                        json={"chat_id": ADMIN_IDS[0], "text": admin_msg, "parse_mode": "Markdown"}
-                    )
+                await notify_admins(admin_msg)
             except Exception as e:
                 print(f"Error sending TG admin order alert: {e}")
 
@@ -889,16 +907,10 @@ async def tbank_notification(req: Request):
                 "UPDATE orders SET payment_status = 'paid', status = 'Заказ принят в обработку', tbank_payment_id = $1 WHERE id = $2",
                 payment_id, oid
             )
-            if BOT_TOKEN and ADMIN_IDS:
-                try:
-                    msg = f"✅ **Оплата подтверждена! Заказ #{oid}**\n\n💳 Сумма: {order['paid_amount']} ₽\n👤 {order['customer_name']}"
-                    async with httpx.AsyncClient() as http_client:
-                        await http_client.post(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                            json={"chat_id": ADMIN_IDS[0], "text": msg, "parse_mode": "Markdown"}
-                        )
-                except Exception:
-                    pass
+            await notify_admins(
+                f"✅ **Оплата подтверждена! Заказ #{oid}**\n\n"
+                f"💳 Сумма: {order['paid_amount']} ₽\n👤 {order['customer_name']}"
+            )
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
             await db.execute(
                 "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
@@ -985,8 +997,9 @@ async def get_telegram_photo(photo_id: str):
 
 @app.post("/api/upload_photo")
 async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(require_admin)):
-    if not BOT_TOKEN or not ADMIN_IDS:
-        raise HTTPException(status_code=500, detail="BOT_TOKEN or ADMIN_IDS not configured")
+    missing = [n for n, v in (("BOT_TOKEN", BOT_TOKEN), ("ADMIN_IDS", ADMIN_IDS)) if not v]
+    if missing:
+        raise HTTPException(status_code=500, detail=f"Загрузка фото не настроена на сервере: не задана переменная {', '.join(missing)}")
         
     content = await file.read()
     
@@ -1000,54 +1013,36 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
         if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
             has_alpha = True
 
+        # Cap the long edge so a 4000px phone photo doesn't become a multi-MB download
+        if max(img.size) > 1600:
+            img.thumbnail((1600, 1600), Image.LANCZOS)
+
         if has_alpha:
             if img.mode != "RGBA":
                 img = img.convert("RGBA")
-            out_io = io.BytesIO()
-            img.save(out_io, format="WEBP", quality=92)
-            content = out_io.getvalue()
-            filename = "image.webp"
-            mime_type = "image/webp"
-        else:
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-            out_io = io.BytesIO()
-            img.save(out_io, format="WEBP", quality=85)
-            content = out_io.getvalue()
-            filename = "image.webp"
-            mime_type = "image/webp"
+        elif img.mode != "RGB":
+            img = img.convert("RGB")
+
+        out_io = io.BytesIO()
+        img.save(out_io, format="WEBP", quality=92, method=6)
+        content = out_io.getvalue()
+        filename = "image.webp"
+        mime_type = "image/webp"
     except Exception as e:
         print(f"Image processing error: {e}")
         filename = "image.jpg"
         mime_type = "image/jpeg"
         
     async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
-        # If image has transparency, use sendDocument so Telegram keeps alpha channel intact (sendPhoto forces JPEG)
-        if has_alpha:
-            files = {"document": (filename, content, mime_type)}
-            data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
-            res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
-            res_data = res.json()
-            if not res_data.get("ok"):
-                raise HTTPException(status_code=500, detail="Failed to upload document to Telegram")
-            photo_id = res_data["result"]["document"]["file_id"]
-        else:
-            files = {"photo": (filename, content, mime_type)}
-            data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
-            res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto", data=data, files=files)
-            res_data = res.json()
-            if not res_data.get("ok"):
-                # Fallback to sendDocument
-                files = {"document": (filename, content, mime_type)}
-                res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
-                res_data = res.json()
-                if not res_data.get("ok"):
-                    raise HTTPException(status_code=500, detail="Failed to upload to Telegram")
-                photo_id = res_data["result"]["document"]["file_id"]
-            else:
-                photos = res_data["result"]["photo"]
-                largest_photo = max(photos, key=lambda x: x["file_size"])
-                photo_id = largest_photo["file_id"]
+        # Always sendDocument: sendPhoto re-encodes to JPEG and downscales to 1280px,
+        # which stacks a second lossy pass on top of the WebP encode above.
+        files = {"document": (filename, content, mime_type)}
+        data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
+        res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
+        res_data = res.json()
+        if not res_data.get("ok"):
+            raise HTTPException(status_code=500, detail=f"Telegram upload failed: {res_data.get('description', 'unknown error')}")
+        photo_id = res_data["result"]["document"]["file_id"]
 
         # Silently delete the message immediately from the admin's Telegram chat so no bot spam remains
         try:
