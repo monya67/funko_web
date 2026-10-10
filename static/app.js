@@ -1952,6 +1952,7 @@ async function loadCatalogMeta() {
         renderBrandCards();
         renderSidebarFilters();
         renderFranchiseChips();
+        renderHomeNew();
     } catch (err) {
         console.error('Error loading catalog meta:', err);
     }
@@ -1966,6 +1967,7 @@ async function loadCatalog() {
         renderSidebarFilters();
         renderFranchiseChips();
         renderCatalog();
+        renderHomeNew();
     } catch (err) {
         console.error('Error loading catalog:', err);
     }
@@ -2022,6 +2024,29 @@ function productCard(p) {
     return card;
 }
 
+
+let homeNewCategory = '';
+
+function renderHomeNew() {
+    const grid = document.getElementById('home-new-grid');
+    const tabs = document.getElementById('home-new-tabs');
+    if (!grid || !tabs) return;
+    const categories = ['', ...(catalogMeta.categories || [])];
+    tabs.replaceChildren(...categories.map(c => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'franchise-chip' + (c === homeNewCategory ? ' active' : '');
+        b.setAttribute('role', 'tab');
+        b.setAttribute('aria-selected', String(c === homeNewCategory));
+        b.textContent = c || 'Все';
+        b.addEventListener('click', () => { homeNewCategory = c; renderHomeNew(); });
+        return b;
+    }));
+    const items = rawCatalogProducts
+        .filter(p => !homeNewCategory || (p.category || '').toLowerCase() === homeNewCategory.toLowerCase())
+        .slice(0, 5);
+    grid.replaceChildren(...items.map(productCard));
+}
 
 function renderCatalog() {
     if (!catalogGrid) return;

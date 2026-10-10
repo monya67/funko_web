@@ -35,7 +35,7 @@ Defined once as CSS custom properties on `:root`:
 | `--ok` | `#1E6B33` on `#DDEFE0` | "В наличии" tag (tinted fill, dark text; white on a mid green fails contrast) |
 | `--pre` | `#B00A12` on `#FBE0E1` | "Предзаказ" tag, same tinted style |
 
-Typography: headings in **Anton** (uppercase, condensed), body stays **Outfit**.
+Typography: headings in **Anton** (uppercase, condensed) with **Oswald 700** as the per-glyph fallback for Cyrillic (Anton has no Cyrillic glyphs), body stays **Outfit**.
 
 Visual reference: the design canvas
 https://claude.ai/artifact/6r58YeJ8DpNy8qrkgBSEk3 (home, catalog, phone home,

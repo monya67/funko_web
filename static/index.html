@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="/static/styles.css?v=1791200000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
     <style>
         /* Ultra-fast hardware-accelerated 60/120 FPS page transitions */
         @keyframes pageTransitionIn {
@@ -236,79 +236,69 @@
             <section id="home-tab" class="tab-content active">
 
                 <div class="home-container">
-                    <!-- Hero Section -->
-                    <div class="home-hero glass-panel">
-                        <div class="hero-content">
-                            <div class="hero-brand-badge">
-                                <span class="hero-badge-pill">
-                                    <span class="hero-status-pulse"></span>
-                                    Официальный сервис предзаказов и доставки фигурок
-                                </span>
-                            </div>
-
-                            <h1 class="hero-heading">
-                                Редкие фигурки и эксклюзивы <span class="hero-accent-text">Funko POP</span>
+                    <section class="hero">
+                        <div class="hero-text">
+                            <h1>
+                                <span class="hero-title">Collectible<br>culture</span>
+                                <svg class="hero-zigzag" aria-hidden="true" width="64" height="28" viewBox="0 0 64 28" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 24 L12 5 L20 20 L30 4 L38 20 L48 6 L60 22"></path></svg>
+                                <span class="hero-sub">Редкие фигурки, эксклюзивы и коллекционные релизы</span>
                             </h1>
-
-                            <p class="hero-description">
-                                Предзаказы из США и Европы · Гарантия подлинности · 50% предоплата фиксирует цену · Доставка по всей РФ
-                            </p>
-
-                            <div class="hero-cta-buttons">
-                                <button type="button" class="btn primary hero-btn-main" onclick="window.switchTab('catalog')">
-                                    <span>Перейти в каталог</span>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                                </button>
-                                <a href="https://t.me/Funko_Stop" target="_blank" class="btn secondary outline hero-btn-telegram" rel="noopener">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                                    <span>Написать @Funko_Stop</span>
+                            <div class="hero-ctas">
+                                <a href="/catalog" class="hero-cta hero-cta-primary" onclick="event.preventDefault(); window.switchTab('catalog')">Перейти в каталог
+                                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                                 </a>
+                                <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" class="hero-cta hero-cta-secondary">Написать @Funko_Stop</a>
                             </div>
                         </div>
+                        <div class="hero-collage" aria-hidden="true">
+                            <svg class="hero-paper" viewBox="0 0 600 540" preserveAspectRatio="none">
+                                <polygon class="paper-ink" points="70,40 120,26 182,48 240,18 302,40 362,16 432,46 500,24 562,54 546,122 572,192 538,262 566,330 528,402 556,470 498,502 430,484 360,514 290,490 220,518 150,494 88,512 58,450 84,380 50,312 80,240 46,170 76,102"></polygon>
+                                <polygon class="paper-red" points="14,118 122,100 134,170 112,240 22,254 34,188"></polygon>
+                                <polygon class="paper-red" points="468,356 592,336 600,440 580,522 478,532 492,452"></polygon>
+                            </svg>
+                            <span class="hero-tape hero-tape-1"></span>
+                            <span class="hero-tape hero-tape-2"></span>
+                            <img class="hero-fig hero-fig-1" src="/static/images/hero/dexter-box.webp" alt="" width="800" height="800" decoding="async">
+                            <img class="hero-fig hero-fig-2" src="/static/images/hero/doom-box.webp" alt="" width="800" height="800" decoding="async">
+                            <img class="hero-fig hero-fig-3" src="/static/images/hero/coraline-box.webp" alt="" width="800" height="800" decoding="async">
+                            <span class="hero-scribble">Collect<br>trade<br>repeat</span>
+                            <span class="hero-callout hero-callout-1">Dexter</span>
+                            <span class="hero-callout hero-callout-2">Doctor Doom</span>
+                            <span class="hero-callout hero-callout-3">Coraline</span>
+                        </div>
+                    </section>
 
-                        <!-- Hero Stats Strip — доставка первой -->
-                        <div class="hero-stats-strip">
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">Доставка по всей РФ</span>
-                                    <span class="stat-sub">СДЭК, Яндекс, Авито, Ozon, Почта</span>
-                                </div>
+                    <section class="benefits" aria-label="Преимущества">
+                        <div class="benefits-inner">
+                            <div class="benefit">
+                                <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></span>
+                                <div><div class="benefit-title">Доставка по всей РФ</div><div class="benefit-text">СДЭК, Яндекс, Авито, Ozon, Почта</div></div>
                             </div>
-                            <div class="stat-divider"></div>
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M16 8l-8 8"></path><circle cx="9" cy="9" r="1.5"></circle><circle cx="15" cy="15" r="1.5"></circle></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">50% Предоплата</span>
-                                    <span class="stat-sub">Фиксация цены до самого получения</span>
-                                </div>
+                            <div class="benefit">
+                                <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg></span>
+                                <div><div class="benefit-title">50% предоплата</div><div class="benefit-text">Фиксация цены до самого получения</div></div>
                             </div>
-                            <div class="stat-divider"></div>
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">30–90 Дней хранения</span>
-                                    <span class="stat-sub">Бесплатно на нашем складе в Москве</span>
-                                </div>
+                            <div class="benefit">
+                                <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg></span>
+                                <div><div class="benefit-title">30–90 дней хранения</div><div class="benefit-text">Бесплатно на нашем складе в Москве</div></div>
                             </div>
-                            <div class="stat-divider"></div>
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1C6EA4" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">Р/С в Т-Банке</span>
-                                    <span class="stat-sub">Официально ИП • 0% скрытых комиссий</span>
-                                </div>
+                            <div class="benefit">
+                                <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="1"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg></span>
+                                <div><div class="benefit-title">Р/С в Т-Банке</div><div class="benefit-text">Официально ИП · 0% скрытых комиссий</div></div>
                             </div>
                         </div>
-                    </div>
+                    </section>
+
+                    <section id="home-new-section" class="home-new admin-only hidden" aria-labelledby="home-new-title">
+                        <div class="home-new-head">
+                            <div>
+                                <h2 id="home-new-title">Новинки<br>и предзаказы</h2>
+                                <a href="/catalog" class="link-arrow" onclick="event.preventDefault(); window.switchTab('catalog')">Смотреть все →</a>
+                            </div>
+                            <div id="home-new-tabs" class="home-new-tabs" role="tablist" aria-label="Бренды"></div>
+                        </div>
+                        <div id="home-new-grid" class="catalog-grid"></div>
+                    </section>
 
                     <!-- Quick Hub Cards — без карточки менеджера (дублируется с hero) -->
                     <div class="home-hub-grid">

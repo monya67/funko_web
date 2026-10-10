@@ -285,9 +285,68 @@ def write_guard(page):
     return errors
 
 
-CATALOG_CHECKS =["card_shape", "long_name_card", "many_chips", "product_page", "guest_catalog_stub"]
 
-HEADER_CHECKS =["header_nav_catalog", "profile_menu_guest", "profile_menu_admin", "mobile_nav", "home_anchor_from_catalog"]
+
+
+@check("hero", widths=(390, 1440))
+def hero(page):
+    errors = []
+    h1 = page.inner_text("#home-tab h1").upper()
+    if "COLLECTIBLE" not in h1 or "РЕДКИЕ ФИГУРКИ" not in h1:
+        errors.append(f"hero h1 is {h1!r}")
+    loaded = page.evaluate("() => [...document.querySelectorAll('.hero-fig')].filter(i => i.complete && i.naturalWidth > 0).length")
+    if loaded != 3:
+        errors.append(f"{loaded}/3 hero images loaded")
+    return errors
+
+
+@check("home_new_admin", role="admin")
+def home_new_admin(page):
+    page.wait_for_selector("#home-new-grid .product-card", timeout=8000)
+    return [] if page.is_visible("#home-new-section") else ["Новинки hidden for admin"]
+
+
+@check("home_new_guest")
+def home_new_guest(page):
+    return ["Новинки visible to guests while the catalog is closed"] if visible(page, "#home-new-section") else []
+
+
+@check("display_font_cyrillic")
+def display_font_cyrillic(page):
+    # Anton has no Cyrillic glyphs; Russian headings must fall back to a condensed face, not the system sans.
+    errors = []
+    fam = page.evaluate("() => getComputedStyle(document.querySelector('h1')).fontFamily")
+    if "Oswald" not in fam:
+        errors.append(f"display font stack {fam!r} has no Cyrillic-capable condensed face")
+    if not page.evaluate("() => document.fonts.load('700 40px Oswald', 'НОВИНКИ').then(f => f.length > 0)"):
+        errors.append("Oswald (Cyrillic) web font not loaded")
+    return errors
+
+
+@check("hero_collage_layout", widths=(390, 1440))
+def hero_collage_layout(page):
+    # Text drawn over the black torn paper is invisible to the contrast detector (it reads the ancestor's paper colour).
+    return page.evaluate("""() => {
+        const box = (e) => e.getBoundingClientRect();
+        const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        const shown = (e) => { const r = box(e); return r.width > 0 && r.height > 0; };
+        const errors = [];
+        const ink = box(document.querySelector('.paper-ink'));
+        const scribble = document.querySelector('.hero-scribble');
+        if (shown(scribble) && hit(box(scribble), ink)) errors.push('scribble overlaps the black paper');
+        if (shown(scribble) && box(scribble).top < box(document.getElementById('site-header')).bottom) errors.push('scribble hidden under the sticky header');
+        const calls = [...document.querySelectorAll('.hero-callout')].filter(shown);
+        for (let i = 0; i < calls.length; i++) for (let j = i + 1; j < calls.length; j++)
+            if (hit(box(calls[i]), box(calls[j]))) errors.push(`callouts collide: ${calls[i].textContent} / ${calls[j].textContent}`);
+        return errors;
+    }""")
+
+
+@check("home_alignment", role="admin", widths=(1024, 1440))
+def home_alignment(page):
+    page.wait_for_selector("#home-new-grid .product-card", timeout=8000)
+    hero, new = page.evaluate("() => ['.hero', '#home-new-section'].map(s => { const r = document.querySelector(s).getBoundingClientRect(); return [Math.round(r.left), Math.round(r.width)]; })")
+    return [] if abs(hero[0] - new[0]) <= 2 and abs(hero[1] - new[1]) <= 2 else [f"Новинки at left={new[0]} width={new[1]}, hero at left={hero[0]} width={hero[1]}"]
 
 
 def run(out, only=None):
