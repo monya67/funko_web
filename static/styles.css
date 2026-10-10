@@ -68,7 +68,7 @@ input[type="number"] {
 /* Firefox scrollbar */
 * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+    scrollbar-color: rgba(var(--ink-rgb), 0.25) transparent;
 }
 
 html {
@@ -676,7 +676,7 @@ tr:hover td {
     transition: color 0.2s;
 }
 .breadcrumb-link:hover { color: var(--ink); }
-.breadcrumb-sep { color: rgba(var(--ink-rgb), 0.3); }
+.breadcrumb-sep { color: var(--muted); }
 
 .product-page-layout {
     display: grid;
@@ -892,7 +892,7 @@ tr:hover td {
 }
 
 .pagination-info {
-    color: rgba(var(--ink-rgb), 0.4);
+    color: var(--muted);
     font-size: 0.8rem;
 }
 .pagination-info b {
@@ -929,7 +929,7 @@ tr:hover td {
 .page-indicator {
     font-weight: 500;
     font-size: 0.82rem;
-    color: rgba(var(--ink-rgb), 0.55);
+    color: var(--muted);
     min-width: 90px;
     text-align: center;
 }
@@ -939,7 +939,7 @@ tr:hover td {
     align-items: center;
     gap: 10px;
     font-size: 0.78rem;
-    color: rgba(var(--ink-rgb), 0.4);
+    color: var(--muted);
 }
 
 .page-size-buttons {
@@ -950,7 +950,7 @@ tr:hover td {
 .btn-size {
     background: none;
     border: none;
-    color: rgba(var(--ink-rgb), 0.45);
+    color: var(--muted);
     padding: 4px 9px;
     border-radius: 4px;
     cursor: pointer;
@@ -998,7 +998,7 @@ th[data-sort]:hover {
     display: inline-block;
     font-size: 0.8rem;
     margin-left: 3px;
-    color: rgba(var(--ink-rgb), 0.35);
+    color: var(--muted);
     transition: color 0.2s;
 }
 .sort-icon.active {
@@ -1054,7 +1054,7 @@ th.sorted-col {
     padding-bottom: 8px;
     margin-bottom: 22px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    scrollbar-color: rgba(var(--ink-rgb), 0.25) transparent;
 }
 
 .brand-cards-slider-wrap::-webkit-scrollbar {
@@ -1209,7 +1209,7 @@ th.sorted-col {
     position: relative;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.1) transparent;
+    scrollbar-color: rgba(var(--ink-rgb), 0.25) transparent;
 }
 
 .catalog-filter-sidebar.collapsed {
@@ -1227,7 +1227,7 @@ th.sorted-col {
     background: none;
     border: none;
     border-radius: 0;
-    color: rgba(var(--ink-rgb), 0.45);
+    color: var(--muted);
     padding: 2px 1px;
     font-size: 0.75rem;
     font-weight: 500;
@@ -1254,7 +1254,7 @@ th.sorted-col {
 .filter-block-title {
     font-size: 0.75rem;
     font-weight: 500;
-    color: rgba(var(--ink-rgb), 0.45);
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 1.2px;
     margin-bottom: 24px;
@@ -1269,7 +1269,7 @@ th.sorted-col {
 .filter-group-label {
     font-size: 0.69rem;
     font-weight: 500;
-    color: rgba(var(--ink-rgb), 0.32);
+    color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 1.1px;
     margin-bottom: 12px;
@@ -1332,7 +1332,7 @@ th.sorted-col {
 
 .stock-badge-info {
     margin-left: auto;
-    color: rgba(var(--ink-rgb), 0.25);
+    color: var(--muted);
     font-size: 0.78rem;
 }
 
@@ -1386,7 +1386,7 @@ th.sorted-col {
     gap: 4px;
     padding-right: 4px;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    scrollbar-color: rgba(var(--ink-rgb), 0.25) transparent;
 }
 
 .filter-checkbox-list::-webkit-scrollbar {
@@ -1450,7 +1450,7 @@ th.sorted-col {
     background: none;
     border: none;
     border-bottom: 1px solid rgba(var(--ink-rgb), 0.2);
-    color: rgba(var(--ink-rgb), 0.5);
+    color: var(--muted);
     font-size: 0.74rem;
     font-weight: 500;
     letter-spacing: 0.8px;
@@ -1599,7 +1599,7 @@ th.sorted-col {
     border: none;
     border-bottom: 1px solid transparent;
     border-radius: 0;
-    color: rgba(var(--ink-rgb), 0.42);
+    color: var(--muted);
     padding: 3px 1px;
     font-family: inherit;
     font-size: 0.77rem;
@@ -1729,19 +1729,19 @@ th.sorted-col {
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: rgba(var(--ink-rgb), 0.34);
+    color: var(--muted);
 }
 
-.card-tag.series { color: rgba(var(--ink-rgb), 0.22); }
+.card-tag.series { color: var(--muted); }
 
 .card-tag + .card-tag::before {
     content: '·';
     margin-right: 4px;
-    color: rgba(var(--ink-rgb), 0.18);
+    color: var(--muted);
 }
 
 .card-number {
-    color: rgba(var(--ink-rgb), 0.28);
+    color: var(--muted);
     margin-right: 4px;
 }
 
@@ -1791,7 +1791,7 @@ th.sorted-col {
 
 .price-original {
     font-size: 0.76rem;
-    color: rgba(var(--ink-rgb), 0.28);
+    color: var(--muted);
     text-decoration: line-through;
 }
 
@@ -1800,12 +1800,12 @@ th.sorted-col {
     font-weight: 500;
     letter-spacing: 1px;
     text-transform: uppercase;
-    color: rgba(var(--ink-rgb), 0.32);
+    color: var(--muted);
 }
 
 .card-subscribe-link {
     font-size: 0.72rem;
-    color: rgba(var(--ink-rgb), 0.55);
+    color: var(--muted);
     text-decoration: none;
     border-bottom: 1px solid rgba(var(--ink-rgb), 0.2);
     padding-bottom: 1px;
@@ -1877,7 +1877,7 @@ th.sorted-col {
     gap: 8px;
     width: 100%;
     height: 100%;
-    color: rgba(var(--ink-rgb), 0.16);
+    color: var(--muted);
 }
 .product-image-placeholder svg { opacity: 0.25; }
 .product-image-placeholder span { font-size: 0.73rem; letter-spacing: 0.5px; }
@@ -1924,7 +1924,7 @@ th.sorted-col {
     border-top: 1px solid rgba(var(--ink-rgb), 0.06);
     background: transparent;
     font-family: 'Outfit', sans-serif;
-    color: rgba(var(--ink-rgb), 0.5);
+    color: var(--muted);
     box-sizing: border-box;
 }
 
@@ -1966,13 +1966,13 @@ th.sorted-col {
 }
 
 .footer-dot {
-    color: rgba(var(--ink-rgb), 0.2);
+    color: var(--muted);
     font-size: 0.65rem;
 }
 
 .footer-copyright {
     font-size: 0.8rem;
-    color: rgba(var(--ink-rgb), 0.35);
+    color: var(--muted);
     letter-spacing: 0.2px;
 }
 
@@ -2163,7 +2163,7 @@ th.sorted-col {
 
 .stat-sub {
     font-size: 0.8rem;
-    color: rgba(var(--ink-rgb), 0.55);
+    color: var(--muted);
 }
 
 .stat-divider {
@@ -2316,7 +2316,7 @@ th.sorted-col {
     font-size: 0.74rem;
     font-weight: 700;
     text-transform: uppercase;
-    color: rgba(var(--ink-rgb), 0.45);
+    color: var(--muted);
     letter-spacing: 0.5px;
 }
 
@@ -2381,7 +2381,7 @@ th.sorted-col {
 }
 
 .step-arrow {
-    color: rgba(var(--ink-rgb), 0.25);
+    color: var(--muted);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2440,7 +2440,7 @@ th.sorted-col {
 
 .info-card-sub {
     font-size: 0.82rem;
-    color: rgba(var(--ink-rgb), 0.5);
+    color: var(--muted);
 }
 
 .info-card-list {
@@ -2539,7 +2539,7 @@ th.sorted-col {
 
 .reserve-sub {
     font-size: 0.8rem;
-    color: rgba(var(--ink-rgb), 0.5);
+    color: var(--muted);
 }
 
 /* Feature Cards Grid */
@@ -2594,7 +2594,7 @@ th.sorted-col {
 
 .feature-sub {
     font-size: 0.82rem;
-    color: rgba(var(--ink-rgb), 0.5);
+    color: var(--muted);
 }
 
 /* FAQ Accordion */
@@ -2751,7 +2751,7 @@ th.sorted-col {
 
 .footer-col-brand p {
     font-size: 0.85rem;
-    color: rgba(var(--ink-rgb), 0.55);
+    color: var(--muted);
     line-height: 1.6;
     margin: 0;
 }
@@ -2797,7 +2797,7 @@ th.sorted-col {
     border-top: 1px solid rgba(var(--ink-rgb), 0.05);
     text-align: center;
     font-size: 0.82rem;
-    color: rgba(var(--ink-rgb), 0.45);
+    color: var(--muted);
 }
 
 .dashboard-layout.home-mode ~ #main-footer {
@@ -3023,7 +3023,7 @@ th.sorted-col {
 .cart-remove-btn {
     background: none;
     border: none;
-    color: rgba(var(--ink-rgb), 0.4);
+    color: var(--muted);
     font-size: 1.1rem;
     cursor: pointer;
     padding: 6px;
@@ -4077,3 +4077,15 @@ h1, h2, .display, .hero-title, .hero-sub { overflow-wrap: anywhere; }
 }
 /* "COLLECTIBLE" is ~4.51em wide in Anton; its column tops out at 556px, so cap at 120px and keep >=15px slack */
 .hero-title { font-size: clamp(56px, 9.2vw, 120px); }
+/* review fixes */
+@keyframes cookie-rise-phone { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@media (max-width: 479px) {
+    .cookie-banner { transform: none; width: auto; animation-name: cookie-rise-phone; }
+}
+.pp-image-col { top: 88px; }
+.hero-scribble { pointer-events: none; }
+@media (max-width: 899px) {
+    .hero-collage { margin-top: 64px; }
+}
+#profile-menu-btn .profile-new-dot { display: none; position: absolute; top: 9px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 2px var(--paper); }
+#profile-menu-btn.has-new .profile-new-dot { display: block; }

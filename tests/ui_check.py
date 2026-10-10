@@ -28,23 +28,24 @@ LOW_CONTRAST_JS = r"""() => {
   const parse = (c) => { const m = c.match(/[\d.]+/g).map(Number); return { rgb: m.slice(0, 3), a: m.length > 3 ? m[3] : 1 }; };
   const lum = ([r, g, b]) => [r, g, b].map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); })
                                       .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
-  const bgLum = (el) => {
+  const bgRgb = (el) => {
     for (let e = el; e; e = e.parentElement) {
       const s = getComputedStyle(e);
       if (s.backgroundImage !== 'none') return null;          // text on photos/gradients: judged by eye
       const c = parse(s.backgroundColor);
-      if (c.a > 0.5) return lum(c.rgb);
+      if (c.a > 0.5) return c.rgb;
     }
-    return 1;                                                  // canvas default is white
+    return [255, 255, 255];                                    // canvas default is white
   };
   const out = [];
   for (const el of document.querySelectorAll('body *')) {
     if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
     const r = el.getBoundingClientRect(), s = getComputedStyle(el);
     if (!r.width || !r.height || s.visibility === 'hidden' || +s.opacity === 0) continue;
-    const bg = bgLum(el); if (bg === null) continue;
-    const fg = parse(s.color); if (fg.a < 0.3) continue;
-    const L = lum(fg.rgb), ratio = (Math.max(L, bg) + 0.05) / (Math.min(L, bg) + 0.05);
+    const bgc = bgRgb(el); if (bgc === null) continue;
+    const fg = parse(s.color); if (fg.a < 0.05) continue;
+    const seen = fg.rgb.map((v, i) => fg.a * v + (1 - fg.a) * bgc[i]);  // semi-transparent text is what the eye sees after blending
+    const L = lum(seen), bg = lum(bgc), ratio = (Math.max(L, bg) + 0.05) / (Math.min(L, bg) + 0.05);
     if (ratio < 3) out.push({ text: el.textContent.trim().slice(0, 40), ratio: +ratio.toFixed(2), color: s.color });
   }
   return out;
@@ -103,6 +104,7 @@ def open_page(ctx, path):
 SELFTEST_HTML = """<body style="margin:0;background:#ffffff">
 <p style="color:#fafafa">white on white</p>
 <p style="color:#111111">readable</p>
+<p style="color:rgba(17,17,17,0.3)">faint ink</p>
 <div style="width:2000px;height:10px"></div></body>"""
 
 
@@ -114,7 +116,7 @@ def selftest():
         flagged = [i["text"] for i in page.evaluate(LOW_CONTRAST_JS)]
         overflow = page.evaluate(OVERFLOW_JS)
         browser.close()
-    assert flagged == ["white on white"], f"contrast detector returned {flagged}"
+    assert flagged == ["white on white", "faint ink"], f"contrast detector returned {flagged}"
     assert overflow > 1000, f"overflow detector returned {overflow}"
     print("selftest OK")
 
@@ -323,7 +325,7 @@ def display_font_cyrillic(page):
     return errors
 
 
-@check("hero_collage_layout", widths=(390, 1440))
+@check("hero_collage_layout", widths=(390, 768, 1440))
 def hero_collage_layout(page):
     # Text drawn over the black torn paper is invisible to the contrast detector (it reads the ancestor's paper colour).
     return page.evaluate("""() => {
@@ -334,6 +336,7 @@ def hero_collage_layout(page):
         const ink = box(document.querySelector('.paper-ink'));
         const scribble = document.querySelector('.hero-scribble');
         if (shown(scribble) && hit(box(scribble), ink)) errors.push('scribble overlaps the black paper');
+        if (shown(scribble) && hit(box(scribble), box(document.querySelector('.hero-ctas')))) errors.push('scribble covers the CTA buttons');
         if (shown(scribble) && box(scribble).top < box(document.getElementById('site-header')).bottom) errors.push('scribble hidden under the sticky header');
         const calls = [...document.querySelectorAll('.hero-callout')].filter(shown);
         for (let i = 0; i < calls.length; i++) for (let j = i + 1; j < calls.length; j++)
@@ -377,6 +380,9 @@ def cookie_banner_phone(page):
     small = page.evaluate("() => [...document.querySelectorAll('#cookie-consent-banner button')].filter(b => b.getBoundingClientRect().height < 44).length")
     if small:
         errors.append(f"{small} banner button(s) shorter than 44px")
+    left, right, vw = page.evaluate("() => { const r = document.getElementById('cookie-consent-banner').getBoundingClientRect(); return [r.left, r.right, window.innerWidth]; }")
+    if left < 0 or right > vw:
+        errors.append(f"banner spans x {left:.0f}..{right:.0f} of a {vw}px screen")
     errors += [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
     return errors
 
@@ -459,6 +465,48 @@ def hero_title_unbroken(page):
         const tops = [...r.getClientRects()].map(b => b.top).sort((a, b) => a - b);
         return 1 + tops.slice(1).filter((t, i) => t - tops[i] > 8).length; }""")
     return [] if lines == 1 else [f"'Collectible' split over {lines} lines"]
+
+
+@check("scrollbar_visible", role="admin", path="/orders")
+def scrollbar_visible(page):
+    colors = page.evaluate("() => [document.documentElement, document.querySelector('#orders-tab .table-container')].map(e => getComputedStyle(e).scrollbarColor)")
+    return [f"scrollbar thumb is {c} (invisible on paper)" for c in colors if c.startswith("rgba(255, 255, 255")]
+
+
+@check("orders_badge_on_profile", role="admin")
+def orders_badge_on_profile(page):
+    # Make every active order "unseen" so the badge must appear; fail loudly if that precondition does not hold.
+    page.evaluate("() => localStorage.setItem('funko_seen_order_ids', '[]')")
+    page.reload(wait_until="networkidle", timeout=30000)
+    page.wait_for_timeout(600)
+    if not visible(page, "#orders-new-badge") and not page.evaluate("() => !document.getElementById('orders-new-badge').classList.contains('hidden')"):
+        return ["precondition: orders badge did not activate with nothing seen"]
+    errors = []
+    if not page.evaluate("() => document.getElementById('profile-menu-btn').classList.contains('has-new')"):
+        errors.append("profile icon does not signal new orders while the menu is closed")
+    if not visible(page, "#profile-menu-btn .profile-new-dot"):
+        errors.append("no visible new-orders dot on the profile icon")
+    return errors
+
+
+@check("legal_anchor_deeplink", path="/#faq-section")
+def legal_anchor_deeplink(page):
+    page.wait_for_timeout(900)
+    errors = []
+    if not page.is_visible("#home-tab.active"):
+        errors.append("home tab not active")
+    top = page.evaluate("() => document.getElementById('faq-section').getBoundingClientRect().top")
+    if not (-5 < top < 300):
+        errors.append(f"/#faq-section did not scroll to FAQ (top={top:.0f})")
+    return errors
+
+
+@check("product_photo_below_header", role="admin", path="/catalog")
+def product_photo_below_header(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.click("#catalog-grid .product-card .product-image-box")
+    top, header = page.evaluate("() => [parseFloat(getComputedStyle(document.querySelector('.pp-image-col')).top), document.getElementById('site-header').getBoundingClientRect().height]")
+    return [] if top >= header else [f"sticky photo top {top}px sits under the {header:.0f}px header"]
 
 
 def run(out, only=None):

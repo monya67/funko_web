@@ -85,7 +85,9 @@ function updateOrdersBadge() {
         badge.classList.remove('hidden');
     } else {
         badge.classList.add('hidden');
-    }
+    }    const profileBtn = document.getElementById('profile-menu-btn');
+    profileBtn?.classList.toggle('has-new', newCount > 0);
+    profileBtn?.setAttribute('aria-label', newCount > 0 ? `Профиль, новых заказов: ${newCount}` : 'Профиль');
 }
 
 // Global Mass Edit Functions (defined early so they are available immediately)
@@ -176,7 +178,11 @@ function init() {
         window.switchTab(guestAllowed.includes(initialTab) ? initialTab : 'home', false);
     }
 
-    history.replaceState({ tab: initialTab }, '', window.location.pathname + window.location.search);
+    history.replaceState({ tab: initialTab }, '', window.location.pathname + window.location.search + window.location.hash);
+    const anchor = window.location.hash && document.getElementById(window.location.hash.slice(1));
+    if (anchor && document.getElementById('home-tab').contains(anchor)) {
+        setTimeout(() => anchor.scrollIntoView(), 0);
+    }
 }
 
 function updateRoleUI(role) {
