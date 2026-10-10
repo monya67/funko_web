@@ -8,11 +8,15 @@ Read-only: never submits forms, deletes, pays or checks out.
 import argparse
 import os
 import sys
-from datetime import datetime, timedelta
+import warnings
+from datetime import datetime, timedelta, timezone
 
 import jwt
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
+
+# the local dev SECRET_KEY is short; production's is not, and this token only ever hits localhost
+warnings.filterwarnings("ignore", category=jwt.warnings.InsecureKeyLengthWarning)
 
 BASE = "http://127.0.0.1:8000"
 WIDTHS = [390, 768, 1024, 1440]
@@ -59,7 +63,7 @@ def check(name, role="guest", widths=(1440,), path="/"):
 def admin_token(login):
     load_dotenv()
     key = os.getenv("SECRET_KEY", "super-secret-key-change-me")
-    exp = datetime.utcnow() + timedelta(hours=1)
+    exp = datetime.now(timezone.utc) + timedelta(hours=1)
     return jwt.encode({"sub": login, "role": "admin", "exp": exp}, key, algorithm="HS256")
 
 
@@ -111,6 +115,20 @@ def light_base(page):
     if not page.evaluate("() => document.fonts.load('40px Anton').then(faces => faces.length > 0)"):
         errors.append("Anton web font not loaded")
     return errors
+
+
+def _table_readable(table_id):
+    def fn(page):
+        page.wait_for_selector(f"#{table_id} tbody tr", timeout=8000)
+        return [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
+    return fn
+
+
+for _name, _path, _table in (("admin_orders_readable", "/orders", "orders-table"),
+                             ("admin_archive_readable", "/archive", "archived-table"),
+                             ("admin_accounting_readable", "/accounting", "accounting-table"),
+                             ("admin_clients_readable", "/clients", "clients-table")):
+    check(_name, role="admin", path=_path)(_table_readable(_table))
 
 
 def run(out, only=None):

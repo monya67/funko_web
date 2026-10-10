@@ -97,7 +97,7 @@ window.updateMassEditPanel = function(tab) {
     
     if (countSpan) {
         countSpan.textContent = `Выбрано заказов: ${count} шт.`;
-        countSpan.style.color = count > 0 ? '#00ff88' : '#fff';
+        countSpan.style.color = count > 0 ? 'var(--ok)' : 'var(--ink)';
     }
     if (btn) {
         if (count > 0) {
@@ -932,7 +932,7 @@ function renderArchivedOrders() {
         html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
         html += `<td style="white-space:nowrap;font-weight:500;">${(order.total_price || 0).toLocaleString('ru')} &#8381;</td>`;
         html += `<td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>`;
-        html += `<td><span class="status-badge" style="background:rgba(0,200,80,0.15);color:#40e07a;">${order.status}</span></td>`;
+        html += `<td><span class="status-badge" style="background:rgba(0,200,80,0.15);color:var(--ok);">${order.status}</span></td>`;
 
         if (role === 'admin') {
             html += `<td class="admin-only actions-cell">
@@ -985,12 +985,12 @@ function renderClients(clients) {
 
         tr.innerHTML = `
             <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td>
-            <td style="font-weight:700; color:#fff;">${client.id}</td>
-            <td style="font-weight:600; color:#fff;">${fnDisplay}</td>
-            <td style="font-weight:600; color:#fff;">${lnDisplay}</td>
-            <td style="color:#eee; font-size:0.88rem;">${phoneDisplay}</td>
-            <td style="color:${tgDisplay !== '—' ? '#60a5fa' : 'var(--gray-light)'};">${tgDisplay}</td>
-            <td style="font-family:monospace; color:#ddd;">${escapeHtml(client.password)}</td>
+            <td style="font-weight:700; color:var(--ink);">${client.id}</td>
+            <td style="font-weight:600; color:var(--ink);">${fnDisplay}</td>
+            <td style="font-weight:600; color:var(--ink);">${lnDisplay}</td>
+            <td style="color:var(--ink); font-size:0.88rem;">${phoneDisplay}</td>
+            <td style="color:${tgDisplay !== '—' ? '#1C6EA4' : 'var(--gray-light)'};">${tgDisplay}</td>
+            <td style="font-family:monospace; color:var(--muted);">${escapeHtml(client.password)}</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="edit-btn" onclick="window.openEditClientModal(${client.id})" title="Редактировать клиента">Ред.</button>
                 <button type="button" class="delete-btn" onclick="window.confirmDeleteClient(${client.id})" title="Удалить клиента" style="margin-left:4px;">✕</button>
@@ -1089,7 +1089,7 @@ function renderAccounting() {
         tr.style.animationDelay = `${i * 0.02}s`;
         const photoHtml = order.photo_id
             ? `<img src="/api/photos/${order.photo_id}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer;flex-shrink:0;" onclick="viewPhoto('${order.photo_id}')">`
-            : `<div style="width:44px;height:44px;border-radius:5px;background:#222;flex-shrink:0;"></div>`;
+            : `<div style="width:44px;height:44px;border-radius:5px;background:var(--card);flex-shrink:0;"></div>`;
 
         tr.innerHTML = `
             <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>
@@ -1105,11 +1105,11 @@ function renderAccounting() {
             <td class="inline-edit-cell" style="white-space:nowrap;" title="Нажмите для редактирования" onclick="window.startInlineEdit(${order.id}, 'cost_price', ${order.cost}, this)">${order.cost.toLocaleString('ru')} &#8381;</td>
             <td class="inline-edit-cell" style="white-space:nowrap;" title="Нажмите для редактирования" onclick="window.startInlineEdit(${order.id}, 'delivery_cost', ${order.delivery}, this)">${order.delivery.toLocaleString('ru')} &#8381;</td>
             <td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>
-            <td style="color:#ff9999;font-weight:bold;white-space:nowrap;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
+            <td style="color:var(--pre);font-weight:bold;white-space:nowrap;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.usn.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.checks.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.acquiring.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
-            <td style="color:${order.marginVal >= 0 ? '#00ff88' : '#ff4d4d'};font-weight:bold;white-space:nowrap;">${order.marginDisplay}</td>
+            <td style="color:${order.marginVal >= 0 ? 'var(--ok)' : 'var(--pre)'};font-weight:bold;white-space:nowrap;">${order.marginDisplay}</td>
         `;
         accountingTableBody.appendChild(tr);
     });
@@ -2015,7 +2015,7 @@ function renderCatalog() {
         if (emptyMsg) {
             emptyMsg.innerHTML = `
                 <div style="padding: 48px 20px; text-align: center;">
-                    <div style="font-size: 1.15rem; font-weight: 600; color: #fff; margin-bottom: 8px;">В каталоге пока нет товаров</div>
+                    <div style="font-size: 1.15rem; font-weight: 600; color: var(--ink); margin-bottom: 8px;">В каталоге пока нет товаров</div>
                     <p style="color: var(--gray); font-size: 0.88rem;">
                         ${role === 'admin' 
                             ? 'Нажмите кнопку <b>«+ Добавить товар»</b> в правом верхнем углу, чтобы добавить первую позицию.' 
@@ -2168,8 +2168,8 @@ window.openProductDetail = function(productId) {
     }
 
     document.getElementById('pp-stock').innerHTML = p.in_stock
-        ? `<span style="color:#4ade80;">● В наличии</span>`
-        : `<span style="color:#facc15;">● Под заказ</span>`;
+        ? `<span style="color:var(--ok);">● В наличии</span>`
+        : `<span style="color:var(--warn);">● Под заказ</span>`;
 
     const actions = document.getElementById('pp-actions');
     const role = currentRole;
@@ -2465,9 +2465,9 @@ function renderMetaModalLists() {
             catListEl.innerHTML = '<div style="color:var(--gray); font-size:0.82rem; padding:8px 0;">Нет добавленных категорий</div>';
         } else {
             catListEl.innerHTML = cats.map(c => `
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(255,255,255,0.04); border-radius:6px; font-size:0.85rem;">
-                    <span style="color:#eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c}</span>
-                    <button type="button" onclick="window.deleteMetaItem('category', '${c.replace(/'/g, "\\'")}')" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:1rem; padding:0 4px; line-height:1;" title="Удалить бренд">✕</button>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(var(--ink-rgb), 0.04); border-radius:6px; font-size:0.85rem;">
+                    <span style="color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c}</span>
+                    <button type="button" onclick="window.deleteMetaItem('category', '${c.replace(/'/g, "\\'")}')" style="background:none; border:none; color:var(--pre); cursor:pointer; font-size:1rem; padding:0 4px; line-height:1;" title="Удалить бренд">✕</button>
                 </div>
             `).join('');
         }
@@ -2478,9 +2478,9 @@ function renderMetaModalLists() {
             serListEl.innerHTML = '<div style="color:var(--gray); font-size:0.82rem; padding:8px 0;">Нет добавленных тематик</div>';
         } else {
             serListEl.innerHTML = series.map(s => `
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(255,255,255,0.04); border-radius:6px; font-size:0.85rem;">
-                    <span style="color:#eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s}</span>
-                    <button type="button" onclick="window.deleteMetaItem('series', '${s.replace(/'/g, "\\'")}')" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:1rem; padding:0 4px; line-height:1;" title="Удалить серию">✕</button>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(var(--ink-rgb), 0.04); border-radius:6px; font-size:0.85rem;">
+                    <span style="color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s}</span>
+                    <button type="button" onclick="window.deleteMetaItem('series', '${s.replace(/'/g, "\\'")}')" style="background:none; border:none; color:var(--pre); cursor:pointer; font-size:1rem; padding:0 4px; line-height:1;" title="Удалить серию">✕</button>
                 </div>
             `).join('');
         }
@@ -2772,11 +2772,11 @@ window.openCheckoutModal = function() {
         const totalItems = funkoCart.reduce((s, i) => s + i.qty, 0);
         const totalPrice = funkoCart.reduce((s, i) => s + (i.final_price || i.price) * i.qty, 0);
         previewEl.innerHTML = `
-            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-weight:700; color:#fff;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-weight:700; color:var(--ink);">
                 <span>В заказе: ${totalItems} шт.</span>
                 <span>${totalPrice.toLocaleString('ru')} ₽</span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:4px; font-size:0.82rem; color:#aaa;">
+            <div style="display:flex; flex-direction:column; gap:4px; font-size:0.82rem; color:var(--muted);">
                 ${funkoCart.map(i => `<div>• ${i.name} × ${i.qty} шт. (${((i.final_price || i.price) * i.qty).toLocaleString('ru')} ₽)</div>`).join('')}
             </div>
         `;
@@ -3137,7 +3137,7 @@ function renderLedger() {
         tr.innerHTML = `
             <td style="white-space:nowrap;">${e.entry_date}</td>
             <td>${e.description || '—'}</td>
-            <td style="white-space:nowrap;color:${isIncome ? '#00ff88' : '#ff4d4d'};font-weight:600;">
+            <td style="white-space:nowrap;color:${isIncome ? 'var(--ok)' : 'var(--pre)'};font-weight:600;">
                 ${isIncome ? '+' : '−'}${e.amount.toLocaleString('ru')} ₽
             </td>
             <td>${isIncome ? 'Доход' : 'Расход'}</td>
@@ -3156,7 +3156,7 @@ function updateLedgerSummary(income, expense) {
     if (expEl) expEl.textContent = expense.toLocaleString('ru') + ' ₽';
     if (netEl) {
         netEl.textContent = (net >= 0 ? '+' : '') + net.toLocaleString('ru') + ' ₽';
-        netEl.style.color = net >= 0 ? '#00ff88' : '#ff4d4d';
+        netEl.style.color = net >= 0 ? 'var(--ok)' : 'var(--pre)';
     }
 }
 
