@@ -101,7 +101,19 @@ def selftest():
     print("selftest OK")
 
 
-def run(out):
+@check("light_base")
+def light_base(page):
+    errors = []
+    bg = page.evaluate("() => getComputedStyle(document.body).backgroundColor")
+    if bg != "rgb(239, 236, 230)":
+        errors.append(f"body background is {bg}, expected paper rgb(239, 236, 230)")
+    # fonts.check() is true when no "Anton" face exists at all; load() returns [] in that case
+    if not page.evaluate("() => document.fonts.load('40px Anton').then(faces => faces.length > 0)"):
+        errors.append("Anton web font not loaded")
+    return errors
+
+
+def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
     if login:
@@ -110,7 +122,7 @@ def run(out):
     failures = []
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="msedge")
-        for role, token in roles.items():
+        for role, token in ({} if only else roles).items():
             for width in WIDTHS:
                 ctx = new_context(browser, width, token)
                 for path in (GUEST_PAGES if role == "guest" else ADMIN_PAGES):
@@ -124,7 +136,7 @@ def run(out):
                     page.close()
                 ctx.close()
         for name, role, widths, path, fn in CHECKS:
-            if role not in roles:
+            if role not in roles or (only and name not in only):
                 continue
             for width in widths:
                 ctx = new_context(browser, width, roles[role], consent=(name != "cookie_banner_phone"))
@@ -143,8 +155,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--selftest", action="store_true")
     ap.add_argument("--out", default="ui-shots")
+    ap.add_argument("--only", nargs="+", help="run just these named checks, skip the page sweep")
     args = ap.parse_args()
     if args.selftest:
         selftest()
     else:
-        sys.exit(1 if run(args.out) else 0)
+        sys.exit(1 if run(args.out, args.only) else 0)
