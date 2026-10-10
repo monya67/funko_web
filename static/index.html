@@ -186,69 +186,54 @@
 </head>
 <body>
     <div class="background"></div>
+    <header id="site-header" class="site-header">
+        <div class="site-header-inner">
+            <a href="/" class="nav-item site-logo" data-tab="home" aria-label="Funko Stop — на главную">FUNKO <span>STOP</span></a>
+            <nav id="site-nav" class="site-nav" aria-label="Основное меню">
+                <a href="/catalog" class="nav-item site-nav-link" data-tab="catalog">Каталог</a>
+                <a href="/#preorder-section" class="site-nav-link" data-home-anchor="preorder-section">Предзаказ</a>
+                <a href="/#stock-section" class="site-nav-link" data-home-anchor="stock-section">Наличие (Авито)</a>
+                <a href="/#delivery-section" class="site-nav-link" data-home-anchor="delivery-section">Оплата и доставка</a>
+                <a href="/#faq-section" class="site-nav-link" data-home-anchor="faq-section">FAQ</a>
+                <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="site-nav-link">Отзывы</a>
+            </nav>
+            <div class="site-actions">
+                <label class="sr-only" for="header-search">Поиск по каталогу</label>
+                <input id="header-search" class="header-search admin-only hidden" type="search" placeholder="Поиск фигурок, серий, номеров…">
+                <button type="button" class="icon-btn" aria-label="Корзина" onclick="window.openCartModal()">
+                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    <span id="landing-cart-badge" class="cart-badge-count">0</span>
+                </button>
+                <div class="profile-wrap">
+                    <button type="button" id="profile-menu-btn" class="icon-btn" aria-label="Профиль" aria-haspopup="true" aria-expanded="false" aria-controls="profile-menu">
+                        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </button>
+                    <div id="profile-menu" class="profile-menu hidden">
+                        <div id="sidebar-user-chip" class="profile-menu-head hidden">
+                            <span id="sidebar-user-label"></span>
+                            <div id="online-badge" class="online-status admin-only hidden"><span class="online-dot"></span>На сайте: <strong id="online-count">1</strong> чел.</div>
+                        </div>
+                        <a href="/orders" class="nav-item profile-menu-item auth-only hidden" data-tab="orders">Заказы <span id="orders-new-badge" class="orders-badge hidden"></span></a>
+                        <a href="/archive" class="nav-item profile-menu-item auth-only hidden" data-tab="archived">Архив</a>
+                        <a href="/accounting" class="nav-item profile-menu-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
+                        <a href="/clients" class="nav-item profile-menu-item admin-only hidden" data-tab="clients">Клиенты</a>
+                        <button id="sidebar-login-btn" type="button" class="btn primary profile-menu-login">Войти</button>
+                        <button id="logout-btn" type="button" class="profile-menu-item profile-menu-logout hidden">Выйти</button>
+                    </div>
+                </div>
+                <button type="button" id="site-menu-toggle" class="icon-btn site-menu-toggle" aria-label="Меню" aria-expanded="false" aria-controls="site-nav">
+                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="3" y1="7" x2="21" y2="7"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="17" x2="21" y2="17"></line></svg>
+                </button>
+            </div>
+        </div>
+    </header>
 
     <div id="dashboard-view" class="dashboard-layout home-mode fade-in">
-        <aside class="sidebar glass-panel">
-            <div class="logo small"><h1>FUNKO <span>STOP</span></h1></div>
-            <nav>
-                <a href="/" class="nav-item active" data-tab="home">Главная</a>
-                <a href="/catalog" class="nav-item" data-tab="catalog">Каталог</a>
-                <a href="/orders" class="nav-item auth-only hidden" data-tab="orders">Заказы <span id="orders-new-badge" class="orders-badge hidden"></span></a>
-                <a href="/archive" class="nav-item auth-only hidden" data-tab="archived">Архив</a>
-                <a href="/accounting" class="nav-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
-                <a href="/clients" class="nav-item admin-only hidden" data-tab="clients">Клиенты</a>
-            </nav>
-            <div id="online-badge" class="online-status admin-only hidden"
-                style="margin-top:15px;font-size:0.85rem;color:var(--ok);display:flex;align-items:center;gap:6px;padding:0 10px;">
-                <span style="width:8px;height:8px;background:#40c057;border-radius:50%;display:inline-block;"></span>
-                На сайте: <strong id="online-count">1</strong> чел.
-            </div>
-            <div class="sidebar-auth-box mt-auto">
-                <div id="sidebar-user-chip" class="user-chip hidden" style="margin-bottom: 10px; width: 100%; justify-content: center; text-align: center;">
-                    <span id="sidebar-user-label" style="font-weight:600;font-size:0.85rem;"></span>
-                </div>
-                <button id="sidebar-login-btn" class="btn primary" style="width: 100%; display: flex; align-items: center; justify-content: center;">Войти</button>
-                <button id="logout-btn" class="btn secondary outline hidden" style="width: 100%;">Выйти</button>
-            </div>
-        </aside>
 
         <main class="content">
 
             <!-- HOME / TITLE TAB (Full screen immersive landing) -->
             <section id="home-tab" class="tab-content active">
-                <!-- Sticky Landing Navbar -->
-                <header class="landing-navbar">
-                    <div class="landing-nav-inner">
-                        <div class="landing-logo" onclick="window.scrollTo({top:0, behavior:'smooth'})">
-                            <span class="landing-logo-text">FUNKO <span>STOP</span></span>
-                        </div>
-                        <nav class="landing-nav-links">
-                            <a href="#preorder-section" class="landing-nav-link">Предзаказ</a>
-                            <a href="#stock-section" class="landing-nav-link">Наличие (Авито)</a>
-                            <a href="#delivery-section" class="landing-nav-link">Оплата и доставка</a>
-                            <a href="#faq-section" class="landing-nav-link">FAQ</a>
-                            <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="landing-nav-link">Отзывы</a>
-                        </nav>
-                        <div class="landing-nav-actions">
-                            <button type="button" class="btn primary landing-btn-catalog" onclick="window.switchTab('catalog')">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                                <span>Каталог</span>
-                            </button>
-                            <button type="button" class="btn secondary outline landing-btn-cart" onclick="window.openCartModal()" style="display:inline-flex; align-items:center; gap:8px;">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                                <span>Корзина</span>
-                                <span id="landing-cart-badge" class="cart-badge-count">0</span>
-                            </button>
-                            <button type="button" id="landing-login-btn" class="btn secondary outline landing-btn-login" onclick="window.openLoginModal()">
-                                <span>Войти</span>
-                            </button>
-                            <div id="landing-user-chip" class="landing-user-chip hidden">
-                                <span id="landing-user-name" class="landing-user-name"></span>
-                                <button type="button" class="btn secondary outline landing-btn-orders" onclick="window.switchTab('orders')">Мои заказы</button>
-                            </div>
-                        </div>
-                    </div>
-                </header>
 
                 <div class="home-container">
                     <!-- Hero Section -->

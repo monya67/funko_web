@@ -455,6 +455,46 @@ navItems.forEach(item => {
     });
 });
 
+// --- Top bar: profile dropdown, burger menu, home anchors, header search ---
+const profileBtn = document.getElementById('profile-menu-btn');
+const profileMenu = document.getElementById('profile-menu');
+const siteMenuToggle = document.getElementById('site-menu-toggle');
+const siteNav = document.getElementById('site-nav');
+
+function setProfileMenu(open) {
+    profileMenu.classList.toggle('hidden', !open);
+    profileBtn.setAttribute('aria-expanded', String(open));
+}
+function setSiteNav(open) {
+    siteNav.classList.toggle('open', open);
+    siteMenuToggle.setAttribute('aria-expanded', String(open));
+}
+profileBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setProfileMenu(profileMenu.classList.contains('hidden'));
+});
+siteMenuToggle.addEventListener('click', () => setSiteNav(!siteNav.classList.contains('open')));
+document.addEventListener('click', (e) => {
+    if (!profileMenu.contains(e.target)) setProfileMenu(false);
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { setProfileMenu(false); setSiteNav(false); }
+});
+profileMenu.querySelectorAll('a, button').forEach(el => el.addEventListener('click', () => setProfileMenu(false)));
+siteNav.querySelectorAll('a').forEach(el => el.addEventListener('click', () => setSiteNav(false)));
+document.querySelectorAll('[data-home-anchor]').forEach(a => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.switchTab('home');
+    document.getElementById(a.dataset.homeAnchor)?.scrollIntoView({ behavior: 'smooth' });
+}));
+document.getElementById('header-search')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    window.switchTab('catalog');
+    const target = document.getElementById('catalog-search');
+    target.value = e.target.value;
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
 // FAQ Accordion click handler
 document.addEventListener('click', (e) => {
     const questionBtn = e.target.closest('.faq-question-btn');

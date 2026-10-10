@@ -81,7 +81,8 @@ def new_context(browser, width, token, consent=True):
 
 def open_page(ctx, path):
     page = ctx.new_page()
-    page.goto(BASE + path, wait_until="networkidle")
+    page.set_default_timeout(5000)
+    page.goto(BASE + path, wait_until="networkidle", timeout=30000)
     page.wait_for_timeout(400)
     return page
 
@@ -131,6 +132,76 @@ for _name, _path, _table in (("admin_orders_readable", "/orders", "orders-table"
     check(_name, role="admin", path=_path)(_table_readable(_table))
 
 
+def visible(page, sel):
+    return page.evaluate(f"() => {{ const e = document.querySelector({sel!r}); if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }}")
+
+
+def in_viewport(page, sel):
+    return page.evaluate(f"() => {{ const r = document.querySelector({sel!r}).getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth; }}")
+
+
+@check("header_nav_catalog")
+def header_nav_catalog(page):
+    page.click("#site-nav a[data-tab='catalog']")
+    return [] if page.is_visible("#catalog-tab.active") else ["catalog tab not active after clicking Каталог"]
+
+
+@check("profile_menu_guest", widths=(390, 1440))
+def profile_menu_guest(page):
+    page.click("#profile-menu-btn")
+    errors = []
+    if not visible(page, "#sidebar-login-btn"):
+        errors.append("Войти not visible for guest")
+    if visible(page, "#profile-menu [data-tab='accounting']"):
+        errors.append("admin item visible for guest")
+    if not in_viewport(page, "#profile-menu"):
+        errors.append("profile menu leaves the viewport")
+    return errors
+
+
+@check("profile_menu_admin", role="admin", widths=(390, 1440))
+def profile_menu_admin(page):
+    page.click("#profile-menu-btn")
+    errors = [f"{t} not visible" for t in ("orders", "archived", "accounting", "clients")
+              if not visible(page, f"#profile-menu [data-tab='{t}']")]
+    page.click("#profile-menu [data-tab='accounting']")
+    if not page.is_visible("#accounting-tab.active"):
+        errors.append("accounting tab not active after menu click")
+    if visible(page, "#profile-menu"):
+        errors.append("menu still open after navigation")
+    return errors
+
+
+@check("mobile_nav", widths=(390,))
+def mobile_nav(page):
+    errors = []
+    if visible(page, "#site-nav a[data-tab='catalog']"):
+        errors.append("nav links visible before opening the burger")
+    page.click("#site-menu-toggle")
+    if not visible(page, "#site-nav a[data-tab='catalog']"):
+        errors.append("nav links hidden after opening the burger")
+    page.keyboard.press("Escape")
+    if visible(page, "#site-nav a[data-tab='catalog']"):
+        errors.append("Escape did not close the burger menu")
+    return errors
+
+
+@check("home_anchor_from_catalog", path="/catalog")
+def home_anchor_from_catalog(page):
+    page.click("#site-nav a[data-home-anchor='faq-section']")
+    page.wait_for_timeout(900)
+    errors = []
+    if not page.is_visible("#home-tab.active"):
+        errors.append("home tab not active")
+    top = page.evaluate("() => document.getElementById('faq-section').getBoundingClientRect().top")
+    if not (-5 < top < 300):
+        errors.append(f"FAQ section not scrolled into view (top={top})")
+    return errors
+
+
+HEADER_CHECKS = ["header_nav_catalog", "profile_menu_guest", "profile_menu_admin", "mobile_nav", "home_anchor_from_catalog"]
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
@@ -159,7 +230,11 @@ def run(out, only=None):
             for width in widths:
                 ctx = new_context(browser, width, roles[role], consent=(name != "cookie_banner_phone"))
                 page = open_page(ctx, path)
-                failures += [f"{name}@{width}: {e}" for e in fn(page)]
+                try:
+                    errors = fn(page)
+                except Exception as exc:  # a missing element must report, not abort the run
+                    errors = [f"{type(exc).__name__}: {str(exc).splitlines()[0]}"]
+                failures += [f"{name}@{width}: {e}" for e in errors]
                 ctx.close()
         browser.close()
     for f in failures:
