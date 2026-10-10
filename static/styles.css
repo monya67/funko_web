@@ -4071,3 +4071,9 @@ tbody tr:hover { background: var(--surface-hover); }
 }
 /* if no condensed face is available at all, break the word rather than push it off-screen */
 h1, h2, .display, .hero-title, .hero-sub { overflow-wrap: anywhere; }
+.site-logo, .site-nav-link { white-space: nowrap; }
+@media (max-width: 1279px) {
+    .header-search { display: none; } /* no room beside the full nav; catalog has its own search */
+}
+/* "COLLECTIBLE" is ~4.51em wide in Anton; its column tops out at 556px, so cap at 120px and keep >=15px slack */
+.hero-title { font-size: clamp(56px, 9.2vw, 120px); }

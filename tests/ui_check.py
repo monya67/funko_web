@@ -438,6 +438,29 @@ def no_overflow_without_webfonts(page):
     return errors
 
 
+@check("header_no_wrap", role="admin", widths=(1024, 1280, 1440))
+def header_no_wrap(page):
+    # Each header item must stay on one line; the admin-only search eats width the guest header doesn't need.
+    return page.evaluate("""() => [...document.querySelectorAll('.site-logo, #site-nav .site-nav-link')]
+        .filter(e => e.getBoundingClientRect().width > 0)
+        .map(e => { const r = document.createRange(); r.selectNodeContents(e);
+                    const tops = [...r.getClientRects()].map(b => b.top).sort((a, b) => a - b);
+                    const lines = 1 + tops.slice(1).filter((t, i) => t - tops[i] > 8).length;  // sub-pixel offsets between spans are not new lines
+                    return [e.textContent.trim(), lines]; })
+        .filter(([, lines]) => lines > 1)
+        .map(([text, lines]) => `wraps onto ${lines} lines: ${text}`)""")
+
+
+@check("hero_title_unbroken", widths=(390, 768, 1024, 1280, 1440))
+def hero_title_unbroken(page):
+    # Each hero word must fit its column; the overflow-wrap safety net must not split "COLLECTIBLE" with the real font.
+    page.evaluate("() => document.fonts.ready")
+    lines = page.evaluate("""() => { const node = document.querySelector('.hero-title').firstChild; const r = document.createRange(); r.selectNodeContents(node);
+        const tops = [...r.getClientRects()].map(b => b.top).sort((a, b) => a - b);
+        return 1 + tops.slice(1).filter((t, i) => t - tops[i] > 8).length; }""")
+    return [] if lines == 1 else [f"'Collectible' split over {lines} lines"]
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
