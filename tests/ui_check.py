@@ -349,6 +349,45 @@ def home_alignment(page):
     return [] if abs(hero[0] - new[0]) <= 2 and abs(hero[1] - new[1]) <= 2 else [f"Новинки at left={new[0]} width={new[1]}, hero at left={hero[0]} width={hero[1]}"]
 
 
+@check("login_modal", widths=(390, 1440))
+def login_modal(page):
+    page.evaluate("() => window.openLoginModal()")
+    page.wait_for_timeout(300)
+    errors = [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
+    radius = page.evaluate("() => getComputedStyle(document.getElementById('login-modal')).borderRadius")
+    if radius not in ("0px", ""):
+        errors.append(f"login modal radius {radius}, expected square corners")
+    return errors
+
+
+@check("cart_modal", widths=(390, 1440))
+def cart_modal(page):
+    page.evaluate("() => window.openCartModal()")
+    page.wait_for_timeout(300)
+    return [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
+
+
+@check("cookie_banner_phone", widths=(390,))
+def cookie_banner_phone(page):
+    page.wait_for_selector("#cookie-consent-banner:not(.hidden)", timeout=5000)
+    errors = []
+    h = page.evaluate("() => document.getElementById('cookie-consent-banner').getBoundingClientRect().height / window.innerHeight")
+    if h > 0.5:
+        errors.append(f"banner covers {h:.0%} of the screen")
+    small = page.evaluate("() => [...document.querySelectorAll('#cookie-consent-banner button')].filter(b => b.getBoundingClientRect().height < 44).length")
+    if small:
+        errors.append(f"{small} banner button(s) shorter than 44px")
+    errors += [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
+    return errors
+
+
+@check("primary_button_ink", role="admin", path="/catalog")
+def primary_button_ink(page):
+    # Spec: red is an accent only; primary actions are ink buttons that turn red on hover.
+    bg = page.evaluate("() => getComputedStyle(document.querySelector('#catalog-tab .btn.primary')).backgroundColor")
+    return [] if bg == "rgb(17, 17, 17)" else [f"primary button background {bg}, expected ink rgb(17, 17, 17)"]
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
