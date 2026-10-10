@@ -1983,6 +1983,46 @@ function getBadgeClass(badge) {
 }
 
 // --- Catalog Rendering ---
+const ICON_CART = '<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>';
+const ICON_IMAGE = '<svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="1"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+
+function productCard(p) {
+    const card = document.createElement('article');
+    card.className = 'product-card';
+    card.addEventListener('click', () => window.openProductDetail(p.id));
+
+    const photoSrc = p.photo_id
+        ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
+        : '';
+    const imgHtml = photoSrc
+        ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">`
+        : `<div class="product-image-placeholder">${ICON_IMAGE}<span>Фото скоро</span></div>`;
+    const stockTag = p.in_stock ? '<span class="card-tag-stock">В наличии</span>' : '<span class="card-tag-pre">Предзаказ</span>';
+    const discountTag = p.discount_percent > 0 ? `<span class="card-tag-discount">−${p.discount_percent}%</span>` : '';
+    const badgeTag = p.badge ? `<span class="card-tag-badge">${p.badge}</span>` : '';
+    const finalPrice = (p.final_price || p.price).toLocaleString('ru');
+    const oldPrice = p.discount_percent > 0 ? `<span class="price-original">${p.price.toLocaleString('ru')} ₽</span>` : '';
+    const adminButtons = currentRole === 'admin' ? `
+        <div class="card-image-overlay">
+            <button type="button" class="card-overlay-btn icon" aria-label="Редактировать" onclick="event.stopPropagation(); window.openEditProductModal(${p.id})">✎</button>
+            <button type="button" class="card-overlay-btn icon danger" aria-label="Удалить" onclick="event.stopPropagation(); window.confirmDeleteProduct(${p.id})">✕</button>
+        </div>` : '';
+
+    card.innerHTML = `
+        <div class="card-tags">${stockTag}${discountTag}${badgeTag}</div>
+        <div class="product-image-box">${imgHtml}${adminButtons}</div>
+        <div class="product-card-body">
+            <div class="product-card-brand">${p.category || ''}</div>
+            <div class="product-card-title" title="${p.name}">${p.figure_number ? `<span class="card-number">#${p.figure_number}</span> ` : ''}${p.name}</div>
+            <div class="product-card-price-row">
+                <div class="price-group"><span class="price-final">${finalPrice} ₽</span>${oldPrice}</div>
+                <button type="button" class="card-cart-btn" aria-label="В корзину" onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)">${ICON_CART}</button>
+            </div>
+        </div>`;
+    return card;
+}
+
+
 function renderCatalog() {
     if (!catalogGrid) return;
     catalogGrid.innerHTML = '';
@@ -2079,80 +2119,10 @@ function renderCatalog() {
     const pageProducts = products.slice(startIdx, startIdx + state.pageSize);
 
     pageProducts.forEach((p, i) => {
-            const card = document.createElement('div');
-            card.className = 'product-card';
-            card.style.animationDelay = `${i * 0.06}s`;
-            card.addEventListener('click', () => window.openProductDetail(p.id));
-
-            const photoSrc = p.photo_id
-                ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
-                : '';
-
-            const imgHtml = photoSrc
-                ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">`
-                : `<div class="product-image-placeholder">
-                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                       <span>Фото скоро</span>
-                   </div>`;
-
-            const customBadgeHtml = p.badge
-                ? `<span class="${getBadgeClass(p.badge)}">${p.badge}</span>` : '';
-            const discountBadge = p.discount_percent > 0
-                ? `<span class="card-badge card-badge-discount">-${p.discount_percent}%</span>` : '';
-
-            const finalPrice = (p.final_price || p.price).toLocaleString('ru');
-            const origPrice = p.price.toLocaleString('ru');
-
-            // Admin overlay (edit/delete) — appears on hover top-right
-            let adminOverlay = '';
-            if (role === 'admin') {
-                adminOverlay = `
-                    <div class="card-image-overlay">
-                        <button type="button" class="card-overlay-btn icon" onclick="event.stopPropagation(); window.openEditProductModal(${p.id})" title="Редактировать">✎</button>
-                        <button type="button" class="card-overlay-btn icon danger" onclick="event.stopPropagation(); window.confirmDeleteProduct(${p.id})" title="Удалить">✕</button>
-                    </div>`;
-            }
-
-            const categoryTag = p.category ? `<span class="card-tag">${p.category}</span>` : '';
-            const seriesTag = p.series ? `<span class="card-tag series">${p.series}</span>` : '';
-            const numberTag = p.figure_number ? `<span class="card-number">#${p.figure_number} </span>` : '';
-
-            // Price / sold-out row
-            let priceRowHtml;
-            if (!p.in_stock) {
-                priceRowHtml = `
-                    <div class="product-card-price-row sold-out">
-                        <span class="card-sold-out-label">Распродано</span>
-                        <a class="card-subscribe-link" href="https://t.me/Funko_Stop" target="_blank" onclick="event.stopPropagation()">Подписаться на обновления</a>
-                    </div>`;
-            } else {
-                const priceInner = p.discount_percent > 0
-                    ? `<span class="price-final discounted">${finalPrice} ₽</span><span class="price-original">${origPrice} ₽</span>`
-                    : `<span class="price-final">${finalPrice} ₽</span>`;
-                priceRowHtml = `
-                    <div class="product-card-price-row">
-                        <div class="price-group">${priceInner}</div>
-                        <button type="button" class="card-cart-btn" onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)" title="В корзину">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                        </button>
-                    </div>`;
-            }
-
-            card.innerHTML = `
-                <div class="product-image-box">
-                    ${imgHtml}
-                    ${customBadgeHtml}
-                    ${discountBadge}
-                    ${adminOverlay}
-                </div>
-                <div class="product-card-body">
-                    <div class="card-tags-row">${categoryTag}${seriesTag}</div>
-                    <div class="product-card-title" title="${p.name}">${numberTag}${p.name}</div>
-                    ${priceRowHtml}
-                </div>
-            `;
-            catalogGrid.appendChild(card);
-        });
+        const card = productCard(p);
+        card.style.animationDelay = `${i * 0.06}s`;
+        catalogGrid.appendChild(card);
+    });
 
 
     updatePaginationUI('catalog', products.length);

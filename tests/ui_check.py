@@ -67,8 +67,21 @@ def admin_token(login):
     return jwt.encode({"sub": login, "role": "admin", "exp": exp}, key, algorithm="HS256")
 
 
+BLOCKED_WRITES = []
+
+
+def guard_writes(route, request):
+    """The local server talks to the PRODUCTION database: the test browser may only read."""
+    if request.method in ("GET", "HEAD") or request.url.split("?")[0].endswith("/api/ping"):
+        route.continue_()
+        return
+    BLOCKED_WRITES.append(f"{request.method} {request.url}")
+    route.abort()
+
+
 def new_context(browser, width, token, consent=True):
     ctx = browser.new_context(viewport={"width": width, "height": 900})
+    ctx.route("**/api/**", guard_writes)
     script = ""
     if token:
         script += f"localStorage.setItem('funko_token', '{token}');"
@@ -199,7 +212,82 @@ def home_anchor_from_catalog(page):
     return errors
 
 
-HEADER_CHECKS = ["header_nav_catalog", "profile_menu_guest", "profile_menu_admin", "mobile_nav", "home_anchor_from_catalog"]
+@check("card_shape", role="admin", path="/catalog")
+def card_shape(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    errors = []
+    if page.evaluate("() => typeof productCard") != "function":
+        errors.append("productCard() is not defined")
+    tag = page.evaluate("() => (document.querySelector('#catalog-grid .product-card .card-tags span') || {}).textContent || ''")
+    if tag.strip() not in ("В наличии", "Предзаказ"):
+        errors.append(f"first card has no availability tag (got {tag!r})")
+    return errors
+
+
+@check("long_name_card", role="admin", widths=(390,), path="/catalog")
+def long_name_card(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("""() => {
+        const p = { id: 999999, name: 'Очень длинное название фигурки '.repeat(4), category: 'Funko', price: 1990,
+                    final_price: 1990, discount_percent: 0, in_stock: false, photo_id: '', figure_number: '1234567' };
+        document.getElementById('catalog-grid').prepend(productCard(p));
+    }""")
+    over = page.evaluate(OVERFLOW_JS)
+    return [f"long name widens page by {over}px"] if over > 1 else []
+
+
+@check("many_chips", role="admin", widths=(390,), path="/catalog")
+def many_chips(page):
+    page.evaluate("""() => {
+        const bar = document.getElementById('franchise-chips-bar');
+        for (let i = 0; i < 30; i++) { const b = document.createElement('button'); b.className = 'franchise-chip'; b.textContent = 'Серия номер ' + i; bar.appendChild(b); }
+    }""")
+    over = page.evaluate(OVERFLOW_JS)
+    return [f"30 chips widen page by {over}px"] if over > 1 else []
+
+
+@check("product_page", role="admin", widths=(390, 1440), path="/catalog")
+def product_page(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.click("#catalog-grid .product-card .product-image-box")
+    errors = []
+    if not page.is_visible("#product-tab.active"):
+        errors.append("product page did not open")
+    errors += [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
+    page.click(".pp-back-btn")
+    if not page.is_visible("#catalog-tab.active"):
+        errors.append("back button did not return to catalog")
+    return errors
+
+
+@check("guest_catalog_stub", widths=(390, 1440), path="/catalog")
+def guest_catalog_stub(page):
+    # The contrast detector skips text over gradients, so assert the stub card itself is a flat light surface first.
+    errors = []
+    bg = page.evaluate("() => { const s = getComputedStyle(document.querySelector('.under-dev-card')); return [s.backgroundImage, s.backgroundColor]; }")
+    if bg[0] != "none":
+        errors.append(f"stub card still paints a background image: {bg[0][:60]}")
+    errors += [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
+    return errors
+
+
+@check("write_guard", role="admin")
+def write_guard(page):
+    # Probe a route that does not exist: without the guard it 404s, so even a failing run cannot touch the DB.
+    before = len(BLOCKED_WRITES)
+    outcome = page.evaluate("""() => fetch('/api/__write_guard_probe', { method: 'POST', body: '{}' })
+        .then(r => 'reached server: HTTP ' + r.status, () => 'blocked')""")
+    errors = [] if outcome == "blocked" else [f"POST was not blocked ({outcome})"]
+    if len(BLOCKED_WRITES) == before + 1:
+        BLOCKED_WRITES.pop()  # expected probe, not a real write attempt
+    else:
+        errors.append("guard did not record the probe")
+    return errors
+
+
+CATALOG_CHECKS =["card_shape", "long_name_card", "many_chips", "product_page", "guest_catalog_stub"]
+
+HEADER_CHECKS =["header_nav_catalog", "profile_menu_guest", "profile_menu_admin", "mobile_nav", "home_anchor_from_catalog"]
 
 
 def run(out, only=None):
@@ -237,6 +325,7 @@ def run(out, only=None):
                 failures += [f"{name}@{width}: {e}" for e in errors]
                 ctx.close()
         browser.close()
+    failures += [f"blocked write attempt: {w}" for w in BLOCKED_WRITES]
     for f in failures:
         print("FAIL", f)
     print(f"{len(failures)} failure(s); screenshots in {out}")
