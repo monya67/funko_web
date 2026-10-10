@@ -388,6 +388,25 @@ def primary_button_ink(page):
     return [] if bg == "rgb(17, 17, 17)" else [f"primary button background {bg}, expected ink rgb(17, 17, 17)"]
 
 
+@check("admin_tables_phone", role="admin", widths=(390,), path="/orders")
+def admin_tables_phone(page):
+    page.wait_for_selector("#orders-table tbody tr", timeout=8000)
+    errors = []
+    if page.evaluate(OVERFLOW_JS) > 1:
+        errors.append("orders table widens the page")
+    scrolls = page.evaluate("() => { const c = document.querySelector('#orders-tab .table-container'); return c.scrollWidth > c.clientWidth; }")
+    if not scrolls:
+        errors.append("orders table does not scroll inside its container at 390px")
+    return errors
+
+
+@check("admin_table_header_style", role="admin", path="/orders")
+def admin_table_header_style(page):
+    page.wait_for_selector("#orders-table tbody tr", timeout=8000)
+    th = page.evaluate("() => { const s = getComputedStyle(document.querySelector('#orders-table th')); return [s.textTransform, s.backgroundColor]; }")
+    return [] if th == ["uppercase", "rgb(239, 236, 230)"] else [f"table header is {th}, expected uppercase on paper"]
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}

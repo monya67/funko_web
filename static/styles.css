@@ -4059,3 +4059,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
     .cookie-banner-actions { display: flex; flex-direction: column; gap: 8px; }
     .cookie-banner-icon { display: none; }
 }
+.table-container { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; background: var(--card); }
+table { border-collapse: collapse; }
+th { font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); background: var(--paper); border-bottom: 1px solid rgba(var(--ink-rgb), 0.14); }
+td { color: var(--ink); border-bottom: 1px solid rgba(var(--ink-rgb), 0.08); }
+tbody tr:hover { background: var(--surface-hover); }
+.header-flex h2 { font-size: clamp(32px, 4vw, 48px); line-height: 1; }
+@media (max-width: 767px) {
+    .header-flex { flex-wrap: wrap; gap: 12px; }
+    .content { padding: 20px 12px 56px; }
+}
