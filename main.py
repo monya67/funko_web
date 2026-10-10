@@ -1005,8 +1005,6 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
     
     # Check for transparency (PNG, WebP with alpha channel)
     has_alpha = False
-    filename = "image.webp"
-    mime_type = "image/webp"
 
     try:
         img = Image.open(io.BytesIO(content))
@@ -1026,32 +1024,29 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
         out_io = io.BytesIO()
         img.save(out_io, format="WEBP", quality=92, method=6)
         content = out_io.getvalue()
-        filename = "image.webp"
-        mime_type = "image/webp"
     except Exception as e:
         print(f"Image processing error: {e}")
-        filename = "image.jpg"
-        mime_type = "image/jpeg"
-        
+
     async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
-        # Always sendDocument: sendPhoto re-encodes to JPEG and downscales to 1280px,
-        # which stacks a second lossy pass on top of the WebP encode above.
-        files = {"document": (filename, content, mime_type)}
+        # Sent as an opaque .bin on purpose: sendPhoto recompresses to 1280px JPEG, and a
+        # .webp via sendDocument comes back as a sticker (no "document" key, may be shrunk).
+        files = {"document": ("photo.bin", content, "application/octet-stream")}
         data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
         res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
         res_data = res.json()
         if not res_data.get("ok"):
             raise HTTPException(status_code=500, detail=f"Telegram upload failed: {res_data.get('description', 'unknown error')}")
-        photo_id = res_data["result"]["document"]["file_id"]
+        message = res_data["result"]
 
-        # Silently delete the message immediately from the admin's Telegram chat so no bot spam remains
+        # Delete before anything else can fail, so the storage message never lingers in the admin's chat
         try:
-            msg_id = res_data["result"]["message_id"]
-            await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": ADMIN_IDS[0], "message_id": msg_id})
+            await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": ADMIN_IDS[0], "message_id": message["message_id"]})
         except Exception:
             pass
-        
-        return {"photo_id": photo_id}
+
+        if "document" not in message:
+            raise HTTPException(status_code=500, detail="Telegram сохранил файл не как документ")
+        return {"photo_id": message["document"]["file_id"]}
 
 
 # --- Static Files ---
