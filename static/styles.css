@@ -11,7 +11,7 @@
     --pre: #B00A12;
     --pre-bg: #FBE0E1;
     --warn: #8A5A00;
-    --font-display: 'Anton', 'Oswald', sans-serif;
+    --font-display: 'Anton', 'Oswald', Impact, 'Arial Narrow', sans-serif-condensed, sans-serif;
 
     --primary: #E50914;
     --primary-hover: #C20711;
@@ -4069,3 +4069,5 @@ tbody tr:hover { background: var(--surface-hover); }
     .header-flex { flex-wrap: wrap; gap: 12px; }
     .content { padding: 20px 12px 56px; }
 }
+/* if no condensed face is available at all, break the word rather than push it off-screen */
+h1, h2, .display, .hero-title, .hero-sub { overflow-wrap: anywhere; }

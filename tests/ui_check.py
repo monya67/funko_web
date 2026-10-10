@@ -407,6 +407,37 @@ def admin_table_header_style(page):
     return [] if th == ["uppercase", "rgb(239, 236, 230)"] else [f"table header is {th}, expected uppercase on paper"]
 
 
+@check("legal_layout", widths=(390, 1440), path="/static/privacy.html")
+def legal_layout(page):
+    errors = []
+    if not visible(page, ".site-header"):
+        errors.append("no top bar on legal page")
+    links = page.evaluate("() => document.querySelectorAll('.legal-toc a').length")
+    heads = page.evaluate("() => document.querySelectorAll('.legal-body h2[id]').length")
+    if not links or links != heads:
+        errors.append(f"TOC has {links} links for {heads} sections")
+    font = page.evaluate("() => getComputedStyle(document.querySelector('h1')).fontFamily")
+    if "Anton" not in font or "Oswald" not in font:
+        errors.append(f"h1 font {font}, expected Anton + Oswald (Cyrillic)")
+    pos, share = page.evaluate("() => { const h = document.querySelector('.site-header'); return [getComputedStyle(h).position, h.getBoundingClientRect().height / window.innerHeight]; }")
+    if pos == "sticky" and share > 0.15:
+        errors.append(f"sticky header covers {share:.0%} of the screen while reading")
+    return errors
+
+
+@check("no_overflow_without_webfonts", widths=(390,))
+def no_overflow_without_webfonts(page):
+    # Slow or blocked Google Fonts (common on some RU networks) must not push headings off-screen.
+    page.route("**/fonts.gstatic.com/**", lambda route: route.abort())
+    errors = []
+    for path in ("/", "/catalog", "/static/privacy.html"):
+        page.goto(BASE + path, wait_until="networkidle")
+        over = page.evaluate(OVERFLOW_JS)
+        if over > 1:
+            errors.append(f"{path}: {over}px overflow with system fallback fonts")
+    return errors
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
