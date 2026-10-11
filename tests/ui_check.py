@@ -375,8 +375,8 @@ def login_modal(page):
     page.wait_for_timeout(300)
     errors = [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
     radius = page.evaluate("() => getComputedStyle(document.getElementById('login-modal')).borderRadius")
-    if radius not in ("0px", ""):
-        errors.append(f"login modal radius {radius}, expected square corners")
+    if not (4 <= float(radius.replace("px", "") or 0) <= 14):
+        errors.append(f"login modal radius {radius}, expected small rounding (4-14px)")
     return errors
 
 
