@@ -55,10 +55,10 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1791200000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1793100000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
     <style>
         /* Ultra-fast hardware-accelerated 60/120 FPS page transitions */
         @keyframes pageTransitionIn {
@@ -83,56 +83,56 @@
 
         .filter-dropdown { position:relative; display:inline-block; }
         .filter-dropdown-btn {
-            padding:7px 12px; border-radius:8px; background:rgba(255,255,255,0.05);
-            border:1px solid rgba(255,255,255,0.1); color:#fff; cursor:pointer;
+            padding:7px 12px; border-radius:8px; background:rgba(var(--ink-rgb), 0.05);
+            border:1px solid rgba(var(--ink-rgb), 0.1); color:var(--ink); cursor:pointer;
             white-space:nowrap; font-family:inherit; font-size:0.88rem;
             display:inline-flex; align-items:center; gap:6px; transition:background 0.2s; min-width:130px;
         }
-        .filter-dropdown-btn:hover { background:rgba(255,255,255,0.1); }
+        .filter-dropdown-btn:hover { background:rgba(var(--ink-rgb), 0.1); }
         .filter-dropdown-btn .arrow { margin-left:auto; font-size:0.7rem; transition:transform 0.2s; }
         .filter-dropdown-btn.open .arrow { transform:rotate(180deg); }
         .filter-dropdown-menu {
             display:none; position:absolute; top:calc(100% + 6px); left:0; min-width:280px;
-            background:#181818; border:1px solid rgba(255,255,255,0.15); border-radius:10px;
+            background:var(--card); border:1px solid rgba(var(--ink-rgb), 0.15); border-radius:10px;
             z-index:999; padding:8px 0; box-shadow:0 12px 36px rgba(0,0,0,0.8); max-height:320px; overflow-y:auto;
         }
         .filter-dropdown-menu.open { display:block; }
         .filter-dropdown-menu label {
             display:flex; align-items:center; gap:10px; padding:8px 14px;
-            cursor:pointer; color:#ddd; font-size:0.85rem; transition:background 0.15s; margin:0;
+            cursor:pointer; color:var(--muted); font-size:0.85rem; transition:background 0.15s; margin:0;
         }
-        .filter-dropdown-menu label:hover { background:rgba(255,255,255,0.08); }
+        .filter-dropdown-menu label:hover { background:rgba(var(--ink-rgb), 0.08); }
         .filter-dropdown-menu label input[type=checkbox] {
             width:16px; height:16px; accent-color:var(--primary); cursor:pointer; flex-shrink:0; margin:0; padding:0;
         }
-        .filter-divider { height:1px; background:rgba(255,255,255,0.08); margin:4px 0; }
-        .filter-clear-all { padding:8px 14px; color:#ff4d4d; font-size:0.82rem; cursor:pointer; user-select:none; font-weight:500; }
+        .filter-divider { height:1px; background:rgba(var(--ink-rgb), 0.08); margin:4px 0; }
+        .filter-clear-all { padding:8px 14px; color:var(--pre); font-size:0.82rem; cursor:pointer; user-select:none; font-weight:500; }
         .filter-clear-all:hover { text-decoration:underline; }
         .filters-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
         .filter-input {
-            padding:7px 11px; border-radius:8px; background:rgba(255,255,255,0.05);
-            border:1px solid rgba(255,255,255,0.1); color:#fff; font-family:inherit;
+            padding:7px 11px; border-radius:8px; background:rgba(var(--ink-rgb), 0.05);
+            border:1px solid rgba(var(--ink-rgb), 0.1); color:var(--ink); font-family:inherit;
             font-size:0.88rem; outline:none; transition:border 0.2s, background 0.2s;
         }
-        .filter-input:focus { border-color:rgba(229,9,20,0.6); background:rgba(255,255,255,0.08); }
+        .filter-input:focus { border-color:rgba(229,9,20,0.6); background:rgba(var(--ink-rgb), 0.08); }
         .filter-input.wide { min-width:180px; flex-grow:1; }
         .filter-input.narrow { width:115px; }
         .filter-input.xnarrow { width:80px; }
         select.filter-input { cursor:pointer; }
         
         .accounting-filters { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center; }
-        .tax-sub-col { font-size:0.78rem; color:#ff9999; }
+        .tax-sub-col { font-size:0.78rem; color: var(--pre); }
         
         /* Inline status select in table */
         .inline-status-select {
-            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
-            color: #fff; font-family: inherit; font-size: 0.85rem; cursor: pointer;
+            background: rgba(var(--ink-rgb), 0.08); border: 1px solid rgba(var(--ink-rgb), 0.18);
+            color: var(--ink); font-family: inherit; font-size: 0.85rem; cursor: pointer;
             padding: 6px 10px; border-radius: 8px; outline: none; min-width: 170px;
             transition: all 0.2s ease;
         }
-        .inline-status-select:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.3); }
+        .inline-status-select:hover { background: rgba(var(--ink-rgb), 0.14); border-color: rgba(var(--ink-rgb), 0.3); }
         .inline-status-select:focus { border-color: var(--primary); }
-        .inline-status-select option { background: #181818; color: #fff; }
+        .inline-status-select option { background: var(--card); color: var(--ink); }
         .inline-status-select.saving { opacity: 0.5; pointer-events: none; }
         .inline-status-select.saved { border-color: #00ff88; box-shadow: 0 0 10px rgba(0,255,136,0.4); }
 
@@ -160,17 +160,17 @@
 
         /* Ledger section */
         .ledger-summary { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
-        .ledger-summary-card { background: rgba(255,255,255,0.06); border-radius: 10px; padding: 12px 20px; min-width: 140px; }
+        .ledger-summary-card { background: rgba(var(--ink-rgb), 0.06); border-radius: 10px; padding: 12px 20px; min-width: 140px; }
         .ledger-summary-card .label { font-size: 0.78rem; color: var(--gray-light); margin-bottom: 4px; }
         .ledger-summary-card .value { font-size: 1.2rem; font-weight: 700; }
-        .ledger-summary-card.income .value { color: #00ff88; }
-        .ledger-summary-card.expense .value { color: #ff4d4d; }
-        .ledger-summary-card.net .value { color: #ffb400; }
+        .ledger-summary-card.income .value { color: var(--ok); }
+        .ledger-summary-card.expense .value { color: var(--pre); }
+        .ledger-summary-card.net .value { color: var(--warn); }
 
         .ledger-add-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px; }
         .ledger-add-form input, .ledger-add-form select {
-            background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
-            color: #fff; font-family: inherit; font-size: 0.9rem; padding: 7px 12px;
+            background: rgba(var(--ink-rgb), 0.08); border: 1px solid rgba(var(--ink-rgb), 0.18);
+            color: var(--ink); font-family: inherit; font-size: 0.9rem; padding: 7px 12px;
             border-radius: 8px; outline: none;
         }
         .ledger-add-form input::placeholder { color: var(--gray-light); }
@@ -179,151 +179,135 @@
         .inline-edit-cell { cursor: pointer; }
         .inline-edit-cell:hover { text-decoration: underline dotted; opacity: 0.8; }
         .inline-edit-input {
-            width: 90px; background: rgba(255,255,255,0.1); border: 1px solid var(--primary);
-            color: #fff; font-family: inherit; font-size: 0.9rem; padding: 3px 6px; border-radius: 6px;
+            width: 90px; background: rgba(var(--ink-rgb), 0.1); border: 1px solid var(--primary);
+            color: var(--ink); font-family: inherit; font-size: 0.9rem; padding: 3px 6px; border-radius: 6px;
         }
     </style>
+    <script>try{if(localStorage.getItem('funko_theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
 </head>
 <body>
     <div class="background"></div>
+    <header id="site-header" class="site-header">
+        <div class="site-header-inner">
+            <a href="/" class="nav-item site-logo" data-tab="home" aria-label="Funko Stop — на главную">FUNKO <span>STOP</span></a>
+            <nav id="site-nav" class="site-nav" aria-label="Основное меню">
+                <a href="/catalog" class="nav-item site-nav-link" data-tab="catalog">Каталог</a>
+                <a href="/#preorder-section" class="site-nav-link" data-home-anchor="preorder-section">Предзаказ</a>
+                <a href="/#stock-section" class="site-nav-link" data-home-anchor="stock-section">Наличие (Авито)</a>
+                <a href="/#delivery-section" class="site-nav-link" data-home-anchor="delivery-section">Оплата и доставка</a>
+                <a href="/#faq-section" class="site-nav-link" data-home-anchor="faq-section">FAQ</a>
+                <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="site-nav-link">Отзывы</a>
+            </nav>
+            <div class="site-actions">
+                <label class="sr-only" for="header-search">Поиск по каталогу</label>
+                <input id="header-search" class="header-search admin-only hidden" type="search" placeholder="Поиск фигурок, серий, номеров…">
+                <button type="button" id="theme-toggle" class="icon-btn theme-toggle" aria-label="Тёмная тема" title="Тёмная / светлая тема">
+                    <svg class="icon-moon" aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+                    <svg class="icon-sun" aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="22"></line><line x1="2" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"></line><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"></line><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"></line></svg>
+                </button>
+                <button type="button" class="icon-btn" aria-label="Корзина" onclick="window.openCartModal()">
+                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    <span id="landing-cart-badge" class="cart-badge-count">0</span>
+                </button>
+                <div class="profile-wrap">
+                    <button type="button" id="profile-menu-btn" class="icon-btn" aria-label="Профиль" aria-haspopup="true" aria-expanded="false" aria-controls="profile-menu">
+                        <span class="profile-new-dot" aria-hidden="true"></span>
+                        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    </button>
+                    <div id="profile-menu" class="profile-menu hidden">
+                        <div id="sidebar-user-chip" class="profile-menu-head hidden">
+                            <span id="sidebar-user-label"></span>
+                            <div id="online-badge" class="online-status admin-only hidden"><span class="online-dot"></span>На сайте: <strong id="online-count">1</strong> чел.</div>
+                        </div>
+                        <a href="/orders" class="nav-item profile-menu-item auth-only hidden" data-tab="orders">Заказы <span id="orders-new-badge" class="orders-badge hidden"></span></a>
+                        <a href="/archive" class="nav-item profile-menu-item auth-only hidden" data-tab="archived">Архив</a>
+                        <a href="/accounting" class="nav-item profile-menu-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
+                        <a href="/clients" class="nav-item profile-menu-item admin-only hidden" data-tab="clients">Клиенты</a>
+                        <button id="sidebar-login-btn" type="button" class="btn primary profile-menu-login">Войти</button>
+                        <button id="logout-btn" type="button" class="profile-menu-item profile-menu-logout hidden">Выйти</button>
+                    </div>
+                </div>
+                <button type="button" id="site-menu-toggle" class="icon-btn site-menu-toggle" aria-label="Меню" aria-expanded="false" aria-controls="site-nav">
+                    <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><line x1="3" y1="7" x2="21" y2="7"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="17" x2="21" y2="17"></line></svg>
+                </button>
+            </div>
+        </div>
+    </header>
 
     <div id="dashboard-view" class="dashboard-layout home-mode fade-in">
-        <aside class="sidebar glass-panel">
-            <div class="logo small"><h1>FUNKO <span>STOP</span></h1></div>
-            <nav>
-                <a href="/" class="nav-item active" data-tab="home">Главная</a>
-                <a href="/catalog" class="nav-item" data-tab="catalog">Каталог</a>
-                <a href="/orders" class="nav-item auth-only hidden" data-tab="orders">Заказы <span id="orders-new-badge" class="orders-badge hidden"></span></a>
-                <a href="/archive" class="nav-item auth-only hidden" data-tab="archived">Архив</a>
-                <a href="/accounting" class="nav-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
-                <a href="/clients" class="nav-item admin-only hidden" data-tab="clients">Клиенты</a>
-            </nav>
-            <div id="online-badge" class="online-status admin-only hidden"
-                style="margin-top:15px;font-size:0.85rem;color:#40c057;display:flex;align-items:center;gap:6px;padding:0 10px;">
-                <span style="width:8px;height:8px;background:#40c057;border-radius:50%;display:inline-block;"></span>
-                На сайте: <strong id="online-count">1</strong> чел.
-            </div>
-            <div class="sidebar-auth-box mt-auto">
-                <div id="sidebar-user-chip" class="user-chip hidden" style="margin-bottom: 10px; width: 100%; justify-content: center; text-align: center;">
-                    <span id="sidebar-user-label" style="font-weight:600;font-size:0.85rem;"></span>
-                </div>
-                <button id="sidebar-login-btn" class="btn primary" style="width: 100%; display: flex; align-items: center; justify-content: center;">Войти</button>
-                <button id="logout-btn" class="btn secondary outline hidden" style="width: 100%;">Выйти</button>
-            </div>
-        </aside>
 
         <main class="content">
 
             <!-- HOME / TITLE TAB (Full screen immersive landing) -->
             <section id="home-tab" class="tab-content active">
-                <!-- Sticky Landing Navbar -->
-                <header class="landing-navbar">
-                    <div class="landing-nav-inner">
-                        <div class="landing-logo" onclick="window.scrollTo({top:0, behavior:'smooth'})">
-                            <span class="landing-logo-text">FUNKO <span>STOP</span></span>
-                        </div>
-                        <nav class="landing-nav-links">
-                            <a href="#preorder-section" class="landing-nav-link">Предзаказ</a>
-                            <a href="#stock-section" class="landing-nav-link">Наличие (Авито)</a>
-                            <a href="#delivery-section" class="landing-nav-link">Оплата и доставка</a>
-                            <a href="#faq-section" class="landing-nav-link">FAQ</a>
-                            <a href="https://t.me/FunkoStopReviews" target="_blank" rel="noopener" class="landing-nav-link">Отзывы</a>
-                        </nav>
-                        <div class="landing-nav-actions">
-                            <button type="button" class="btn primary landing-btn-catalog" onclick="window.switchTab('catalog')">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                                <span>Каталог</span>
-                            </button>
-                            <button type="button" class="btn secondary outline landing-btn-cart" onclick="window.openCartModal()" style="display:inline-flex; align-items:center; gap:8px;">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                                <span>Корзина</span>
-                                <span id="landing-cart-badge" class="cart-badge-count">0</span>
-                            </button>
-                            <button type="button" id="landing-login-btn" class="btn secondary outline landing-btn-login" onclick="window.openLoginModal()">
-                                <span>Войти</span>
-                            </button>
-                            <div id="landing-user-chip" class="landing-user-chip hidden">
-                                <span id="landing-user-name" class="landing-user-name"></span>
-                                <button type="button" class="btn secondary outline landing-btn-orders" onclick="window.switchTab('orders')">Мои заказы</button>
-                            </div>
-                        </div>
-                    </div>
-                </header>
 
                 <div class="home-container">
-                    <!-- Hero Section -->
-                    <div class="home-hero glass-panel">
-                        <div class="hero-content">
-                            <div class="hero-brand-badge">
-                                <span class="hero-badge-pill">
-                                    <span class="hero-status-pulse"></span>
-                                    Официальный сервис предзаказов и доставки фигурок
-                                </span>
-                            </div>
-
-                            <h1 class="hero-heading">
-                                Редкие фигурки и эксклюзивы <span class="hero-accent-text">Funko POP</span>
+                    <section class="hero">
+                        <div class="hero-text">
+                            <h1>
+                                <span class="hero-title">Funko<br>Pop!</span>
+                                <svg class="hero-zigzag" aria-hidden="true" width="64" height="28" viewBox="0 0 64 28" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 24 L12 5 L20 20 L30 4 L38 20 L48 6 L60 22"></path></svg>
+                                <span class="hero-sub">Редкие фигурки, эксклюзивы и коллекционные релизы</span>
                             </h1>
-
-                            <p class="hero-description">
-                                Предзаказы из США и Европы · Гарантия подлинности · 50% предоплата фиксирует цену · Доставка по всей РФ
-                            </p>
-
-                            <div class="hero-cta-buttons">
-                                <button type="button" class="btn primary hero-btn-main" onclick="window.switchTab('catalog')">
-                                    <span>Перейти в каталог</span>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                                </button>
-                                <a href="https://t.me/Funko_Stop" target="_blank" class="btn secondary outline hero-btn-telegram" rel="noopener">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                                    <span>Написать @Funko_Stop</span>
+                            <div class="hero-ctas">
+                                <a href="/catalog" class="hero-cta hero-cta-primary" onclick="event.preventDefault(); window.switchTab('catalog')">Перейти в каталог
+                                    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
                                 </a>
+                                <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" class="hero-cta hero-cta-secondary">Написать Funko Stop</a>
                             </div>
                         </div>
+                        <div class="hero-collage" aria-hidden="true">
+                            <svg class="hero-paper" viewBox="0 0 600 540" preserveAspectRatio="none">
+                                <polygon class="paper-ink" points="70,40 120,26 182,48 240,18 302,40 362,16 432,46 500,24 562,54 546,122 572,192 538,262 566,330 528,402 556,470 498,502 430,484 360,514 290,490 220,518 150,494 88,512 58,450 84,380 50,312 80,240 46,170 76,102"></polygon>
+                                <polygon class="paper-red" points="14,118 122,100 134,170 112,240 22,254 34,188"></polygon>
+                                <polygon class="paper-red" points="468,356 592,336 600,440 580,522 478,532 492,452"></polygon>
+                            </svg>
+                            <span class="hero-tape hero-tape-1"></span>
+                            <span class="hero-tape hero-tape-2"></span>
+                            <img class="hero-fig hero-fig-1" src="/static/images/hero/dexter-box.webp" alt="" width="800" height="800" decoding="async">
+                            <img class="hero-fig hero-fig-2" src="/static/images/hero/doom-box.webp" alt="" width="800" height="800" decoding="async">
+                            <img class="hero-fig hero-fig-3" src="/static/images/hero/coraline-box.webp" alt="" width="800" height="800" decoding="async">
+                            <span class="hero-scribble">Collect<br>trade<br>repeat</span>
+                            <span class="hero-callout hero-callout-1">Dexter</span>
+                            <span class="hero-callout hero-callout-2">Doctor Doom</span>
+                            <span class="hero-callout hero-callout-3">Coraline</span>
+                        </div>
+                    </section>
 
-                        <!-- Hero Stats Strip — доставка первой -->
-                        <div class="hero-stats-strip">
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">Доставка по всей РФ</span>
-                                    <span class="stat-sub">СДЭК, Яндекс, Авито, Ozon, Почта</span>
-                                </div>
+                    <div class="marquee" aria-hidden="true"><div class="marquee-track"><span>Funko Pop</span><b aria-hidden="true">✦</b><span>Предзаказ из США и Европы</span><b aria-hidden="true">✦</b><span>50% предоплата</span><b aria-hidden="true">✦</b><span>Хранение на складе в Москве</span><b aria-hidden="true">✦</b><span>Доставка по всей РФ</span><b aria-hidden="true">✦</b><span>Гарантия подлинности</span><b aria-hidden="true">✦</b><span>Funko Pop</span><b aria-hidden="true">✦</b><span>Предзаказ из США и Европы</span><b aria-hidden="true">✦</b><span>50% предоплата</span><b aria-hidden="true">✦</b><span>Хранение на складе в Москве</span><b aria-hidden="true">✦</b><span>Доставка по всей РФ</span><b aria-hidden="true">✦</b><span>Гарантия подлинности</span><b aria-hidden="true">✦</b></div></div>
+
+                    <section class="benefits" aria-label="Преимущества">
+                        <div class="benefits-inner">
+                            <div class="benefit">
+                                <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></span>
+                                <div><div class="benefit-title">Доставка по всей РФ</div><div class="benefit-text">Яндекс, Авито, Ozon, Почта, СДЭК</div></div>
                             </div>
-                            <div class="stat-divider"></div>
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e50914" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M16 8l-8 8"></path><circle cx="9" cy="9" r="1.5"></circle><circle cx="15" cy="15" r="1.5"></circle></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">50% Предоплата</span>
-                                    <span class="stat-sub">Фиксация цены до самого получения</span>
-                                </div>
+                            <div class="benefit">
+                                <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg></span>
+                                <div><div class="benefit-title">50% предоплата</div><div class="benefit-text">Фиксация цены до самого получения</div></div>
                             </div>
-                            <div class="stat-divider"></div>
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">30–90 Дней хранения</span>
-                                    <span class="stat-sub">Бесплатно на нашем складе в Москве</span>
-                                </div>
+                            <div class="benefit">
+                                <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg></span>
+                                <div><div class="benefit-title">30–60 дней хранения</div><div class="benefit-text">Бесплатно на нашем складе в Москве</div></div>
                             </div>
-                            <div class="stat-divider"></div>
-                            <div class="stat-item">
-                                <div class="stat-icon-wrap">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
-                                </div>
-                                <div class="stat-text">
-                                    <span class="stat-title">Р/С в Т-Банке</span>
-                                    <span class="stat-sub">Официально ИП • 0% скрытых комиссий</span>
-                                </div>
+                            <div class="benefit">
+                                <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="1"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg></span>
+                                <div><div class="benefit-title">Р/С в Т-Банке</div><div class="benefit-text">Официально ИП · 0% скрытых комиссий</div></div>
                             </div>
                         </div>
-                    </div>
+                    </section>
+
+                    <section id="home-new-section" class="home-new" aria-labelledby="home-new-title">
+                        <div class="home-new-head">
+                            <div>
+                                <h2 id="home-new-title">Новинки<br>и предзаказы</h2>
+                                <a href="/catalog" class="link-arrow" onclick="event.preventDefault(); window.switchTab('catalog')">Смотреть все →</a>
+                            </div>
+                            <div id="home-new-tabs" class="home-new-tabs" role="tablist" aria-label="Бренды"></div>
+                        </div>
+                        <div id="home-new-stub" class="home-new-stub"><strong>Раздел в разработке</strong><span>Новинки и предзаказы появятся здесь совсем скоро.</span></div>
+                        <div id="home-new-grid" class="catalog-grid"></div>
+                    </section>
 
                     <!-- Quick Hub Cards — без карточки менеджера (дублируется с hero) -->
                     <div class="home-hub-grid">
@@ -393,7 +377,7 @@
                             <div class="step-card glass-panel">
                                 <div class="step-number">02</div>
                                 <h4>Личный кабинет и трекинг</h4>
-                                <p>Сразу после оплаты заказ привязывается к вашему Личному кабинету на <strong>funkostop.org</strong> и становится доступен для отслеживания в Telegram-боте <a href="https://t.me/funkostop_bot" target="_blank" rel="noopener" style="color:#4dabf7; font-weight:700;">@funkostop_bot</a>.</p>
+                                <p>Сразу после оплаты заказ привязывается к вашему Личному кабинету на <strong>funkostop.org</strong> и становится доступен для отслеживания в Telegram-боте <a href="https://t.me/funkostop_bot" target="_blank" rel="noopener" style="color:#1C6EA4; font-weight:700;">@funkostop_bot</a>.</p>
                             </div>
                             <div class="step-arrow">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
@@ -530,7 +514,7 @@
                             <!-- Bundle & Pickup Card -->
                             <div class="feature-card glass-panel">
                                 <div class="feature-icon blue">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1C6EA4" stroke-width="2"><path d="M20 7h-9"></path><path d="M14 17H5"></path><circle cx="17" cy="17" r="3"></circle><circle cx="7" cy="7" r="3"></circle></svg>
                                 </div>
                                 <h3>Объединение и самовывоз</h3>
                                 <p><strong>Объединение заказов:</strong> Да! Можно объединять любые позиции в одну посылку: несколько предзаказов, товары из наличия или их комбинацию. Просто сообщите менеджеру.</p>
@@ -755,11 +739,11 @@
                 
     <div class="mass-action-bar admin-only hidden" id="orders-mass-edit-panel" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.35); border-radius: 12px; margin-bottom: 14px; flex-wrap: wrap;">
         <div class="mass-action-left" style="display: flex; align-items: center; gap: 10px;">
-            <span id="orders-mass-edit-count" style="font-weight: 600; color: #fff; font-size: 0.95rem;">Выбрано заказов: 0 шт.</span>
+            <span id="orders-mass-edit-count" style="font-weight: 600; color: var(--ink); font-size: 0.95rem;">Выбрано заказов: 0 шт.</span>
             <span style="color: var(--gray); font-size: 0.85rem;">(отметьте галочками нужные строки)</span>
         </div>
         <div class="mass-action-right" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <select id="orders-mass-edit-status" class="mass-status-select" style="padding: 8px 12px; border-radius: 8px; background: #161616; border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit; font-size: 0.88rem; min-width: 220px; cursor: pointer;">
+            <select id="orders-mass-edit-status" class="mass-status-select" style="padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.2); color: var(--ink); font-family: inherit; font-size: 0.88rem; min-width: 220px; cursor: pointer;">
                 <option value="">— Выберите новый статус —</option>
                 <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Ожидает рассылки из США">Ожидает рассылки из США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
             </select>
@@ -840,11 +824,11 @@
             <section id="catalog-tab" class="tab-content">
                 <!-- Admin Notification Banner when Catalog is in Dev Mode -->
                 <div id="catalog-admin-dev-notice" class="admin-only hidden" style="background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: #fff;">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: var(--ink);">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                         <span><strong>Режим администратора:</strong> Каталог открыт для вас. Для обычных посетителей включена заглушка <em>«В разработке»</em>.</span>
                     </div>
-                    <span style="font-size: 0.78rem; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 6px; color: #ff9999; white-space: nowrap;">Доступ админа</span>
+                    <span style="font-size: 0.78rem; background: rgba(var(--ink-rgb), 0.1); padding: 4px 10px; border-radius: 6px; color: var(--pre); white-space: nowrap;">Доступ админа</span>
                 </div>
 
                 <!-- Guest Under Development Screen -->
@@ -1051,6 +1035,7 @@
 
             <!-- PRODUCT PAGE TAB -->
             <section id="product-tab" class="tab-content">
+                <div class="pp-topbar">
                 <button type="button" class="pp-back-btn" onclick="window.closeProductPage()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                     Назад в каталог
@@ -1060,15 +1045,19 @@
                     <span class="breadcrumb-sep">›</span>
                     <span id="pp-breadcrumb-name"></span>
                 </div>
+                </div>
                 <div class="product-page-layout">
                     <div class="pp-image-col">
                         <div class="pp-image-box">
+                            <button type="button" id="pp-prev" class="pp-arrow pp-arrow-prev hidden" aria-label="Предыдущее фото"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"></polyline></svg></button>
+                            <button type="button" id="pp-next" class="pp-arrow pp-arrow-next hidden" aria-label="Следующее фото"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"></polyline></svg></button>
                             <img id="pp-img" src="" alt="" style="display:none;">
                             <div id="pp-img-placeholder" class="product-image-placeholder" style="display:none;">
                                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                                 <span>Фото скоро</span>
                             </div>
                         </div>
+                        <div id="pp-thumbs" class="pp-thumbs hidden" role="group" aria-label="Фотографии товара"></div>
                     </div>
                     <div class="pp-info-col">
                         <div id="pp-tags" class="card-tags-row" style="margin-bottom:12px;"></div>
@@ -1076,6 +1065,7 @@
                         <h1 id="pp-title" style="font-size:clamp(1.4rem,3vw,2rem);font-weight:700;margin:0 0 20px;line-height:1.25;"></h1>
                         <div id="pp-price-row" style="font-size:1.8rem;font-weight:700;margin-bottom:8px;"></div>
                         <div id="pp-stock" style="font-size:0.88rem;margin-bottom:28px;"></div>
+                        <div id="pp-prepay" class="pp-prepay"></div>
                         <div class="pp-actions" id="pp-actions"></div>
                         <div id="pp-copy-link" style="margin-top:16px;">
                             <button type="button" class="btn secondary outline" style="font-size:0.82rem;padding:7px 14px;display:inline-flex;align-items:center;gap:7px;" onclick="window.copyProductLink(window._ppCurrentId)">
@@ -1095,11 +1085,11 @@
                 
     <div class="mass-action-bar admin-only hidden" id="archived-mass-edit-panel" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.35); border-radius: 12px; margin-bottom: 14px; flex-wrap: wrap;">
         <div class="mass-action-left" style="display: flex; align-items: center; gap: 10px;">
-            <span id="archived-mass-edit-count" style="font-weight: 600; color: #fff; font-size: 0.95rem;">Выбрано заказов: 0 шт.</span>
+            <span id="archived-mass-edit-count" style="font-weight: 600; color: var(--ink); font-size: 0.95rem;">Выбрано заказов: 0 шт.</span>
             <span style="color: var(--gray); font-size: 0.85rem;">(отметьте галочками нужные строки)</span>
         </div>
         <div class="mass-action-right" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <select id="archived-mass-edit-status" class="mass-status-select" style="padding: 8px 12px; border-radius: 8px; background: #161616; border: 1px solid rgba(255,255,255,0.2); color: #fff; font-family: inherit; font-size: 0.88rem; min-width: 220px; cursor: pointer;">
+            <select id="archived-mass-edit-status" class="mass-status-select" style="padding: 8px 12px; border-radius: 8px; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.2); color: var(--ink); font-family: inherit; font-size: 0.88rem; min-width: 220px; cursor: pointer;">
                 <option value="">— Выберите новый статус —</option>
                 <option value="Заказ принят в обработку">Заказ принят в обработку</option><option value="Заказ ожидает отправки из магазина">Заказ ожидает отправки из магазина</option><option value="Заказ едет на склад США">Заказ едет на склад США</option><option value="Заказ начал сортировку на складе США">Заказ начал сортировку на складе США</option><option value="Ожидает рассылки из США">Ожидает рассылки из США</option><option value="Заказ отправлен из США на наш склад в Россию">Заказ отправлен из США на наш склад в Россию</option><option value="Ожидает выхода в продажу">Ожидает выхода в продажу</option><option value="Заказ проходит таможенное оформление">Заказ проходит таможенное оформление</option><option value="Заказ прибыл в магазин и готов к выдаче">Заказ прибыл в магазин и готов к выдаче</option><option value="Выдано">Выдано (→ в архив)</option>
             </select>
@@ -1223,13 +1213,13 @@
                             <th data-sort="cost" style="cursor:pointer;white-space:nowrap;">СЕБЕСТ. &#8597;</th>
                             <th data-sort="delivery" style="cursor:pointer;white-space:nowrap;">ДОСТАВКА &#8597;</th>
                             <th data-sort="paid" style="cursor:pointer;white-space:nowrap;">ВНЕСЕНО &#8597;</th>
-                            <th onclick="window.toggleTaxes(event)" style="cursor:pointer;color:#ff9999;white-space:nowrap;" title="Нажмите для деталей">
+                            <th onclick="window.toggleTaxes(event)" style="cursor:pointer;color: var(--pre);white-space:nowrap;" title="Нажмите для деталей">
                                 НАЛОГИ <span id="taxes-toggle-icon">[+]</span>
                             </th>
                             <th class="tax-column hidden tax-sub-col">УСН 6%</th>
                             <th class="tax-column hidden tax-sub-col">ЧЕК 1.5%</th>
                             <th class="tax-column hidden tax-sub-col">ЭКВ. 2%</th>
-                            <th data-sort="margin" style="cursor:pointer;color:#ffb400;white-space:nowrap;">МАРЖА &#8597;</th>
+                            <th data-sort="margin" style="cursor:pointer;color:var(--warn);white-space:nowrap;">МАРЖА &#8597;</th>
                         </tr></thead>
                         <tbody></tbody>
                     </table>
@@ -1440,9 +1430,9 @@
                 <h3 style="margin:0; font-size:1.3rem; display:flex; align-items:center; gap:8px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                     <span>Корзина</span>
-                    <span id="cart-modal-count-pill" style="font-size:0.8rem; background:rgba(229,9,20,0.15); color:#ff4d4d; padding:2px 8px; border-radius:12px; font-weight:700;">0 шт.</span>
+                    <span id="cart-modal-count-pill" style="font-size:0.8rem; background:rgba(229,9,20,0.15); color:var(--pre); padding:2px 8px; border-radius:12px; font-weight:700;">0 шт.</span>
                 </h3>
-                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">✕</button>
+                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
             </div>
             
             <div id="cart-items-list" style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; padding-right: 4px;">
@@ -1451,19 +1441,19 @@
 
             <div id="cart-empty-view" class="hidden" style="text-align: center; padding: 40px 20px;">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" style="margin-bottom:12px;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                <h4 style="font-size: 1.1rem; color: #fff; margin-bottom: 6px;">В корзине пока пусто</h4>
+                <h4 style="font-size: 1.1rem; color: var(--ink); margin-bottom: 6px;">В корзине пока пусто</h4>
                 <p style="color: var(--gray); font-size: 0.88rem; margin-bottom: 18px;">Выберите понравившиеся фигурки в каталоге и добавьте их сюда</p>
                 <button type="button" class="btn primary" onclick="closeModals(); window.switchTab('catalog');" style="max-width: 220px; margin: 0 auto;">Перейти в каталог</button>
             </div>
 
-            <div id="cart-summary-footer" style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px;">
+            <div id="cart-summary-footer" style="border-top: 1px solid rgba(var(--ink-rgb), 0.08); padding-top: 16px;">
                 <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;">
                     <span style="color:var(--gray); font-size:0.92rem;">Итоговая стоимость:</span>
-                    <span id="cart-total-display" style="font-size:1.35rem; font-weight:800; color:#fff;">0 ₽</span>
+                    <span id="cart-total-display" style="font-size:1.35rem; font-weight:800; color:var(--ink);">0 ₽</span>
                 </div>
                 <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:16px;">
-                    <span style="color:#00ff88; font-size:0.85rem; font-weight:600;">Предоплата 50% при заказе:</span>
-                    <span id="cart-prepay-display" style="font-size:1.05rem; font-weight:700; color:#00ff88;">0 ₽</span>
+                    <span style="color:var(--ok); font-size:0.85rem; font-weight:600;">Предоплата 50% при заказе:</span>
+                    <span id="cart-prepay-display" style="font-size:1.05rem; font-weight:700; color:var(--ok);">0 ₽</span>
                 </div>
                 <div style="display:flex; gap:10px;">
                     <button type="button" class="btn secondary outline" onclick="window.clearCart()" style="width: auto; padding: 12px 18px; font-size: 0.88rem;">Очистить</button>
@@ -1479,17 +1469,17 @@
         <div id="checkout-modal" class="glass-panel modal hidden" style="max-width: 640px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                 <h3 style="margin:0; font-size:1.25rem;">Оформление заказа</h3>
-                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">✕</button>
+                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
             </div>
 
             <!-- Order mini-recap -->
-            <div id="checkout-items-preview" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px 16px; margin-bottom:16px; max-height:120px; overflow-y:auto; font-size:0.86rem; color:#ddd;">
+            <div id="checkout-items-preview" style="background:rgba(var(--ink-rgb), 0.03); border:1px solid rgba(var(--ink-rgb), 0.08); border-radius:12px; padding:12px 16px; margin-bottom:16px; max-height:120px; overflow-y:auto; font-size:0.86rem; color:var(--muted);">
                 <!-- Populated dynamically -->
             </div>
 
             <!-- Prepayment selector (50% vs 100%) -->
             <div style="margin-bottom:18px;">
-                <label style="display:block; font-size:0.85rem; font-weight:600; color:#aaa; margin-bottom:8px;">ВЫБЕРИТЕ ФОРМАТ ОПЛАТЫ:</label>
+                <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--muted); margin-bottom:8px;">ВЫБЕРИТЕ ФОРМАТ ОПЛАТЫ:</label>
                 <div class="prepay-options-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                     <div class="prepay-option-card active" id="option-prepay-50" onclick="window.selectPaymentOption('50%')">
                         <div class="prepay-card-header">
@@ -1517,39 +1507,39 @@
             <form id="checkout-form" onsubmit="window.proceedToPayment(event)">
                 <div style="margin-bottom:14px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <span style="font-size:0.85rem; font-weight:600; color:#aaa; text-transform:uppercase; letter-spacing:0.5px;">Контактные данные покупателя</span>
-                        <span style="font-size:0.75rem; color:#ff4d4d;">* Обязательные поля</span>
+                        <span style="font-size:0.85rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px;">Контактные данные покупателя</span>
+                        <span style="font-size:0.75rem; color:var(--pre);">* Обязательные поля</span>
                     </div>
 
-                    <div id="checkout-error-banner" class="checkout-error-banner hidden" style="background:rgba(229,9,20,0.15); border:1px solid rgba(229,9,20,0.4); color:#ff6b6b; padding:8px 12px; border-radius:8px; font-size:0.84rem; margin-bottom:12px;">
+                    <div id="checkout-error-banner" class="checkout-error-banner hidden" style="background:rgba(229,9,20,0.15); border:1px solid rgba(229,9,20,0.4); color:var(--pre); padding:8px 12px; border-radius:8px; font-size:0.84rem; margin-bottom:12px;">
                         Пожалуйста, заполните Имя, Телефон и Telegram для связи!
                     </div>
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
                         <div class="input-group" style="margin:0;">
-                            <label style="font-size:0.82rem; color:#ccc;">Имя <span style="color:#ff4d4d;">*</span></label>
+                            <label style="font-size:0.82rem; color:var(--muted);">Имя <span style="color:var(--pre);">*</span></label>
                             <input type="text" id="checkout-first-name" placeholder="Александр" required autocomplete="given-name" style="padding:10px 14px; font-size:0.9rem;">
                         </div>
                         <div class="input-group" style="margin:0;">
-                            <label style="font-size:0.82rem; color:#ccc;">Фамилия <span style="color:#ff4d4d;">*</span></label>
+                            <label style="font-size:0.82rem; color:var(--muted);">Фамилия <span style="color:var(--pre);">*</span></label>
                             <input type="text" id="checkout-last-name" placeholder="Смирнов" required autocomplete="family-name" style="padding:10px 14px; font-size:0.9rem;">
                         </div>
                     </div>
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
                         <div class="input-group" style="margin:0;">
-                            <label style="font-size:0.82rem; color:#ccc;">Номер телефона <span style="color:#ff4d4d;">*</span></label>
+                            <label style="font-size:0.82rem; color:var(--muted);">Номер телефона <span style="color:var(--pre);">*</span></label>
                             <input type="tel" id="checkout-phone" placeholder="+7 (999) 000-00-00" required autocomplete="tel" style="padding:10px 14px; font-size:0.9rem;">
                         </div>
                         <div class="input-group" style="margin:0;">
-                            <label style="font-size:0.82rem; color:#ccc;">Telegram (@ник, ссылка или ID) <span style="color:#ff4d4d;">*</span></label>
+                            <label style="font-size:0.82rem; color:var(--muted);">Telegram (@ник, ссылка или ID) <span style="color:var(--pre);">*</span></label>
                             <input type="text" id="checkout-tg" placeholder="@username или ссылка/ID" required autocomplete="off" style="padding:10px 14px; font-size:0.9rem;">
                         </div>
                     </div>
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
                         <div class="input-group" style="margin:0;">
-                            <label style="font-size:0.82rem; color:#ccc;">Способ доставки / получения</label>
+                            <label style="font-size:0.82rem; color:var(--muted);">Способ доставки / получения</label>
                             <select id="checkout-delivery" style="padding:10px 14px; font-size:0.88rem;">
                                 <option value="СДЭК">СДЭК (по всей России)</option>
                                 <option value="Почта России">Почта России</option>
@@ -1558,14 +1548,14 @@
                             </select>
                         </div>
                         <div class="input-group" style="margin:0;">
-                            <label style="font-size:0.82rem; color:#ccc;">Комментарий (город / ПВЗ)</label>
+                            <label style="font-size:0.82rem; color:var(--muted);">Комментарий (город / ПВЗ)</label>
                             <input type="text" id="checkout-comment" placeholder="Город или адрес ПВЗ" style="padding:10px 14px; font-size:0.88rem;">
                         </div>
                     </div>
 
                     <!-- 152-FZ Consent for Processing Personal Data -->
-                    <div id="checkout-consent-container" class="checkout-consent-container" style="margin-top:12px; margin-bottom:12px; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.1); border-radius:10px;">
-                        <label for="checkout-pd-consent" style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:0.83rem; color:#bbb; line-height:1.45; margin:0;">
+                    <div id="checkout-consent-container" class="checkout-consent-container" style="margin-top:12px; margin-bottom:12px; padding:12px 14px; background:rgba(var(--ink-rgb), 0.03); border:1px solid rgba(var(--ink-rgb), 0.1); border-radius:10px;">
+                        <label for="checkout-pd-consent" style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:0.83rem; color:var(--muted); line-height:1.45; margin:0;">
                             <input type="checkbox" id="checkout-pd-consent" required checked style="width:18px; height:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer; flex-shrink:0;">
                             <span>Я даю согласие на обработку моих <a href="/static/privacy.html" target="_blank" style="color:var(--primary); text-decoration:underline;">персональных данных</a> (152-ФЗ) и принимаю условия <a href="/static/oferta.html" target="_blank" style="color:var(--primary); text-decoration:underline;">Публичной оферты</a> и <a href="/static/returns.html" target="_blank" style="color:var(--primary); text-decoration:underline;">Правил возврата</a></span>
                         </label>
@@ -1585,28 +1575,28 @@
         <div id="payment-modal" class="glass-panel modal hidden" style="max-width: 560px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                 <h3 style="margin:0; font-size:1.25rem;">Оплата заказа</h3>
-                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:#888; font-size:1.4rem; cursor:pointer;">✕</button>
+                <button type="button" class="close-modal-x close-modal" style="background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer;">✕</button>
             </div>
 
             <div class="payment-card-box" style="background:linear-gradient(135deg, rgba(229,9,20,0.12) 0%, rgba(255,255,255,0.02) 100%); border:1px solid rgba(229,9,20,0.35); border-radius:14px; padding:18px; margin-bottom:18px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <span style="font-size:0.88rem; color:#ccc;">К оплате сейчас:</span>
-                    <span id="payment-amount-display" style="font-size:1.6rem; font-weight:900; color:#fff;">0 ₽</span>
+                    <span style="font-size:0.88rem; color:var(--muted);">К оплате сейчас:</span>
+                    <span id="payment-amount-display" style="font-size:1.6rem; font-weight:900; color:var(--ink);">0 ₽</span>
                 </div>
-                <div style="font-size:0.82rem; color:#aaa; line-height:1.5;">
-                    <span style="color:#00ff88; font-weight:700;">● Безопасная оплата через Т-Банк</span><br>
+                <div style="font-size:0.82rem; color:var(--muted); line-height:1.5;">
+                    <span style="color:var(--ok); font-weight:700;">● Безопасная оплата через Т-Банк</span><br>
                     Вы будете перенаправлены на защищённую страницу Т-Банка для оплаты картой или через СБП. Чек придёт на email.
                 </div>
             </div>
 
             <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
-                <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);">
+                <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(var(--ink-rgb), 0.04); border:1px solid rgba(var(--ink-rgb), 0.1);">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                    <span style="font-size:0.84rem; color:#bbb;">Данные карты защищены шифрованием PCI DSS</span>
+                    <span style="font-size:0.84rem; color:var(--muted);">Данные карты защищены шифрованием PCI DSS</span>
                 </div>
-                <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.1);">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4dabf7" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                    <span style="font-size:0.84rem; color:#bbb;">Visa, MasterCard, МИР, СБП</span>
+                <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:10px; background:rgba(var(--ink-rgb), 0.04); border:1px solid rgba(var(--ink-rgb), 0.1);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C6EA4" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                    <span style="font-size:0.84rem; color:var(--muted);">Visa, MasterCard, МИР, СБП</span>
                 </div>
             </div>
 
@@ -1621,24 +1611,24 @@
 
         <!-- Order Success & Account Creation Modal -->
         <div id="order-success-modal" class="glass-panel modal hidden" style="max-width: 600px; text-align: center;">
-            <div style="width:64px; height:64px; border-radius:50%; background:rgba(0,255,136,0.15); border:2px solid #00ff88; color:#00ff88; font-size:2rem; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto;">✓</div>
-            <h3 style="font-size:1.4rem; color:#fff; margin-bottom:6px;">Заказ успешно оформлен и оплачен!</h3>
-            <p style="color:var(--gray); font-size:0.9rem; margin-bottom:20px;">Номер вашего заказа: <strong id="success-order-id" style="color:#fff; font-size:1.1rem;">#0</strong></p>
+            <div style="width:64px; height:64px; border-radius:50%; background:rgba(0,255,136,0.15); border:2px solid #00ff88; color:var(--ok); font-size:2rem; display:flex; align-items:center; justify-content:center; margin:0 auto 16px auto;">✓</div>
+            <h3 style="font-size:1.4rem; color:var(--ink); margin-bottom:6px;">Заказ успешно оформлен и оплачен!</h3>
+            <p style="color:var(--gray); font-size:0.9rem; margin-bottom:20px;">Номер вашего заказа: <strong id="success-order-id" style="color:var(--ink); font-size:1.1rem;">#0</strong></p>
 
             <!-- Account Credentials Box -->
-            <div id="success-credentials-box" class="credentials-box" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:18px; text-align:left; margin-bottom:18px;">
-                <div style="font-size:0.85rem; font-weight:700; color:#00ff88; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <div id="success-credentials-box" class="credentials-box" style="background:rgba(var(--ink-rgb), 0.04); border:1px solid rgba(var(--ink-rgb), 0.12); border-radius:14px; padding:18px; text-align:left; margin-bottom:18px;">
+                <div style="font-size:0.85rem; font-weight:700; color:var(--ok); text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
                     <span>Личный кабинет покупателя</span>
                 </div>
-                <p style="font-size:0.84rem; color:#aaa; margin-bottom:12px; line-height:1.45;">Для вас автоматически создан личный кабинет на <strong>funkostop.org</strong>, к которому привязан этот заказ. Сохраните данные для входа:</p>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:rgba(0,0,0,0.3); padding:12px; border-radius:8px; margin-bottom:12px;">
+                <p style="font-size:0.84rem; color:var(--muted); margin-bottom:12px; line-height:1.45;">Для вас автоматически создан личный кабинет на <strong>funkostop.org</strong>, к которому привязан этот заказ. Сохраните данные для входа:</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; background:rgba(255, 255, 255, 0.4); padding:12px; border-radius:8px; margin-bottom:12px;">
                     <div>
-                        <span style="font-size:0.75rem; color:#888;">Ваш Логин (ID):</span>
-                        <div id="success-client-id" style="font-size:1.1rem; font-weight:800; color:#fff;">0</div>
+                        <span style="font-size:0.75rem; color:var(--muted);">Ваш Логин (ID):</span>
+                        <div id="success-client-id" style="font-size:1.1rem; font-weight:800; color:var(--ink);">0</div>
                     </div>
                     <div>
-                        <span style="font-size:0.75rem; color:#888;">Пароль:</span>
-                        <div id="success-password" style="font-size:1.1rem; font-weight:800; color:#ff4d4d; letter-spacing:1px;">------</div>
+                        <span style="font-size:0.75rem; color:var(--muted);">Пароль:</span>
+                        <div id="success-password" style="font-size:1.1rem; font-weight:800; color:var(--pre); letter-spacing:1px;">------</div>
                     </div>
                 </div>
                 <button type="button" id="success-auto-login-btn" class="btn primary" onclick="window.autoLoginFromSuccess()" style="width:100%; padding:10px; font-size:0.88rem; font-weight:600;">
@@ -1648,13 +1638,13 @@
 
             <!-- Telegram Bot Binding Box -->
             <div class="tg-binding-box" style="background:rgba(0,136,204,0.08); border:1px solid rgba(0,136,204,0.25); border-radius:14px; padding:16px; text-align:left; margin-bottom:20px;">
-                <div style="font-size:0.85rem; font-weight:700; color:#4dabf7; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                <div style="font-size:0.85rem; font-weight:700; color:#1C6EA4; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
                     <span>Telegram-бот @funkostop_bot</span>
                 </div>
-                <p style="font-size:0.84rem; color:#bbb; margin-bottom:10px; line-height:1.45;">
+                <p style="font-size:0.84rem; color:var(--muted); margin-bottom:10px; line-height:1.45;">
                     Привяжите заказ в боте, чтобы получать уведомления об изменении статуса и прибытии фигурки в Москву:
                 </p>
-                <a id="success-tg-bot-link" href="https://t.me/funkostop_bot" target="_blank" rel="noopener" class="btn secondary outline" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:10px; font-size:0.88rem; color:#4dabf7; border-color:rgba(0,136,204,0.35);">
+                <a id="success-tg-bot-link" href="https://t.me/funkostop_bot" target="_blank" rel="noopener" class="btn secondary outline" style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:10px; font-size:0.88rem; color:#1C6EA4; border-color:rgba(0,136,204,0.35);">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
                     <span>Подключить бота @funkostop_bot</span>
                 </a>
@@ -1672,26 +1662,26 @@
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                 <!-- Categories / Brands column -->
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:14px; display:flex; flex-direction:column;">
-                    <h4 style="margin:0 0 10px 0; color:#fff; font-size:0.92rem; display:flex; justify-content:space-between; align-items:center;">
+                <div style="background:rgba(var(--ink-rgb), 0.03); border:1px solid rgba(var(--ink-rgb), 0.08); border-radius:10px; padding:14px; display:flex; flex-direction:column;">
+                    <h4 style="margin:0 0 10px 0; color:var(--ink); font-size:0.92rem; display:flex; justify-content:space-between; align-items:center;">
                         <span>Бренды</span>
                         <span id="meta-cat-count" style="font-size:0.75rem; color:var(--primary); font-weight:600;">0</span>
                     </h4>
                     <form id="add-category-form" style="display:flex; gap:6px; margin-bottom:12px;">
-                        <input type="text" id="new-category-name" placeholder="Новый бренд..." required style="flex:1; padding:7px 10px; font-size:0.85rem; border-radius:6px; background:#181818; border:1px solid rgba(255,255,255,0.2); color:#fff;">
+                        <input type="text" id="new-category-name" placeholder="Новый бренд..." required style="flex:1; padding:7px 10px; font-size:0.85rem; border-radius:6px; background:var(--card); border:1px solid rgba(var(--ink-rgb), 0.2); color:var(--ink);">
                         <button type="submit" class="btn primary" style="padding:7px 12px; font-size:0.85rem; font-weight:bold;">+</button>
                     </form>
                     <div id="meta-categories-list" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:4px;"></div>
                 </div>
 
                 <!-- Series / Universes column -->
-                <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:14px; display:flex; flex-direction:column;">
-                    <h4 style="margin:0 0 10px 0; color:#fff; font-size:0.92rem; display:flex; justify-content:space-between; align-items:center;">
+                <div style="background:rgba(var(--ink-rgb), 0.03); border:1px solid rgba(var(--ink-rgb), 0.08); border-radius:10px; padding:14px; display:flex; flex-direction:column;">
+                    <h4 style="margin:0 0 10px 0; color:var(--ink); font-size:0.92rem; display:flex; justify-content:space-between; align-items:center;">
                         <span>Тематики</span>
                         <span id="meta-ser-count" style="font-size:0.75rem; color:var(--primary); font-weight:600;">0</span>
                     </h4>
                     <form id="add-series-form" style="display:flex; gap:6px; margin-bottom:12px;">
-                        <input type="text" id="new-series-name" placeholder="Новая тематика..." required style="flex:1; padding:7px 10px; font-size:0.85rem; border-radius:6px; background:#181818; border:1px solid rgba(255,255,255,0.2); color:#fff;">
+                        <input type="text" id="new-series-name" placeholder="Новая тематика..." required style="flex:1; padding:7px 10px; font-size:0.85rem; border-radius:6px; background:var(--card); border:1px solid rgba(var(--ink-rgb), 0.2); color:var(--ink);">
                         <button type="submit" class="btn primary" style="padding:7px 12px; font-size:0.85rem; font-weight:bold;">+</button>
                     </form>
                     <div id="meta-series-list" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:4px;"></div>
@@ -1731,7 +1721,7 @@
                     </div>
                 </div>
 
-                <div class="input-group flex-row" style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);">
+                <div class="input-group flex-row" style="background: rgba(var(--ink-rgb), 0.03); padding: 12px; border-radius: 10px; border: 1px solid rgba(var(--ink-rgb), 0.06);">
                     <div style="flex: 1;">
                         <label>Базовая цена (&#8381;) *</label>
                         <input type="number" id="product-price" placeholder="5000" min="0" required>
@@ -1760,15 +1750,14 @@
                 </div>
 
                 <div class="input-group">
-                    <label>Фотография товара</label>
+                    <label>Фотографии товара</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="text" id="product-photo-id" placeholder="Telegram Photo ID или URL" style="flex-grow: 1;">
-                        <label for="product-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 14px; cursor: pointer; white-space: nowrap;">Загрузить фото</label>
+                        <input type="text" id="product-photo-id" placeholder="ID фото через запятую" style="flex-grow: 1;">
+                        <label for="product-photo-upload" class="btn secondary outline" style="margin: 0; padding: 10px 14px; cursor: pointer; white-space: nowrap;">+ Добавить фото</label>
                         <input type="file" id="product-photo-upload" accept="image/*" style="display: none;">
                     </div>
-                    <div id="product-photo-preview-wrap" style="margin-top: 10px; display: none;">
-                        <img id="product-photo-preview" src="" alt="Превью" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);">
-                    </div>
+                    <div id="product-photo-thumbs" class="photo-thumbs"></div>
+                    <div class="photo-hint">До 6 фото. Первое показывается на карточке, второе при наведении.</div>
                 </div>
 
                 <div class="input-group">
@@ -1795,13 +1784,13 @@
         <!-- Quick Order Modal from Catalog -->
         <div id="quick-order-modal" class="glass-panel modal hidden" style="max-width: 480px;">
             <h3>Быстрое оформление заказа</h3>
-            <div id="quick-order-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.06);">
+            <div id="quick-order-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(var(--ink-rgb), 0.03); padding: 12px; border-radius: 10px; margin-bottom: 16px; border: 1px solid rgba(var(--ink-rgb), 0.06);">
                 <img id="quick-order-img" src="" alt="Товар" style="width: 54px; height: 54px; object-fit: cover; border-radius: 6px;">
                 <div>
-                    <div id="quick-order-title" style="font-weight: 600; font-size: 0.95rem; color: #fff;"></div>
+                    <div id="quick-order-title" style="font-weight: 600; font-size: 0.95rem; color: var(--ink);"></div>
                     <div style="display: flex; gap: 8px; margin-top: 4px; align-items: baseline;">
                         <span id="quick-order-price" style="color: var(--primary); font-weight: bold; font-size: 1.1rem;"></span>
-                        <span id="quick-order-packs" style="color: #ffb400; font-size: 0.85rem;"></span>
+                        <span id="quick-order-packs" style="color: var(--warn); font-size: 0.85rem;"></span>
                     </div>
                 </div>
             </div>
@@ -1825,7 +1814,7 @@
         <!-- Confirm Delete Product Modal -->
         <div id="confirm-delete-product-modal" class="glass-panel modal hidden">
             <h3>Удалить товар?</h3>
-            <p id="delete-product-name-display" style="color: #fff; font-weight: 600; margin-bottom: 0.5rem;"></p>
+            <p id="delete-product-name-display" style="color: var(--ink); font-weight: 600; margin-bottom: 0.5rem;"></p>
             <p style="color:var(--gray); margin-bottom:1rem;">Товар будет безвозвратно удален из каталога.</p>
             <div class="modal-actions">
                 <button type="button" class="btn secondary outline close-modal">Отмена</button>
@@ -1851,10 +1840,10 @@
                     <button type="submit" class="btn primary" style="flex: 1.4;">Войти</button>
                 </div>
             </form>
-            <div style="margin-top: 12px; font-size: 0.74rem; color: #888; line-height: 1.4;">
+            <div style="margin-top: 12px; font-size: 0.74rem; color: var(--muted); line-height: 1.4;">
                 Авторизуясь, вы подтверждаете согласие с <a href="/static/privacy.html" target="_blank" style="color: var(--primary); text-decoration: underline;">Политикой конфиденциальности</a>
             </div>
-            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 0.82rem; color: var(--gray);">
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(var(--ink-rgb), 0.08); font-size: 0.82rem; color: var(--gray);">
                 <span>Вопросы по заказам? </span>
                 <a href="https://t.me/Funko_Stop" target="_blank" style="color: var(--primary); text-decoration: none; font-weight: 600;">Менеджер @Funko_Stop</a>
             </div>
@@ -1865,14 +1854,14 @@
             <h3>Связаться с менеджером</h3>
             <p style="color: var(--gray); font-size: 0.85rem; margin-bottom: 16px;">Напишите нашему менеджеру в Telegram для консультации или быстрого оформления</p>
 
-            <div id="inquiry-product-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; margin-bottom: 18px; border: 1px solid rgba(255,255,255,0.08);">
-                <img id="inquiry-img" src="" alt="Товар" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);">
+            <div id="inquiry-product-preview" style="display: flex; gap: 14px; align-items: center; background: rgba(var(--ink-rgb), 0.03); padding: 12px; border-radius: 10px; margin-bottom: 18px; border: 1px solid rgba(var(--ink-rgb), 0.08);">
+                <img id="inquiry-img" src="" alt="Товар" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(var(--ink-rgb), 0.15);">
                 <div style="flex: 1; min-width: 0;">
                     <div id="inquiry-number" style="font-size: 0.78rem; color: var(--primary); font-weight: 700;"></div>
-                    <div id="inquiry-title" style="font-weight: 600; font-size: 0.95rem; color: #fff; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
+                    <div id="inquiry-title" style="font-weight: 600; font-size: 0.95rem; color: var(--ink); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
                     <div style="display: flex; gap: 8px; margin-top: 4px; align-items: baseline;">
                         <span id="inquiry-price" style="color: #ff3b30; font-weight: 800; font-size: 1.15rem;"></span>
-                        <span id="inquiry-packs" style="color: #ffb400; font-size: 0.82rem;"></span>
+                        <span id="inquiry-packs" style="color: var(--warn); font-size: 0.82rem;"></span>
                     </div>
                 </div>
             </div>
@@ -1918,7 +1907,7 @@
                 <span class="footer-dot">•</span>
                 <a href="javascript:void(0)" onclick="window.showCookieBanner()">Настройки cookie</a>
             </div>
-            <div class="footer-copyright" style="font-size: 0.78rem; color: rgba(255,255,255,0.45); line-height: 1.5; margin-top: 8px;">
+            <div class="footer-copyright" style="font-size: 0.78rem; color: var(--muted); line-height: 1.5; margin-top: 8px;">
                 © 2026 Funko Stop • ИП Пелих Иван Валерьевич • ИНН 590587003901 • ОГРНИП 326508100489145
             </div>
         </div>
@@ -1958,6 +1947,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1791200000000"></script>
+    <script src="/static/app.js?v=1793100000000"></script>
 </body>
 </html>

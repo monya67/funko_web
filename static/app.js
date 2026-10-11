@@ -85,7 +85,9 @@ function updateOrdersBadge() {
         badge.classList.remove('hidden');
     } else {
         badge.classList.add('hidden');
-    }
+    }    const profileBtn = document.getElementById('profile-menu-btn');
+    profileBtn?.classList.toggle('has-new', newCount > 0);
+    profileBtn?.setAttribute('aria-label', newCount > 0 ? `Профиль, новых заказов: ${newCount}` : 'Профиль');
 }
 
 // Global Mass Edit Functions (defined early so they are available immediately)
@@ -97,7 +99,7 @@ window.updateMassEditPanel = function(tab) {
     
     if (countSpan) {
         countSpan.textContent = `Выбрано заказов: ${count} шт.`;
-        countSpan.style.color = count > 0 ? '#00ff88' : '#fff';
+        countSpan.style.color = count > 0 ? 'var(--ok)' : 'var(--ink)';
     }
     if (btn) {
         if (count > 0) {
@@ -176,11 +178,16 @@ function init() {
         window.switchTab(guestAllowed.includes(initialTab) ? initialTab : 'home', false);
     }
 
-    history.replaceState({ tab: initialTab }, '', window.location.pathname + window.location.search);
+    history.replaceState({ tab: initialTab }, '', window.location.pathname + window.location.search + window.location.hash);
+    const anchor = window.location.hash && document.getElementById(window.location.hash.slice(1));
+    if (anchor && document.getElementById('home-tab').contains(anchor)) {
+        setTimeout(() => anchor.scrollIntoView({ behavior: 'instant' }), 0);
+    }
 }
 
 function updateRoleUI(role) {
     currentRole = role;
+    if (typeof renderHomeNew === 'function') renderHomeNew();
     const landingLoginBtn = document.getElementById('landing-login-btn');
     const landingUserChip = document.getElementById('landing-user-chip');
     const landingUserName = document.getElementById('landing-user-name');
@@ -453,6 +460,46 @@ navItems.forEach(item => {
         const tabName = item.getAttribute('data-tab');
         if (tabName) window.switchTab(tabName);
     });
+});
+
+// --- Top bar: profile dropdown, burger menu, home anchors, header search ---
+const profileBtn = document.getElementById('profile-menu-btn');
+const profileMenu = document.getElementById('profile-menu');
+const siteMenuToggle = document.getElementById('site-menu-toggle');
+const siteNav = document.getElementById('site-nav');
+
+function setProfileMenu(open) {
+    profileMenu.classList.toggle('hidden', !open);
+    profileBtn.setAttribute('aria-expanded', String(open));
+}
+function setSiteNav(open) {
+    siteNav.classList.toggle('open', open);
+    siteMenuToggle.setAttribute('aria-expanded', String(open));
+}
+profileBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setProfileMenu(profileMenu.classList.contains('hidden'));
+});
+siteMenuToggle.addEventListener('click', () => setSiteNav(!siteNav.classList.contains('open')));
+document.addEventListener('click', (e) => {
+    if (!profileMenu.contains(e.target)) setProfileMenu(false);
+});
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { setProfileMenu(false); setSiteNav(false); }
+});
+profileMenu.querySelectorAll('a, button').forEach(el => el.addEventListener('click', () => setProfileMenu(false)));
+siteNav.querySelectorAll('a').forEach(el => el.addEventListener('click', () => setSiteNav(false)));
+document.querySelectorAll('[data-home-anchor]').forEach(a => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.switchTab('home');
+    document.getElementById(a.dataset.homeAnchor)?.scrollIntoView({ behavior: 'smooth' });
+}));
+document.getElementById('header-search')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    window.switchTab('catalog');
+    const target = document.getElementById('catalog-search');
+    target.value = e.target.value;
+    target.dispatchEvent(new Event('input', { bubbles: true }));
 });
 
 // FAQ Accordion click handler
@@ -932,7 +979,7 @@ function renderArchivedOrders() {
         html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
         html += `<td style="white-space:nowrap;font-weight:500;">${(order.total_price || 0).toLocaleString('ru')} &#8381;</td>`;
         html += `<td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>`;
-        html += `<td><span class="status-badge" style="background:rgba(0,200,80,0.15);color:#40e07a;">${order.status}</span></td>`;
+        html += `<td><span class="status-badge" style="background:rgba(0,200,80,0.15);color:var(--ok);">${order.status}</span></td>`;
 
         if (role === 'admin') {
             html += `<td class="admin-only actions-cell">
@@ -985,12 +1032,12 @@ function renderClients(clients) {
 
         tr.innerHTML = `
             <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${i + 1}</td>
-            <td style="font-weight:700; color:#fff;">${client.id}</td>
-            <td style="font-weight:600; color:#fff;">${fnDisplay}</td>
-            <td style="font-weight:600; color:#fff;">${lnDisplay}</td>
-            <td style="color:#eee; font-size:0.88rem;">${phoneDisplay}</td>
-            <td style="color:${tgDisplay !== '—' ? '#60a5fa' : 'var(--gray-light)'};">${tgDisplay}</td>
-            <td style="font-family:monospace; color:#ddd;">${escapeHtml(client.password)}</td>
+            <td style="font-weight:700; color:var(--ink);">${client.id}</td>
+            <td style="font-weight:600; color:var(--ink);">${fnDisplay}</td>
+            <td style="font-weight:600; color:var(--ink);">${lnDisplay}</td>
+            <td style="color:var(--ink); font-size:0.88rem;">${phoneDisplay}</td>
+            <td style="color:${tgDisplay !== '—' ? '#1C6EA4' : 'var(--gray-light)'};">${tgDisplay}</td>
+            <td style="font-family:monospace; color:var(--muted);">${escapeHtml(client.password)}</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="edit-btn" onclick="window.openEditClientModal(${client.id})" title="Редактировать клиента">Ред.</button>
                 <button type="button" class="delete-btn" onclick="window.confirmDeleteClient(${client.id})" title="Удалить клиента" style="margin-left:4px;">✕</button>
@@ -1089,7 +1136,7 @@ function renderAccounting() {
         tr.style.animationDelay = `${i * 0.02}s`;
         const photoHtml = order.photo_id
             ? `<img src="/api/photos/${order.photo_id}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer;flex-shrink:0;" onclick="viewPhoto('${order.photo_id}')">`
-            : `<div style="width:44px;height:44px;border-radius:5px;background:#222;flex-shrink:0;"></div>`;
+            : `<div style="width:44px;height:44px;border-radius:5px;background:var(--card);flex-shrink:0;"></div>`;
 
         tr.innerHTML = `
             <td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>
@@ -1105,11 +1152,11 @@ function renderAccounting() {
             <td class="inline-edit-cell" style="white-space:nowrap;" title="Нажмите для редактирования" onclick="window.startInlineEdit(${order.id}, 'cost_price', ${order.cost}, this)">${order.cost.toLocaleString('ru')} &#8381;</td>
             <td class="inline-edit-cell" style="white-space:nowrap;" title="Нажмите для редактирования" onclick="window.startInlineEdit(${order.id}, 'delivery_cost', ${order.delivery}, this)">${order.delivery.toLocaleString('ru')} &#8381;</td>
             <td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>
-            <td style="color:#ff9999;font-weight:bold;white-space:nowrap;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
+            <td style="color:var(--pre);font-weight:bold;white-space:nowrap;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.usn.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.checks.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.acquiring.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
-            <td style="color:${order.marginVal >= 0 ? '#00ff88' : '#ff4d4d'};font-weight:bold;white-space:nowrap;">${order.marginDisplay}</td>
+            <td style="color:${order.marginVal >= 0 ? 'var(--ok)' : 'var(--pre)'};font-weight:bold;white-space:nowrap;">${order.marginDisplay}</td>
         `;
         accountingTableBody.appendChild(tr);
     });
@@ -1912,6 +1959,7 @@ async function loadCatalogMeta() {
         renderBrandCards();
         renderSidebarFilters();
         renderFranchiseChips();
+        renderHomeNew();
     } catch (err) {
         console.error('Error loading catalog meta:', err);
     }
@@ -1926,6 +1974,7 @@ async function loadCatalog() {
         renderSidebarFilters();
         renderFranchiseChips();
         renderCatalog();
+        renderHomeNew();
     } catch (err) {
         console.error('Error loading catalog:', err);
     }
@@ -1943,6 +1992,76 @@ function getBadgeClass(badge) {
 }
 
 // --- Catalog Rendering ---
+const ICON_CART = '<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>';
+const ICON_IMAGE = '<svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="1"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
+
+function photoIds(value) { return (value || '').split(',').map(s => s.trim()).filter(Boolean); }
+function photoUrl(id) { return id.startsWith('http') || id.startsWith('/static/') ? id : `/api/photos/${id}`; }
+
+function productCard(p) {
+    const card = document.createElement('article');
+    card.className = 'product-card';
+    card.addEventListener('click', () => window.openProductDetail(p.id));
+
+    const ids = photoIds(p.photo_id);
+    const photoSrc = ids[0] ? photoUrl(ids[0]) : '';
+    const imgHtml = photoSrc
+        ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">` + (ids[1] ? `<img class="alt" src="${photoUrl(ids[1])}" alt="" loading="lazy" aria-hidden="true">` : '')
+        : `<div class="product-image-placeholder">${ICON_IMAGE}<span>Фото скоро</span></div>`;
+    const stockTag = p.in_stock ? '<span class="card-tag-stock">В наличии</span>' : '<span class="card-tag-pre">Предзаказ</span>';
+    const discountTag = p.discount_percent > 0 ? `<span class="card-tag-discount">−${p.discount_percent}%</span>` : '';
+    const badgeTag = p.badge ? `<span class="card-tag-badge">${p.badge}</span>` : '';
+    const finalPrice = (p.final_price || p.price).toLocaleString('ru');
+    const oldPrice = p.discount_percent > 0 ? `<span class="price-original">${p.price.toLocaleString('ru')} ₽</span>` : '';
+    const adminButtons = currentRole === 'admin' ? `
+        <div class="card-image-overlay">
+            <button type="button" class="card-overlay-btn icon" aria-label="Редактировать" onclick="event.stopPropagation(); window.openEditProductModal(${p.id})">✎</button>
+            <button type="button" class="card-overlay-btn icon danger" aria-label="Удалить" onclick="event.stopPropagation(); window.confirmDeleteProduct(${p.id})">✕</button>
+        </div>` : '';
+
+    card.innerHTML = `
+        <div class="card-tags">${stockTag}${discountTag}${badgeTag}</div>
+        <div class="product-image-box">${imgHtml}${adminButtons}</div>
+        <div class="product-card-body">
+            <div class="product-card-brand">${p.category || ''}</div>
+            <div class="product-card-title" title="${p.name}">${p.figure_number ? `<span class="card-number">#${p.figure_number}</span> ` : ''}${p.name}</div>
+            <div class="card-prepay">Предоплата 50%</div>
+            <div class="product-card-price-row">
+                <div class="price-group"><span class="price-final">${finalPrice} ₽</span>${oldPrice}</div>
+                <button type="button" class="card-cart-btn" aria-label="В корзину" onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)">${ICON_CART}</button>
+            </div>
+        </div>`;
+    return card;
+}
+
+
+let homeNewCategory = '';
+
+function renderHomeNew() {
+    const grid = document.getElementById('home-new-grid');
+    const tabs = document.getElementById('home-new-tabs');
+    if (!grid || !tabs) return;
+    const categories = ['', ...(catalogMeta.categories || [])];
+    tabs.replaceChildren(...categories.map(c => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'franchise-chip' + (c === homeNewCategory ? ' active' : '');
+        b.setAttribute('role', 'tab');
+        b.setAttribute('aria-selected', String(c === homeNewCategory));
+        b.textContent = c || 'Все';
+        b.addEventListener('click', () => { homeNewCategory = c; renderHomeNew(); });
+        return b;
+    }));
+    const open = currentRole === 'admin';
+    document.getElementById('home-new-stub')?.classList.toggle('hidden', open);
+    tabs.classList.toggle('hidden', !open);
+    grid.classList.toggle('hidden', !open);
+    const items = open ? rawCatalogProducts
+        .filter(p => !homeNewCategory || (p.category || '').toLowerCase() === homeNewCategory.toLowerCase())
+        .slice(0, 5) : [];
+    grid.replaceChildren(...items.map(productCard));
+}
+
 function renderCatalog() {
     if (!catalogGrid) return;
     catalogGrid.innerHTML = '';
@@ -2015,7 +2134,7 @@ function renderCatalog() {
         if (emptyMsg) {
             emptyMsg.innerHTML = `
                 <div style="padding: 48px 20px; text-align: center;">
-                    <div style="font-size: 1.15rem; font-weight: 600; color: #fff; margin-bottom: 8px;">В каталоге пока нет товаров</div>
+                    <div style="font-size: 1.15rem; font-weight: 600; color: var(--ink); margin-bottom: 8px;">В каталоге пока нет товаров</div>
                     <p style="color: var(--gray); font-size: 0.88rem;">
                         ${role === 'admin' 
                             ? 'Нажмите кнопку <b>«+ Добавить товар»</b> в правом верхнем углу, чтобы добавить первую позицию.' 
@@ -2039,80 +2158,10 @@ function renderCatalog() {
     const pageProducts = products.slice(startIdx, startIdx + state.pageSize);
 
     pageProducts.forEach((p, i) => {
-            const card = document.createElement('div');
-            card.className = 'product-card';
-            card.style.animationDelay = `${i * 0.06}s`;
-            card.addEventListener('click', () => window.openProductDetail(p.id));
-
-            const photoSrc = p.photo_id
-                ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
-                : '';
-
-            const imgHtml = photoSrc
-                ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">`
-                : `<div class="product-image-placeholder">
-                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                       <span>Фото скоро</span>
-                   </div>`;
-
-            const customBadgeHtml = p.badge
-                ? `<span class="${getBadgeClass(p.badge)}">${p.badge}</span>` : '';
-            const discountBadge = p.discount_percent > 0
-                ? `<span class="card-badge card-badge-discount">-${p.discount_percent}%</span>` : '';
-
-            const finalPrice = (p.final_price || p.price).toLocaleString('ru');
-            const origPrice = p.price.toLocaleString('ru');
-
-            // Admin overlay (edit/delete) — appears on hover top-right
-            let adminOverlay = '';
-            if (role === 'admin') {
-                adminOverlay = `
-                    <div class="card-image-overlay">
-                        <button type="button" class="card-overlay-btn icon" onclick="event.stopPropagation(); window.openEditProductModal(${p.id})" title="Редактировать">✎</button>
-                        <button type="button" class="card-overlay-btn icon danger" onclick="event.stopPropagation(); window.confirmDeleteProduct(${p.id})" title="Удалить">✕</button>
-                    </div>`;
-            }
-
-            const categoryTag = p.category ? `<span class="card-tag">${p.category}</span>` : '';
-            const seriesTag = p.series ? `<span class="card-tag series">${p.series}</span>` : '';
-            const numberTag = p.figure_number ? `<span class="card-number">#${p.figure_number} </span>` : '';
-
-            // Price / sold-out row
-            let priceRowHtml;
-            if (!p.in_stock) {
-                priceRowHtml = `
-                    <div class="product-card-price-row sold-out">
-                        <span class="card-sold-out-label">Распродано</span>
-                        <a class="card-subscribe-link" href="https://t.me/Funko_Stop" target="_blank" onclick="event.stopPropagation()">Подписаться на обновления</a>
-                    </div>`;
-            } else {
-                const priceInner = p.discount_percent > 0
-                    ? `<span class="price-final discounted">${finalPrice} ₽</span><span class="price-original">${origPrice} ₽</span>`
-                    : `<span class="price-final">${finalPrice} ₽</span>`;
-                priceRowHtml = `
-                    <div class="product-card-price-row">
-                        <div class="price-group">${priceInner}</div>
-                        <button type="button" class="card-cart-btn" onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)" title="В корзину">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                        </button>
-                    </div>`;
-            }
-
-            card.innerHTML = `
-                <div class="product-image-box">
-                    ${imgHtml}
-                    ${customBadgeHtml}
-                    ${discountBadge}
-                    ${adminOverlay}
-                </div>
-                <div class="product-card-body">
-                    <div class="card-tags-row">${categoryTag}${seriesTag}</div>
-                    <div class="product-card-title" title="${p.name}">${numberTag}${p.name}</div>
-                    ${priceRowHtml}
-                </div>
-            `;
-            catalogGrid.appendChild(card);
-        });
+        const card = productCard(p);
+        card.style.animationDelay = `${i * 0.06}s`;
+        catalogGrid.appendChild(card);
+    });
 
 
     updatePaginationUI('catalog', products.length);
@@ -2135,9 +2184,8 @@ window.openProductDetail = function(productId) {
     if (!p) return;
     window._ppCurrentId = productId;
 
-    const photoSrc = p.photo_id
-        ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
-        : '';
+    const ids = photoIds(p.photo_id);
+    const photoSrc = ids[0] ? photoUrl(ids[0]) : '';
 
     const img = document.getElementById('pp-img');
     const placeholder = document.getElementById('pp-img-placeholder');
@@ -2151,6 +2199,7 @@ window.openProductDetail = function(productId) {
         if (placeholder) placeholder.style.display = 'flex';
     }
 
+    setupProductGallery(ids, p.name);
     document.getElementById('pp-breadcrumb-name').textContent = p.name;
     document.getElementById('pp-tags').innerHTML =
         (p.category ? `<span class="card-tag">${p.category}</span>` : '') +
@@ -2167,9 +2216,11 @@ window.openProductDetail = function(productId) {
         priceRow.innerHTML = `<span>${finalPrice} ₽</span>`;
     }
 
+    const half = Math.round((p.final_price || p.price) * 0.5).toLocaleString('ru');
+    document.getElementById('pp-prepay').innerHTML = `<strong>Предоплата 50%</strong><span>Внесите ${half} ₽ сейчас, остальное при получении. Цена фиксируется после предоплаты.</span>`;
     document.getElementById('pp-stock').innerHTML = p.in_stock
-        ? `<span style="color:#4ade80;">● В наличии</span>`
-        : `<span style="color:#facc15;">● Под заказ</span>`;
+        ? `<span style="color:var(--ok);">● В наличии</span>`
+        : `<span style="color:var(--warn);">● Под заказ</span>`;
 
     const actions = document.getElementById('pp-actions');
     const role = currentRole;
@@ -2188,6 +2239,39 @@ window.openProductDetail = function(productId) {
     history.pushState({ tab: 'product', product: productId }, '', `/catalog?product=${productId}`);
     window.switchTab('product', false);
 };
+
+function setupProductGallery(ids, name) {
+    const img = document.getElementById('pp-img');
+    const thumbs = document.getElementById('pp-thumbs');
+    const prev = document.getElementById('pp-prev');
+    const next = document.getElementById('pp-next');
+    const multi = ids.length > 1;
+    thumbs.classList.toggle('hidden', !multi);
+    prev.classList.toggle('hidden', !multi);
+    next.classList.toggle('hidden', !multi);
+    thumbs.replaceChildren();
+    if (!multi) return;
+    let cur = 0;
+    const show = (i) => {
+        cur = (i + ids.length) % ids.length;
+        img.src = photoUrl(ids[cur]);
+        img.alt = name;
+        [...thumbs.children].forEach((b, k) => { b.classList.toggle('active', k === cur); b.setAttribute('aria-current', String(k === cur)); });
+    };
+    ids.forEach((id, k) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('aria-label', `Фото ${k + 1}`);
+        const t = document.createElement('img');
+        t.src = photoUrl(id); t.alt = ''; t.loading = 'lazy';
+        b.appendChild(t);
+        b.addEventListener('click', () => show(k));
+        thumbs.appendChild(b);
+    });
+    prev.onclick = () => show(cur - 1);
+    next.onclick = () => show(cur + 1);
+    show(0);
+}
 
 window.closeProductPage = function() {
     window.switchTab('catalog', true);
@@ -2218,8 +2302,8 @@ window.openOrderInquiryModal = function(id) {
     const tgBtn = document.getElementById('inquiry-tg-btn');
 
     if (img) {
-        if (p.photo_id) {
-            img.src = p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`;
+        if (photoIds(p.photo_id)[0]) {
+            img.src = photoUrl(photoIds(p.photo_id)[0]);
             img.style.display = 'block';
         } else {
             img.style.display = 'none';
@@ -2250,8 +2334,8 @@ window.openAddProductModal = function() {
     document.getElementById('product-packs').value = '0';
     document.getElementById('product-discount').value = '0';
     document.getElementById('product-badge').value = '';
-    document.getElementById('product-photo-preview-wrap').style.display = 'none';
-    document.getElementById('product-photo-preview').src = '';
+    document.getElementById('product-photo-id').value = '';
+    renderProductPhotoThumbs();
     openModal(productModal);
 };
 
@@ -2273,14 +2357,7 @@ window.openEditProductModal = function(id) {
     document.getElementById('product-photo-id').value = p.photo_id || '';
     document.getElementById('product-badge').value = p.badge || '';
     
-    const previewWrap = document.getElementById('product-photo-preview-wrap');
-    const previewImg = document.getElementById('product-photo-preview');
-    if (p.photo_id) {
-        previewImg.src = p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`;
-        previewWrap.style.display = 'block';
-    } else {
-        previewWrap.style.display = 'none';
-    }
+    renderProductPhotoThumbs();
     openModal(productModal);
 };
 
@@ -2310,17 +2387,46 @@ discountInput?.addEventListener('input', calcFinalPrice);
 finalPriceInput?.addEventListener('input', calcDiscountFromFinal);
 
 // Product Photo Upload Listener
+const MAX_PRODUCT_PHOTOS = 6;
+function renderProductPhotoThumbs() {
+    const input = document.getElementById('product-photo-id');
+    const box = document.getElementById('product-photo-thumbs');
+    const ids = photoIds(input.value);
+    box.replaceChildren(...ids.map((id, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'photo-thumb';
+        const im = document.createElement('img');
+        im.src = photoUrl(id); im.alt = `Фото ${i + 1}`;
+        const rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'photo-thumb-remove'; rm.setAttribute('aria-label', `Убрать фото ${i + 1}`); rm.textContent = '×';
+        rm.addEventListener('click', () => { input.value = ids.filter((_, k) => k !== i).join(','); renderProductPhotoThumbs(); });
+        wrap.append(im, rm);
+        if (i > 0) {
+            const first = document.createElement('button');
+            first.type = 'button'; first.className = 'photo-thumb-first'; first.title = 'Сделать главным'; first.textContent = '★';
+            first.addEventListener('click', () => { input.value = [id, ...ids.filter((_, k) => k !== i)].join(','); renderProductPhotoThumbs(); });
+            wrap.appendChild(first);
+        } else {
+            const tag = document.createElement('span');
+            tag.className = 'photo-thumb-main'; tag.textContent = 'главное';
+            wrap.appendChild(tag);
+        }
+        return wrap;
+    }));
+    document.querySelector('label[for="product-photo-upload"]')?.classList.toggle('disabled', ids.length >= MAX_PRODUCT_PHOTOS);
+}
+document.getElementById('product-photo-id')?.addEventListener('input', renderProductPhotoThumbs);
+
 const productPhotoUpload = document.getElementById('product-photo-upload');
 if (productPhotoUpload) {
     productPhotoUpload.addEventListener('change', async (e) => {
+        const input = document.getElementById('product-photo-id');
+        const before = photoIds(input.value);
+        if (before.length >= MAX_PRODUCT_PHOTOS) { alert(`Не больше ${MAX_PRODUCT_PHOTOS} фото`); e.target.value = ''; return; }
         await handlePhotoUpload(e, 'product-photo-id');
-        const photoId = document.getElementById('product-photo-id').value;
-        if (photoId) {
-            const previewWrap = document.getElementById('product-photo-preview-wrap');
-            const previewImg = document.getElementById('product-photo-preview');
-            previewImg.src = photoId.startsWith('http') || photoId.startsWith('/static/') ? photoId : `/api/photos/${photoId}`;
-            previewWrap.style.display = 'block';
-        }
+        const uploaded = input.value.trim();
+        input.value = uploaded && !before.includes(uploaded) ? [...before, uploaded].join(',') : before.join(',');
+        renderProductPhotoThumbs();
     });
 }
 
@@ -2396,8 +2502,8 @@ window.openQuickOrderModal = function(id) {
     document.getElementById('quick-order-packs').textContent = p.packs_count > 0 ? `+${p.packs_count} пак.` : '';
     
     const imgEl = document.getElementById('quick-order-img');
-    if (p.photo_id) {
-        imgEl.src = p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`;
+    if (photoIds(p.photo_id)[0]) {
+        imgEl.src = photoUrl(photoIds(p.photo_id)[0]);
         imgEl.style.display = 'block';
     } else {
         imgEl.style.display = 'none';
@@ -2465,9 +2571,9 @@ function renderMetaModalLists() {
             catListEl.innerHTML = '<div style="color:var(--gray); font-size:0.82rem; padding:8px 0;">Нет добавленных категорий</div>';
         } else {
             catListEl.innerHTML = cats.map(c => `
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(255,255,255,0.04); border-radius:6px; font-size:0.85rem;">
-                    <span style="color:#eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c}</span>
-                    <button type="button" onclick="window.deleteMetaItem('category', '${c.replace(/'/g, "\\'")}')" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:1rem; padding:0 4px; line-height:1;" title="Удалить бренд">✕</button>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(var(--ink-rgb), 0.04); border-radius:6px; font-size:0.85rem;">
+                    <span style="color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c}</span>
+                    <button type="button" onclick="window.deleteMetaItem('category', '${c.replace(/'/g, "\\'")}')" style="background:none; border:none; color:var(--pre); cursor:pointer; font-size:1rem; padding:0 4px; line-height:1;" title="Удалить бренд">✕</button>
                 </div>
             `).join('');
         }
@@ -2478,9 +2584,9 @@ function renderMetaModalLists() {
             serListEl.innerHTML = '<div style="color:var(--gray); font-size:0.82rem; padding:8px 0;">Нет добавленных тематик</div>';
         } else {
             serListEl.innerHTML = series.map(s => `
-                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(255,255,255,0.04); border-radius:6px; font-size:0.85rem;">
-                    <span style="color:#eee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s}</span>
-                    <button type="button" onclick="window.deleteMetaItem('series', '${s.replace(/'/g, "\\'")}')" style="background:none; border:none; color:#ff4d4d; cursor:pointer; font-size:1rem; padding:0 4px; line-height:1;" title="Удалить серию">✕</button>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; background:rgba(var(--ink-rgb), 0.04); border-radius:6px; font-size:0.85rem;">
+                    <span style="color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s}</span>
+                    <button type="button" onclick="window.deleteMetaItem('series', '${s.replace(/'/g, "\\'")}')" style="background:none; border:none; color:var(--pre); cursor:pointer; font-size:1rem; padding:0 4px; line-height:1;" title="Удалить серию">✕</button>
                 </div>
             `).join('');
         }
@@ -2609,7 +2715,7 @@ window.addToCart = function(productId, qty = 1) {
             figure_number: product.figure_number || '',
             price: product.price,
             final_price: product.final_price || product.price,
-            photo_id: product.photo_id || '',
+            photo_id: photoIds(product.photo_id)[0] || '',
             qty: qty
         });
     }
@@ -2772,11 +2878,11 @@ window.openCheckoutModal = function() {
         const totalItems = funkoCart.reduce((s, i) => s + i.qty, 0);
         const totalPrice = funkoCart.reduce((s, i) => s + (i.final_price || i.price) * i.qty, 0);
         previewEl.innerHTML = `
-            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-weight:700; color:#fff;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-weight:700; color:var(--ink);">
                 <span>В заказе: ${totalItems} шт.</span>
                 <span>${totalPrice.toLocaleString('ru')} ₽</span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:4px; font-size:0.82rem; color:#aaa;">
+            <div style="display:flex; flex-direction:column; gap:4px; font-size:0.82rem; color:var(--muted);">
                 ${funkoCart.map(i => `<div>• ${i.name} × ${i.qty} шт. (${((i.final_price || i.price) * i.qty).toLocaleString('ru')} ₽)</div>`).join('')}
             </div>
         `;
@@ -3137,7 +3243,7 @@ function renderLedger() {
         tr.innerHTML = `
             <td style="white-space:nowrap;">${e.entry_date}</td>
             <td>${e.description || '—'}</td>
-            <td style="white-space:nowrap;color:${isIncome ? '#00ff88' : '#ff4d4d'};font-weight:600;">
+            <td style="white-space:nowrap;color:${isIncome ? 'var(--ok)' : 'var(--pre)'};font-weight:600;">
                 ${isIncome ? '+' : '−'}${e.amount.toLocaleString('ru')} ₽
             </td>
             <td>${isIncome ? 'Доход' : 'Расход'}</td>
@@ -3156,7 +3262,7 @@ function updateLedgerSummary(income, expense) {
     if (expEl) expEl.textContent = expense.toLocaleString('ru') + ' ₽';
     if (netEl) {
         netEl.textContent = (net >= 0 ? '+' : '') + net.toLocaleString('ru') + ' ₽';
-        netEl.style.color = net >= 0 ? '#00ff88' : '#ff4d4d';
+        netEl.style.color = net >= 0 ? 'var(--ok)' : 'var(--pre)';
     }
 }
 
@@ -3279,3 +3385,51 @@ window.startInlineEdit = function(orderId, field, currentVal, cellEl) {
 initSidebar();
 init();
 
+// --- Home motion: pointer tilt on the hero collage, scroll reveal ---
+(function homeMotion() {
+    const collage = document.querySelector('.hero-collage');
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (collage && !still && window.matchMedia('(hover: hover)').matches) {
+        const hero = collage.closest('.hero');
+        hero.addEventListener('pointermove', (e) => {
+            const r = collage.getBoundingClientRect();
+            const x = (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2);
+            const y = (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2);
+            collage.style.setProperty('--tilt-y', `${Math.max(-1, Math.min(1, x)) * 12}deg`);
+            collage.style.setProperty('--tilt-x', `${Math.max(-1, Math.min(1, y)) * -9}deg`);
+        });
+        hero.addEventListener('pointerleave', () => {
+            collage.style.setProperty('--tilt-x', '0deg');
+            collage.style.setProperty('--tilt-y', '0deg');
+        });
+    }
+    const targets = document.querySelectorAll('.benefits, .home-new, .home-hub-grid > *, .landing-section');
+    if (still || !('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver((entries) => entries.forEach(en => {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+    }), { threshold: 0.12 });
+    targets.forEach(t => { t.classList.add('reveal'); io.observe(t); });
+})();
+
+// Late-loading images shift the page: re-aim deep links once everything is loaded
+window.addEventListener('load', () => {
+    const a = window.location.hash && document.getElementById(window.location.hash.slice(1));
+    if (a && document.getElementById('home-tab')?.contains(a)) a.scrollIntoView({ behavior: 'instant' });
+});
+
+// --- Theme toggle (choice remembered; the <head> script applies it before first paint) ---
+document.getElementById('theme-toggle')?.addEventListener('click', () => {
+    const dark = document.documentElement.dataset.theme !== 'dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    try { localStorage.setItem('funko_theme', dark ? 'dark' : 'light'); } catch {}
+    document.getElementById('theme-toggle').setAttribute('aria-pressed', String(dark));
+});
+
+// header gets a shadow once the page is scrolled
+(function headerScroll() {
+    const hdr = document.getElementById('site-header');
+    if (!hdr) return;
+    const on = () => hdr.classList.toggle('scrolled', window.scrollY > 8);
+    window.addEventListener('scroll', on, { passive: true });
+    on();
+})();
