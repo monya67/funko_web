@@ -737,6 +737,30 @@ def gallery_form(page):
     return errors
 
 
+@check("product_fits_screen", role="admin", widths=(1440,), path="/catalog")
+def product_fits_screen(page):
+    page.set_viewport_size({"width": 1440, "height": 800})
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("() => { rawCatalogProducts.push(%s); window.openProductDetail(987654); }" % GALLERY_PRODUCT)
+    page.wait_for_timeout(400)
+    errors = []
+    bottom = page.evaluate("() => Math.max(document.getElementById('pp-img').closest('.pp-image-box').getBoundingClientRect().bottom, document.getElementById('pp-thumbs').getBoundingClientRect().bottom)")
+    if bottom > 800:
+        errors.append(f"photo + thumbnails end at y={bottom:.0f}, below the 800px screen")
+    price = page.evaluate("() => document.getElementById('pp-price-row').getBoundingClientRect().bottom")
+    if price > 800:
+        errors.append("price is below the fold")
+    a = page.evaluate("""() => { const box = document.getElementById('pp-img').closest('.pp-image-box').getBoundingClientRect();
+        return ['pp-prev', 'pp-next'].map(id => { const r = document.getElementById(id).getBoundingClientRect(); return Math.abs((r.top + r.height / 2) - (box.top + box.height / 2)); }); }""")
+    if max(a) > 3:
+        errors.append(f"arrows are off the vertical centre by {max(a):.0f}px")
+    glyph = page.evaluate("""() => ['pp-prev', 'pp-next'].map(id => { const b = document.getElementById(id); const sv = b.querySelector('svg'); if (!sv) return 999;
+        const r = b.getBoundingClientRect(), g = sv.getBoundingClientRect(); return Math.hypot((g.left + g.width / 2) - (r.left + r.width / 2), (g.top + g.height / 2) - (r.top + r.height / 2)); })""")
+    if max(glyph) > 1.5:
+        errors.append(f"arrow glyph is not centred in its circle (off by {max(glyph):.0f}px or no svg)")
+    return errors
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}

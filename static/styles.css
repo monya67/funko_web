@@ -4213,3 +4213,12 @@ html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 label.disabled { opacity: 0.4; pointer-events: none; }
 /* one cart on desktop: the header icon is always in view, the floating button stays for phones */
 @media (min-width: 1024px) { .floating-cart-btn { display: none !important; } }
+/* product page: compact top row, photo sized to the screen */
+.pp-topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-bottom: 18px; }
+.pp-topbar .pp-back-btn { margin-bottom: 0; }
+.pp-topbar .product-page-breadcrumb { margin-bottom: 0; }
+.pp-arrow { padding: 0; font-size: 0; }
+.pp-arrow svg { display: block; }
+.pp-image-box { max-height: calc(100vh - 170px); min-height: 340px; }
+.pp-image-col:has(.pp-thumbs:not(.hidden)) .pp-image-box { max-height: calc(100vh - 260px); }
+@media (max-width: 700px) { .pp-image-box, .pp-image-col:has(.pp-thumbs:not(.hidden)) .pp-image-box { max-height: none; } }
