@@ -1,4 +1,8 @@
 import os
+import hmac
+import secrets
+import json
+from typing import Optional
 import re
 import asyncpg
 import jwt
@@ -121,6 +125,10 @@ async def startup():
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS marketing_consent BOOLEAN DEFAULT FALSE")
         await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS stock_qty INTEGER")
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS hidden BOOLEAN DEFAULT FALSE")
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS link_key TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS stock_items TEXT DEFAULT ''")
 
         # Ledger (manual income/expense entries)
         await db.execute("""
@@ -261,6 +269,8 @@ class ProductCreate(BaseModel):
     in_stock: bool = True
     badge: str = ""
     description: str = ""
+    stock_qty: Optional[int] = None
+    hidden: bool = False
 
 class ProductUpdate(BaseModel):
     name: str
@@ -275,6 +285,8 @@ class ProductUpdate(BaseModel):
     in_stock: bool = True
     badge: str = ""
     description: str = ""
+    stock_qty: Optional[int] = None
+    hidden: bool = False
 
 class LedgerEntryCreate(BaseModel):
     entry_date: str
@@ -590,13 +602,28 @@ async def get_catalog_meta():
             "series": [r["name"] for r in sers]
         }
 
+PRODUCT_COLUMNS = ("id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, "
+                   "photo_id, in_stock, badge, description, stock_qty, hidden, link_key, created_at")
+
+
 @app.get("/api/catalog")
-async def get_catalog():
+async def get_catalog(request: Request):
+    is_admin = request_is_admin(request)
     async with pool.acquire() as db:
-        products = await db.fetch(
-            "SELECT id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge, description, created_at FROM products ORDER BY id DESC"
-        )
-        return {"products": [dict(p) for p in products]}
+        products = await db.fetch(f"SELECT {PRODUCT_COLUMNS} FROM products ORDER BY id DESC")
+        return {"products": public_catalog([dict(p) for p in products], is_admin)}
+
+
+@app.get("/api/catalog/{product_id}")
+async def get_one_product(product_id: int, request: Request, k: str = ""):
+    """A single product by id; a hidden one answers 404 unless the caller is admin or holds its link key."""
+    is_admin = request_is_admin(request)
+    async with pool.acquire() as db:
+        row = await db.fetchrow(f"SELECT {PRODUCT_COLUMNS} FROM products WHERE id = $1", product_id)
+    if not row or not product_visible(dict(row), is_admin, k):
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product_payload(dict(row), is_admin)
+
 
 @app.post("/api/catalog")
 async def create_product(product: ProductCreate, admin: dict = Depends(require_admin)):
@@ -619,10 +646,10 @@ async def create_product(product: ProductCreate, admin: dict = Depends(require_a
             
         new_id = await db.fetchval(
             """INSERT INTO products 
-               (name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge, description) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id""",
+               (name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge, description, stock_qty, hidden, link_key) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id""",
             product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
-            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product.description.strip()
+            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product.description.strip(), product.stock_qty, product.hidden, make_link_key()
         )
         return {"success": True, "id": new_id}
 
@@ -648,10 +675,10 @@ async def update_product(product_id: int, product: ProductUpdate, admin: dict = 
         res = await db.execute(
             """UPDATE products 
                SET name = $1, figure_number = $2, price = $3, discount_percent = $4, final_price = $5,
-                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10, badge = $11, description = $12 
-               WHERE id = $13""",
+                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10, badge = $11, description = $12, stock_qty = $13, hidden = $14, link_key = COALESCE(NULLIF(link_key, ''), $15) 
+               WHERE id = $16""",
             product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
-            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product.description.strip(), product_id
+            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product.description.strip(), product.stock_qty, product.hidden, make_link_key(), product_id
         )
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Product not found")
@@ -762,19 +789,17 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
     if not valid_email(email):
         raise HTTPException(status_code=400, detail="Укажите корректную электронную почту")
 
-    # Calculate total price & item list
-    total_price = 0
-    item_lines = []
-    first_photo = ""
-    for item in checkout.items:
-        p_price = item.final_price if item.final_price > 0 else item.price
-        subtotal = p_price * max(1, item.qty)
-        total_price += subtotal
-        qty_str = f" x{item.qty}" if item.qty > 1 else ""
-        num_str = f" #{item.figure_number}" if item.figure_number else ""
-        item_lines.append(f"{item.name}{num_str}{qty_str} — {subtotal} ₽")
-        if not first_photo and item.photo_id:
-            first_photo = item.photo_id
+    # Calculate total price & item list from OUR data, never from what the browser sent
+    wanted_ids = sorted({it.id for it in checkout.items})
+    async with pool.acquire() as price_db:
+        rows = await price_db.fetch(
+            "SELECT id, name, figure_number, price, final_price, photo_id FROM products WHERE id = ANY($1::int[])",
+            wanted_ids,
+        )
+    try:
+        total_price, item_lines, first_photo = price_cart(checkout.items, {r["id"]: dict(r) for r in rows})
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
 
     items_text = "\n".join(item_lines)
     paid_amount = round(total_price * 0.5) if checkout.payment_type == "50%" else total_price
@@ -827,14 +852,35 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 name, first_name, last_name, phone, telegram, email, checkout.marketing_consent, client_id
             )
 
+        # Reserve limited stock atomically; a failed UPDATE means not enough left. The transaction rolls
+        # back earlier reservations of this same request when we raise.
+        reserved = []
+        async with db.transaction():
+            for pid, qty in aggregate_cart_qty(checkout.items).items():
+                got = await db.fetchrow(
+                    "UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2 AND stock_qty IS NOT NULL AND stock_qty >= $1 RETURNING name",
+                    qty, pid)
+                if got:
+                    reserved.append((pid, qty))
+                    continue
+                row = await db.fetchrow("SELECT name, stock_qty FROM products WHERE id = $1", pid)
+                if row and row["stock_qty"] is not None:
+                    left = row["stock_qty"]
+                    msg = f"«{row['name']}» распродан" if left <= 0 else f"«{row['name']}»: осталось только {left} шт."
+                    raise HTTPException(status_code=409, detail=msg)
+
         status_text = "Ожидает оплаты"
-        order_id = await db.fetchval(
+        try:
+          order_id = await db.fetchval(
             """INSERT INTO orders
-               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status)
-               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending') RETURNING id""",
+               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items)
+               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12) RETURNING id""",
             client_id, items_text, total_price, paid_amount, status_text, first_photo, order_date,
-            name, phone, telegram, checkout.payment_type
-        )
+            name, phone, telegram, checkout.payment_type, dump_stock_items(reserved) if reserved else ""
+          )
+        except Exception:
+            await restore_stock(db, reserved)
+            raise
 
         payment_url = None
         if TBANK_TERMINAL_KEY and TBANK_PASSWORD:
@@ -929,6 +975,11 @@ async def tbank_notification(req: Request):
             await db.execute(
                 "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
             )
+            given_back = await db.fetchval(
+                "UPDATE orders SET stock_items = '' WHERE id = $1 AND stock_items <> '' RETURNING stock_items", oid
+            )
+            if given_back:
+                await restore_stock(db, parse_stock_items(given_back))
 
     return Response(content="OK")
 
@@ -990,6 +1041,100 @@ async def redirect_to_canonical_host(request: Request, call_next):
             target += f"?{request.url.query}"
         return RedirectResponse(target, status_code=301)
     return await call_next(request)
+
+
+def make_link_key():
+    return secrets.token_urlsafe(9)
+
+
+def product_visible(row, is_admin, key):
+    """A hidden product is reachable only by admins or with its own random link key."""
+    if not row.get("hidden"):
+        return True
+    if is_admin:
+        return True
+    stored = row.get("link_key") or ""
+    return bool(stored) and bool(key) and hmac.compare_digest(str(stored), str(key))
+
+
+def product_payload(row, is_admin):
+    item = dict(row)
+    if not is_admin:
+        item.pop("link_key", None)
+    return item
+
+
+def public_catalog(rows, is_admin):
+    """What the catalog list may show: hidden products and link keys are for admins only."""
+    return [product_payload(r, is_admin) for r in rows if is_admin or not r.get("hidden")]
+
+
+def request_is_admin(request):
+    """Signature check only (cheap): the catalog list must not hit the users table on every page view."""
+    auth = request.headers.get("authorization", "")
+    if not auth.lower().startswith("bearer "):
+        return False
+    try:
+        payload = jwt.decode(auth.split(" ", 1)[1], SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        return False
+    return payload.get("role") == "admin"
+
+
+MAX_LINE_QTY = 99
+
+
+def line_qty(item):
+    """qty as the server trusts it: at least 1, at most MAX_LINE_QTY."""
+    return min(MAX_LINE_QTY, max(1, item.qty))
+
+
+def aggregate_cart_qty(items):
+    """{product_id: total qty}; a line with qty < 1 counts as 1, the same rule the price calculation uses."""
+    totals = {}
+    for it in items:
+        totals[it.id] = totals.get(it.id, 0) + line_qty(it)
+    return totals
+
+
+def price_cart(items, products_by_id):
+    """Total, order lines and first photo computed ONLY from database rows.
+    Names, prices and photos sent by the browser are ignored: they are editable by any visitor."""
+    total = 0
+    lines = []
+    first_photo = ""
+    for it in items:
+        product = products_by_id.get(it.id)
+        if product is None:
+            raise ValueError("Один из товаров в корзине больше недоступен. Обновите страницу.")
+        unit = product["final_price"] if (product["final_price"] or 0) > 0 else product["price"]
+        qty = line_qty(it)
+        subtotal = unit * qty
+        total += subtotal
+        qty_str = f" x{qty}" if qty > 1 else ""
+        num_str = f" #{product['figure_number']}" if product.get("figure_number") else ""
+        lines.append(f"{product['name']}{num_str}{qty_str} — {subtotal} ₽")
+        if not first_photo:
+            first_photo = first_photo_id(product.get("photo_id"))
+    return total, lines, first_photo
+
+
+def dump_stock_items(pairs):
+    return json.dumps([[int(pid), int(qty)] for pid, qty in pairs])
+
+
+def parse_stock_items(value):
+    """Read orders.stock_items back; anything malformed means 'nothing was reserved'."""
+    try:
+        data = json.loads(value or "")
+        return [(int(pid), int(qty)) for pid, qty in data]
+    except (ValueError, TypeError):
+        return []
+
+
+async def restore_stock(db, pairs):
+    for pid, qty in pairs:
+        await db.execute("UPDATE products SET stock_qty = stock_qty + $1 WHERE id = $2 AND stock_qty IS NOT NULL", qty, pid)
 
 
 def first_photo_id(value):
@@ -1166,6 +1311,10 @@ async def spa_archive():
 
 @app.get("/accounting")
 async def spa_accounting():
+    return FileResponse("static/index.html")
+
+@app.get("/products")
+async def spa_products():
     return FileResponse("static/index.html")
 
 @app.get("/clients")

@@ -87,6 +87,8 @@ function updateOrdersBadge() {
         badge.classList.add('hidden');
     }    const profileBtn = document.getElementById('profile-menu-btn');
     profileBtn?.classList.toggle('has-new', newCount > 0);
+    const bar = document.getElementById('orders-new-badge-bar');
+    if (bar) { bar.textContent = newCount; bar.classList.toggle('hidden', newCount === 0); }
     profileBtn?.setAttribute('aria-label', newCount > 0 ? `Профиль, новых заказов: ${newCount}` : 'Профиль');
 }
 
@@ -381,7 +383,8 @@ const TAB_ROUTES = {
     orders: '/orders',
     archived: '/archive',
     accounting: '/accounting',
-    clients: '/clients'
+    clients: '/clients',
+    products: '/products'
 };
 const ROUTE_TO_TAB = {};
 Object.entries(TAB_ROUTES).forEach(([tab, path]) => { ROUTE_TO_TAB[path] = tab; });
@@ -430,6 +433,10 @@ window.switchTab = function(tabName, pushState = true) {
         markOrdersSeen(rawActiveOrders.map(o => o.id));
         updateOrdersBadge();
         renderOrders();
+    }
+    if (tabName === 'products' && currentRole === 'admin') {
+        loadCatalog();
+        renderProductsAdmin();
     }
     if (tabName === 'accounting' && currentRole === 'admin') {
         loadLedger();
@@ -1971,6 +1978,7 @@ async function loadCatalog() {
         const data = await fetchAPI('/catalog');
         rawCatalogProducts = data.products || [];
         syncCartWithCatalog();
+        renderProductsAdmin();
         renderBrandCards();
         renderSidebarFilters();
         renderFranchiseChips();
@@ -1996,6 +2004,17 @@ function getBadgeClass(badge) {
 const ICON_CART = '<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>';
 const ICON_IMAGE = '<svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="1"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
 
+// Products opened by a private link are kept apart so they never show up in the catalog grid.
+const linkedProducts = [];
+function findProduct(id) {
+    return rawCatalogProducts.find(p => p.id === id) || linkedProducts.find(p => p.id === id);
+}
+
+function stockInfo(p) {
+    const tracked = p.stock_qty !== null && p.stock_qty !== undefined;
+    return { tracked, qty: tracked ? p.stock_qty : null, sold: tracked && p.stock_qty <= 0, few: tracked && p.stock_qty > 0 && p.stock_qty <= 5 };
+}
+
 function photoIds(value) { return (value || '').split(',').map(s => s.trim()).filter(Boolean); }
 function photoUrl(id) { return id.startsWith('http') || id.startsWith('/static/') ? id : `/api/photos/${id}`; }
 
@@ -2009,9 +2028,13 @@ function productCard(p) {
     const imgHtml = photoSrc
         ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">` + (ids[1] ? `<img class="alt" src="${photoUrl(ids[1])}" alt="" loading="lazy" aria-hidden="true">` : '')
         : `<div class="product-image-placeholder">${ICON_IMAGE}<span>Фото скоро</span></div>`;
-    const stockTag = p.in_stock ? '<span class="card-tag-stock">В наличии</span>' : '<span class="card-tag-pre">Предзаказ</span>';
+    const st = stockInfo(p);
+    const stockTag = st.sold ? '<span class="card-tag-sold">Распродан</span>'
+        : (p.in_stock || st.tracked) ? '<span class="card-tag-stock">В наличии</span>'
+        : '<span class="card-tag-pre">Предзаказ</span>';
     const discountTag = p.discount_percent > 0 ? `<span class="card-tag-discount">−${p.discount_percent}%</span>` : '';
     const badgeTag = p.badge ? `<span class="card-tag-badge">${p.badge}</span>` : '';
+    const hiddenTag = p.hidden ? '<span class="card-tag-hidden">Скрыт</span>' : '';
     const finalPrice = (p.final_price || p.price).toLocaleString('ru');
     const oldPrice = p.discount_percent > 0 ? `<span class="price-original">${p.price.toLocaleString('ru')} ₽</span>` : '';
     const adminButtons = currentRole === 'admin' ? `
@@ -2021,15 +2044,16 @@ function productCard(p) {
         </div>` : '';
 
     card.innerHTML = `
-        <div class="card-tags">${stockTag}${discountTag}${badgeTag}</div>
+        <div class="card-tags">${stockTag}${discountTag}${badgeTag}${hiddenTag}</div>
         <div class="product-image-box">${imgHtml}${adminButtons}</div>
         <div class="product-card-body">
             <div class="product-card-brand">${p.category || ''}</div>
             <div class="product-card-title" title="${p.name}">${p.figure_number ? `<span class="card-number">#${p.figure_number}</span> ` : ''}${p.name}</div>
-            <div class="card-prepay">Предоплата 50%</div>
+            ${st.sold ? '' : '<div class="card-prepay">Предоплата 50%</div>'}
+            ${st.few ? `<div class="card-left">Осталось ${st.qty} шт.</div>` : ''}
             <div class="product-card-price-row">
                 <div class="price-group"><span class="price-final">${finalPrice} ₽</span>${oldPrice}</div>
-                <button type="button" class="card-cart-btn" aria-label="В корзину" onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)">${ICON_CART}</button>
+                <button type="button" class="card-cart-btn" aria-label="${st.sold ? 'Распродан' : 'В корзину'}" ${st.sold ? 'disabled' : ''} onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)">${ICON_CART}</button>
             </div>
         </div>`;
     return card;
@@ -2167,21 +2191,14 @@ function renderCatalog() {
 
     updatePaginationUI('catalog', products.length);
 
-    // Auto-open product page from URL ?product=ID
-    const urlProduct = new URLSearchParams(window.location.search).get('product');
-    if (urlProduct) {
-        const targetId = parseInt(urlProduct);
-        if (rawCatalogProducts.find(p => p.id === targetId)) {
-            window.openProductDetail(targetId);
-        }
-    }
+    openProductFromUrl();
 }
 
 // --- Product Page ---
 window._ppCurrentId = null;
 
 window.openProductDetail = function(productId) {
-    const p = rawCatalogProducts.find(x => x.id === productId);
+    const p = findProduct(productId);
     if (!p) return;
     window._ppCurrentId = productId;
 
@@ -2228,19 +2245,24 @@ window.openProductDetail = function(productId) {
 
     const actions = document.getElementById('pp-actions');
     const role = currentRole;
+    const st = stockInfo(p);
+    if (st.sold) document.getElementById('pp-stock').innerHTML = '<span style="color:var(--pre);">● Распродан</span>';
+    else if (st.few) document.getElementById('pp-stock').innerHTML = `<span style="color:var(--warn);">● Осталось ${st.qty} шт.</span>`;
+    const addBtn = `<button type="button" class="btn primary pp-btn" ${st.sold ? 'disabled' : ''} onclick="window.addToCart(${p.id},1)">${st.sold ? 'Распродан' : 'В корзину'}</button>`;
     if (role === 'admin') {
         actions.innerHTML = `
-            <button type="button" class="btn primary pp-btn" onclick="window.addToCart(${p.id},1)">В корзину</button>
+            ${addBtn}
             <button type="button" class="btn secondary outline pp-btn" onclick="window.openEditProductModal(${p.id})">Редактировать</button>
             <button type="button" class="btn danger outline pp-btn" onclick="window.confirmDeleteProduct(${p.id})">Удалить</button>`;
     } else {
         actions.innerHTML = `
-            <button type="button" class="btn primary pp-btn" onclick="window.addToCart(${p.id},1)">В корзину</button>
-            <button type="button" class="btn secondary outline pp-btn" onclick="window.quickBuy(${p.id})">Купить сразу</button>`;
+            ${addBtn}
+            <button type="button" class="btn secondary outline pp-btn" ${st.sold ? 'disabled' : ''} onclick="window.quickBuy(${p.id})">Купить сразу</button>`;
     }
 
     // Update URL and switch to product page tab
-    history.pushState({ tab: 'product', product: productId }, '', `/catalog?product=${productId}`);
+    const urlKey = new URLSearchParams(window.location.search).get('k') || (p.hidden && p.link_key ? p.link_key : '');
+    history.pushState({ tab: 'product', product: productId }, '', `/catalog?product=${productId}${urlKey ? `&k=${encodeURIComponent(urlKey)}` : ''}`);
     window.switchTab('product', false);
 };
 
@@ -2283,7 +2305,9 @@ window.closeProductPage = function() {
 
 // --- Copy Product Link ---
 window.copyProductLink = function(productId) {
-    const url = `${window.location.origin}/catalog?product=${productId}`;
+    const p = findProduct(productId);
+    const key = p && p.hidden && p.link_key ? `&k=${encodeURIComponent(p.link_key)}` : '';
+    const url = `${window.location.origin}/catalog?product=${productId}${key}`;
     navigator.clipboard.writeText(url).then(() => {
         window.showToast('Ссылка скопирована');
     }).catch(() => {
@@ -2336,6 +2360,8 @@ window.openAddProductModal = function() {
     document.getElementById('product-modal-title').textContent = 'Добавить товар в каталог';
     document.getElementById('product-in-stock').checked = true;
     document.getElementById('product-packs').value = '0';
+    document.getElementById('product-stock-qty').value = '';
+    document.getElementById('product-hidden').checked = false;
     document.getElementById('product-discount').value = '0';
     document.getElementById('product-badge').value = '';
     document.getElementById('product-photo-id').value = '';
@@ -2358,6 +2384,8 @@ window.openEditProductModal = function(id) {
     document.getElementById('product-discount').value = p.discount_percent || 0;
     document.getElementById('product-final-price').value = p.final_price || p.price;
     document.getElementById('product-packs').value = p.packs_count || 0;
+    document.getElementById('product-stock-qty').value = (p.stock_qty === null || p.stock_qty === undefined) ? '' : p.stock_qty;
+    document.getElementById('product-hidden').checked = !!p.hidden;
     document.getElementById('product-in-stock').checked = !!p.in_stock;
     document.getElementById('product-photo-id').value = p.photo_id || '';
     document.getElementById('product-badge').value = p.badge || '';
@@ -2458,7 +2486,9 @@ productForm?.addEventListener('submit', async (e) => {
         photo_id: document.getElementById('product-photo-id').value.trim(),
         in_stock: document.getElementById('product-in-stock').checked,
         badge: (document.getElementById('product-badge')?.value || '').trim(),
-        description: (document.getElementById('product-description')?.value || '').trim()
+        description: (document.getElementById('product-description')?.value || '').trim(),
+        hidden: !!document.getElementById('product-hidden')?.checked,
+        stock_qty: (document.getElementById('product-stock-qty')?.value ?? '') === '' ? null : Math.max(0, parseInt(document.getElementById('product-stock-qty').value, 10) || 0)
     };
 
     try {
@@ -2731,12 +2761,25 @@ function syncCartWithCatalog() {
 }
 
 window.addToCart = function(productId, qty = 1) {
-    const product = rawCatalogProducts.find(p => p.id === productId);
+    const product = findProduct(productId);
     if (!product) {
         window.showToast('Товар не найден');
         return;
     }
+    const st = stockInfo(product);
+    if (st.sold) {
+        window.showToast('Товар распродан');
+        return;
+    }
     const existing = funkoCart.find(item => item.id === productId);
+    if (st.tracked) {
+        const inCart = existing ? existing.qty : 0;
+        if (inCart + qty > st.qty) {
+            window.showToast(`Доступно только ${st.qty} шт.`);
+            if (inCart >= st.qty) return;
+            qty = st.qty - inCart;
+        }
+    }
     if (existing) {
         existing.qty += qty;
         refreshCartItem(existing, product);
@@ -3475,3 +3518,105 @@ document.getElementById('theme-toggle')?.addEventListener('click', () => {
     window.addEventListener('scroll', on, { passive: true });
     on();
 })();
+
+// --- Admin: products list with search, filters and sorting ---
+function productStatus(p) {
+    const st = stockInfo(p);
+    if (st.sold) return { key: 'sold', label: 'Распродан', cls: 'card-tag-sold' };
+    if (st.few) return { key: 'low', label: 'Мало', cls: 'card-tag-pre' };
+    if (p.in_stock || st.tracked) return { key: 'instock', label: 'В наличии', cls: 'card-tag-stock' };
+    return { key: 'preorder', label: 'Под заказ', cls: 'card-tag-pre' };
+}
+
+function renderProductsAdmin() {
+    const body = document.querySelector('#products-table tbody');
+    if (!body) return;
+    const search = (document.getElementById('products-search')?.value || '').toLowerCase().trim();
+    const stockFilter = document.getElementById('products-filter-stock')?.value || 'all';
+    const catSelect = document.getElementById('products-filter-category');
+    const sort = document.getElementById('products-sort')?.value || 'new';
+
+    const cats = [...new Set(rawCatalogProducts.map(p => p.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
+    if (catSelect) {
+        const cur = catSelect.value;
+        const sig = cats.join('|');
+        if (catSelect.dataset.sig !== sig) {
+            catSelect.replaceChildren(new Option('Все бренды', ''), ...cats.map(c => new Option(c, c)));
+            catSelect.value = cats.includes(cur) ? cur : '';
+            catSelect.dataset.sig = sig;
+        }
+    }
+    const cat = catSelect?.value || '';
+
+    let list = rawCatalogProducts.filter(p => {
+        const hay = `${p.name} ${p.figure_number || ''} ${p.category || ''} ${p.series || ''} ${p.badge || ''}`.toLowerCase();
+        if (search && !hay.includes(search)) return false;
+        if (cat && p.category !== cat) return false;
+        if (stockFilter !== 'all') {
+            const key = productStatus(p).key;
+            if (stockFilter === 'low' ? key !== 'low' : key !== stockFilter) return false;
+        }
+        return true;
+    });
+    const price = (p) => p.final_price || p.price || 0;
+    const sorters = {
+        new: (a, b) => b.id - a.id,
+        name: (a, b) => a.name.localeCompare(b.name, 'ru'),
+        price_asc: (a, b) => price(a) - price(b),
+        price_desc: (a, b) => price(b) - price(a),
+        stock_asc: (a, b) => (stockInfo(a).tracked ? a.stock_qty : 1e9) - (stockInfo(b).tracked ? b.stock_qty : 1e9)
+    };
+    list.sort(sorters[sort] || sorters.new);
+
+    const count = document.getElementById('products-count');
+    if (count) count.textContent = `Показано ${list.length} из ${rawCatalogProducts.length}`;
+
+    if (!list.length) {
+        body.innerHTML = '<tr class="empty-row"><td colspan="7" style="text-align:center; padding:28px; color:var(--muted);">Ничего не найдено</td></tr>';
+        return;
+    }
+    body.replaceChildren(...list.map(p => {
+        const tr = document.createElement('tr');
+        const ids = photoIds(p.photo_id);
+        const status = productStatus(p);
+        const stock = stockInfo(p);
+        const photo = ids[0] ? `<img src="${photoUrl(ids[0])}" alt="" loading="lazy" style="width:44px;height:44px;object-fit:contain;background:var(--img-bg);border-radius:6px;">` : '<span style="color:var(--muted)">—</span>';
+        const cell = (html, cls = '') => { const td = document.createElement('td'); if (cls) td.className = cls; td.innerHTML = html; return td; };
+        const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        tr.append(
+            cell(photo),
+            cell(`${p.figure_number ? `<span style="color:var(--muted)">#${esc(p.figure_number)}</span> ` : ''}${esc(p.name)}${p.hidden ? ' <span class="card-tag-hidden">Скрыт</span>' : ''}`, 'product-name-cell'),
+            cell(`${esc(p.category || '')}${p.series ? `<div style="color:var(--muted);font-size:0.82rem;">${esc(p.series)}</div>` : ''}`),
+            cell(`${price(p).toLocaleString('ru')} ₽${p.discount_percent > 0 ? `<div style="color:var(--muted);font-size:0.8rem;text-decoration:line-through;">${p.price.toLocaleString('ru')} ₽</div>` : ''}`),
+            cell(stock.tracked ? `<strong>${stock.qty}</strong> шт.` : '<span style="color:var(--muted)">—</span>'),
+            cell(`<span class="${status.cls}">${status.label}</span>`),
+            cell(`<button type="button" class="btn secondary outline product-edit-btn" style="padding:6px 12px;font-size:0.8rem;" onclick="window.openEditProductModal(${p.id})">Изменить</button> <button type="button" class="btn danger outline product-delete-btn" style="padding:6px 12px;font-size:0.8rem;" onclick="window.confirmDeleteProduct(${p.id})" aria-label="Удалить">✕</button>`)
+        );
+        return tr;
+    }));
+}
+window.renderProductsAdmin = renderProductsAdmin;
+['products-search', 'products-filter-stock', 'products-filter-category', 'products-sort'].forEach(id => {
+    const el = document.getElementById(id);
+    el?.addEventListener(id === 'products-search' ? 'input' : 'change', renderProductsAdmin);
+});
+document.getElementById('products-add-btn')?.addEventListener('click', () => window.openAddProductModal());
+
+let handledUrlProduct = '';
+async function openProductFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const id = parseInt(params.get('product') || '', 10);
+    if (!id) { handledUrlProduct = ''; return; }
+    const signature = `${id}|${params.get('k') || ''}`;
+    if (handledUrlProduct === signature) return;
+    handledUrlProduct = signature;
+    if (findProduct(id)) { window.openProductDetail(id); return; }
+    try {
+        const res = await fetch(`/api/catalog/${id}?k=${encodeURIComponent(params.get('k') || '')}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (!res.ok) return;
+        linkedProducts.push(await res.json());
+        window.openProductDetail(id);
+    } catch (e) { /* offline: stay on the catalog */ }
+}

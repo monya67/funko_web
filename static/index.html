@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1793300000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1793600000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -243,6 +243,16 @@
             </div>
         </div>
     </header>
+
+    <nav id="admin-subnav" class="admin-subnav admin-only hidden" aria-label="Разделы администратора">
+        <div class="admin-subnav-inner">
+            <a href="/orders" class="nav-item" data-tab="orders">Заказы <span id="orders-new-badge-bar" class="orders-badge hidden"></span></a>
+            <a href="/archive" class="nav-item" data-tab="archived">Архив</a>
+            <a href="/accounting" class="nav-item" data-tab="accounting">Бухгалтерия</a>
+            <a href="/clients" class="nav-item" data-tab="clients">Клиенты</a>
+            <a href="/products" class="nav-item" data-tab="products">Товары</a>
+        </div>
+    </nav>
 
     <div id="dashboard-view" class="dashboard-layout home-mode fade-in">
 
@@ -507,7 +517,7 @@
                                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
                                 </div>
                                 <h3>Бесплатное хранение</h3>
-                                <p>После поступления заказа в Москву мы <strong>бесплатно храним его 30 дней</strong>. Если заказ полностью оплачен — срок хранения увеличивается <strong>до 90 дней</strong>.</p>
+                                <p>После поступления заказа в Москву мы <strong>бесплатно храним его 30 дней</strong>. Если заказ полностью оплачен — срок хранения увеличивается <strong>до 60 дней</strong>.</p>
                                 <p class="feature-sub">Нужен больший срок? Напишите <strong>@Funko_Stop</strong>, договоримся отдельно. Если срок хранения закончился, мы обязательно свяжемся с вами лично перед принятием решения.</p>
                             </div>
 
@@ -616,7 +626,7 @@
                                     <span class="faq-icon">+</span>
                                 </button>
                                 <div class="faq-answer-panel">
-                                    <p>После поступления заказа на склад в Москве мы бесплатно храним его 30 дней. Если заказ полностью оплачен — срок хранения увеличивается до 90 дней. Перед окончанием срока мы обязательно свяжемся с вами лично.</p>
+                                    <p>После поступления заказа на склад в Москве мы бесплатно храним его 30 дней. Если заказ полностью оплачен — срок хранения увеличивается до 60 дней. Перед окончанием срока мы обязательно свяжемся с вами лично.</p>
                                 </div>
                             </div>
 
@@ -1040,6 +1050,53 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <!-- PRODUCTS TAB (admin) -->
+            <section id="products-tab" class="tab-content">
+                <div class="header-flex">
+                    <h2>Товары</h2>
+                    <button id="products-add-btn" type="button" class="btn primary">+ Добавить товар</button>
+                </div>
+                <div class="products-toolbar">
+                    <label class="sr-only" for="products-search">Поиск по товарам</label>
+                    <input id="products-search" type="search" placeholder="Поиск: название, номер, бренд, серия…">
+                    <label class="sr-only" for="products-filter-stock">Наличие</label>
+                    <select id="products-filter-stock">
+                        <option value="all">Все товары</option>
+                        <option value="instock">В наличии</option>
+                        <option value="preorder">Под заказ</option>
+                        <option value="low">Мало (до 5 шт.)</option>
+                        <option value="sold">Распродано</option>
+                    </select>
+                    <label class="sr-only" for="products-filter-category">Бренд</label>
+                    <select id="products-filter-category"><option value="">Все бренды</option></select>
+                    <label class="sr-only" for="products-sort">Сортировка</label>
+                    <select id="products-sort">
+                        <option value="new">Сначала новые</option>
+                        <option value="name">По названию</option>
+                        <option value="price_asc">Сначала дешевле</option>
+                        <option value="price_desc">Сначала дороже</option>
+                        <option value="stock_asc">Меньше остаток</option>
+                    </select>
+                </div>
+                <div id="products-count" class="products-count"></div>
+                <div class="glass-panel table-container">
+                    <table id="products-table">
+                        <thead>
+                            <tr>
+                                <th style="width:64px;">Фото</th>
+                                <th>Название</th>
+                                <th>Бренд / серия</th>
+                                <th>Цена</th>
+                                <th>Остаток</th>
+                                <th>Статус</th>
+                                <th style="width:150px;">Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
                 </div>
             </section>
 
@@ -1509,7 +1566,7 @@
                         </div>
                         <div class="prepay-title">100% оплата</div>
                         <div class="prepay-amount" id="checkout-amount-100">0 ₽</div>
-                        <div class="prepay-hint">Бесплатное хранение на складе до 90 дней</div>
+                        <div class="prepay-hint">Бесплатное хранение на складе до 60 дней</div>
                     </div>
                 </div>
             </div>
@@ -1770,6 +1827,19 @@
                 </div>
 
                 <div class="input-group">
+                    <label for="product-stock-qty">Количество в наличии</label>
+                    <input type="number" id="product-stock-qty" min="0" step="1" placeholder="без учёта">
+                    <div class="photo-hint">Пусто: количество не считается. Число: столько можно продать; когда купят всё, товар станет «Распродан».</div>
+                </div>
+
+                <div class="input-group">
+                    <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
+                        <input type="checkbox" id="product-hidden" style="width:18px; height:18px; margin-top:2px; flex:none; accent-color: var(--primary);">
+                        <span>Скрыть из каталога<br><span class="photo-hint" style="display:block; margin-top:2px;">Товар не виден в списке и поиске. Открывается только по ссылке с секретным ключом: кнопка «Скопировать ссылку» на странице товара.</span></span>
+                    </label>
+                </div>
+
+                <div class="input-group">
                     <label>Фотографии товара</label>
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <input type="text" id="product-photo-id" placeholder="ID фото через запятую" style="flex-grow: 1;">
@@ -1972,6 +2042,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1793300000000"></script>
+    <script src="/static/app.js?v=1793600000000"></script>
 </body>
 </html>

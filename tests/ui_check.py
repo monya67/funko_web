@@ -107,7 +107,8 @@ def open_page(ctx, path):
     page.set_default_timeout(5000)
     page.goto(BASE + path, wait_until="networkidle", timeout=30000)
     page.wait_for_timeout(400)
-    reveal_all(page)
+    if "#" not in path:   # a deep link must be measured where it landed, not after scrolling back to the top
+        reveal_all(page)
     return page
 
 
@@ -862,6 +863,204 @@ def seo_basics(page):
             errors.append(f"JSON-LD sameAs lacks {needle}")
     if not ld.get("knowsAbout") and not ld.get("makesOffer"):
         errors.append("JSON-LD does not say what the store sells")
+    return errors
+
+
+@check("modal_scrolls", role="admin", widths=(1440,), path="/catalog")
+def modal_scrolls(page):
+    # A Macbook-sized window is short: the product form must scroll inside itself so its last button is reachable.
+    page.set_viewport_size({"width": 1440, "height": 640})
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("() => window.openAddProductModal()")
+    page.wait_for_timeout(400)
+    info = page.evaluate("""() => { const m = document.getElementById('product-modal'); const s = getComputedStyle(m);
+        m.scrollTop = m.scrollHeight; const btn = [...m.querySelectorAll('button[type=submit]')].pop(); const r = btn && btn.getBoundingClientRect();
+        return { overflowY: s.overflowY, fits: m.getBoundingClientRect().height <= window.innerHeight, scrollable: m.scrollHeight > m.clientHeight, btnBottom: r && r.bottom, vh: window.innerHeight }; }""")
+    errors = []
+    if not info["fits"]:
+        errors.append("form is taller than the window")
+    if info["overflowY"] not in ("auto", "scroll"):
+        errors.append(f"form does not scroll (overflow-y: {info['overflowY']})")
+    if info["btnBottom"] is None or info["btnBottom"] > info["vh"]:
+        errors.append("save button cannot be reached by scrolling")
+    return errors
+
+
+@check("phone_hero_is_flat", widths=(390,))
+def phone_hero_is_flat(page):
+    # iOS Safari paints 3D layers of cut-out images as translucent rectangles and fades red to pink.
+    info = page.evaluate("""() => { const c = getComputedStyle(document.querySelector('.hero-collage'));
+        const f = getComputedStyle(document.querySelector('.hero-fig')); const p = getComputedStyle(document.querySelector('.hero-paper'));
+        return { style: c.transformStyle, persp: c.perspective, figAnim: f.animationName, figFilter: f.filter, figTf: f.transform, paperAnim: p.animationName }; }""")
+    errors = []
+    if info["style"] == "preserve-3d" or info["persp"] != "none":
+        errors.append(f"collage still uses 3D on phones: {info['style']}, perspective {info['persp']}")
+    if info["figAnim"] != "none":
+        errors.append(f"figures still animate with 3D keyframes on phones: {info['figAnim']}")
+    if info["figFilter"] != "none":
+        errors.append(f"figures keep a drop-shadow filter (rectangle artefacts on iOS): {info['figFilter']}")
+    if info["paperAnim"] != "none":
+        errors.append("paper still animates on phones")
+    return errors
+
+
+ADMIN_TABS = [("orders", "Заказы"), ("archived", "Архив"), ("accounting", "Бухгалтерия"), ("clients", "Клиенты"), ("products", "Товары")]
+
+
+@check("admin_subnav", role="admin", widths=(390, 1440), path="/catalog")
+def admin_subnav(page):
+    errors = []
+    if not visible(page, "#admin-subnav"):
+        return ["admin section bar is not visible"]
+    for tab, label in ADMIN_TABS:
+        if not page.evaluate("(t) => !!document.querySelector(`#admin-subnav [data-tab=${t}]`)", tab):
+            errors.append(f"no {label} link in the admin bar")
+            continue
+        page.evaluate("(t) => document.querySelector(`#admin-subnav [data-tab=${t}]`).scrollIntoView({inline: 'center'})", tab)
+        page.click(f"#admin-subnav [data-tab='{tab}']")
+        page.wait_for_timeout(250)
+        if not page.is_visible(f"#{tab}-tab.active"):
+            errors.append(f"one click on {label} did not open it")
+        if "active" not in (page.get_attribute(f"#admin-subnav [data-tab='{tab}']", "class") or ""):
+            errors.append(f"{label} is not highlighted while open")
+    return errors
+
+
+@check("admin_subnav_guest_hidden", widths=(1440,), path="/catalog")
+def admin_subnav_guest_hidden(page):
+    return ["admin bar is visible to a guest"] if visible(page, "#admin-subnav") else []
+
+
+@check("products_admin", role="admin", widths=(390, 1440), path="/catalog")
+def products_admin(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("() => window.switchTab('products')")
+    page.wait_for_selector("#products-table tbody tr", timeout=10000)
+    errors = []
+    total = page.evaluate("() => document.querySelectorAll('#products-table tbody tr').length")
+    for sel, what in (("#products-search", "search box"), ("#products-filter-stock", "availability filter"), ("#products-filter-category", "category filter"), ("#products-sort", "sort"), ("#products-add-btn", "add button")):
+        if not page.evaluate("(s) => !!document.querySelector(s)", sel):
+            errors.append(f"no {what}")
+    if errors:
+        return errors
+    page.fill("#products-search", "zzzz-no-such-figure")
+    page.wait_for_timeout(250)
+    none = page.evaluate("() => document.querySelectorAll('#products-table tbody tr:not(.empty-row)').length")
+    if none != 0:
+        errors.append(f"search for nonsense still shows {none} rows")
+    page.fill("#products-search", "")
+    page.wait_for_timeout(250)
+    if page.evaluate("() => document.querySelectorAll('#products-table tbody tr').length") != total:
+        errors.append("clearing the search does not bring all rows back")
+    if not page.evaluate("() => !!document.querySelector('#products-table tbody tr .product-edit-btn') && !!document.querySelector('#products-table tbody tr .product-delete-btn')"):
+        errors.append("rows have no edit/delete buttons")
+    if page.evaluate(OVERFLOW_JS) > 1:
+        errors.append("products table widens the page")
+    return errors
+
+
+@check("products_admin_stock_filter", role="admin", widths=(1440,), path="/catalog")
+def products_admin_stock_filter(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("() => window.switchTab('products')")
+    page.wait_for_selector("#products-table tbody tr", timeout=10000)
+    page.evaluate("""() => { rawCatalogProducts.push({ id: 987001, name: 'Sold test', category: 'Funko', price: 1, final_price: 1, discount_percent: 0, in_stock: true, photo_id: '', figure_number: '', stock_qty: 0, packs_count: 0, badge: '', description: '' },
+        { id: 987002, name: 'Few test', category: 'Funko', price: 1, final_price: 1, discount_percent: 0, in_stock: true, photo_id: '', figure_number: '', stock_qty: 3, packs_count: 0, badge: '', description: '' }); renderProductsAdmin(); }""")
+    page.select_option("#products-filter-stock", "sold")
+    page.wait_for_timeout(250)
+    names = page.evaluate("() => [...document.querySelectorAll('#products-table tbody tr .product-name-cell')].map(e => e.textContent)")
+    errors = []
+    if not any("Sold test" in n for n in names) or any("Few test" in n for n in names):
+        errors.append(f"'Распродан' filter shows {names}")
+    return errors
+
+
+STOCK_PRODUCT = """{ id: 987654, name: 'Stock test', category: 'Funko', series: 'T', price: 3000, final_price: 3000, discount_percent: 0,
+    in_stock: true, photo_id: '', figure_number: '1', packs_count: 0, badge: '', description: '', stock_qty: %s }"""
+
+
+@check("stock_ui", role="admin", widths=(1440,), path="/catalog")
+def stock_ui(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    errors = []
+    if not page.evaluate("() => { const e = document.getElementById('product-stock-qty'); return !!e && e.type === 'number'; }"):
+        errors.append("no number field #product-stock-qty in the product form")
+    sold = page.evaluate("""() => { const c = productCard(%s); const btn = c.querySelector('.card-cart-btn');
+        return { text: c.textContent, disabled: !btn || btn.disabled }; }""" % (STOCK_PRODUCT % 0))
+    if "Распродан" not in sold["text"]:
+        errors.append("card with stock 0 does not say 'Распродан'")
+    if not sold["disabled"]:
+        errors.append("cart button is still active for a sold-out product")
+    few = page.evaluate("() => productCard(%s).textContent" % (STOCK_PRODUCT % 3))
+    if "Осталось 3" not in few:
+        errors.append("card with stock 3 does not say 'Осталось 3'")
+    many = page.evaluate("() => productCard(%s).textContent" % (STOCK_PRODUCT % 50))
+    if "Осталось" in many or "Распродан" in many:
+        errors.append("plenty of stock must not show a scarcity label")
+    plain = page.evaluate("() => productCard(%s).textContent" % (STOCK_PRODUCT % "null"))
+    if "Осталось" in plain or "Распродан" in plain:
+        errors.append("untracked product (stock_qty null) must look as before")
+    page.evaluate("() => { funkoCart.length = 0; rawCatalogProducts.push(%s); rawCatalogProducts.push({ ...%s, id: 987655 }); }" % (STOCK_PRODUCT % 2, STOCK_PRODUCT % 0))
+    page.evaluate("() => { window.addToCart(987654, 1); window.addToCart(987654, 1); window.addToCart(987654, 1); window.addToCart(987655, 1); }")
+    got = page.evaluate("() => funkoCart.map(i => [i.id, i.qty])")
+    if got != [[987654, 2]]:
+        errors.append(f"cart must hold max 2 of 2 in stock and nothing sold out, got {got}")
+    page.evaluate("() => window.openProductDetail(987655)")
+    if not page.evaluate("() => { const b = document.querySelector('#pp-actions .btn.primary'); return !!b && b.disabled; }"):
+        errors.append("product page 'В корзину' is not disabled for a sold-out product")
+    return errors
+
+
+HIDDEN_PRODUCT = """{ id: 987700, name: 'Hidden test', category: 'Funko', series: 'T', price: 3000, final_price: 3000, discount_percent: 0,
+    in_stock: true, photo_id: '', figure_number: '9', packs_count: 0, badge: '', description: '', stock_qty: null, hidden: true, link_key: 'KEY987KEY' }"""
+
+
+@check("hidden_product_admin_ui", role="admin", widths=(1440,), path="/catalog")
+def hidden_product_admin_ui(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    errors = []
+    if not page.evaluate("() => { const e = document.getElementById('product-hidden'); return !!e && e.type === 'checkbox' && !e.checked; }"):
+        errors.append("product form lacks an unchecked #product-hidden checkbox")
+    if "Скрыт" not in page.evaluate("() => productCard(%s).textContent" % HIDDEN_PRODUCT):
+        errors.append("admin cannot tell a hidden product from a listed one in the catalog")
+    page.evaluate("() => { rawCatalogProducts.push(%s); window.openEditProductModal(987700); }" % HIDDEN_PRODUCT)
+    if not page.evaluate("() => document.getElementById('product-hidden').checked"):
+        errors.append("edit form does not load the hidden flag")
+    copied = page.evaluate("""async () => { let got = ''; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { got = t; } }, configurable: true });
+        window.copyProductLink(987700); await new Promise(r => setTimeout(r, 100)); return got; }""")
+    if "product=987700" not in copied or "k=KEY987KEY" not in copied:
+        errors.append(f"copied link for a hidden product lacks its key: {copied!r}")
+    plain = page.evaluate("""async () => { let got = ''; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t) => { got = t; } }, configurable: true });
+        rawCatalogProducts.push({ ...%s, id: 987701, hidden: false, link_key: '' }); window.copyProductLink(987701); await new Promise(r => setTimeout(r, 100)); return got; }""" % HIDDEN_PRODUCT)
+    if "k=" in plain:
+        errors.append("a listed product's link carries a key")
+    return errors
+
+
+@check("hidden_product_opens_by_link", widths=(1440,), path="/catalog")
+def hidden_product_opens_by_link(page):
+    seen = []
+
+    def handler(route):
+        url = route.request.url
+        seen.append(url)
+        if "k=GOODKEY" in url:
+            route.fulfill(status=200, content_type="application/json", body='{"id": 987800, "name": "Secret figure", "category": "Funko", "price": 100, "final_price": 100, "discount_percent": 0, "in_stock": true, "photo_id": "", "figure_number": "", "description": "", "stock_qty": null, "hidden": true}')
+        else:
+            route.fulfill(status=404, content_type="application/json", body='{"detail": "Product not found"}')
+
+    page.route("**/api/catalog/987800*", handler)
+    errors = []
+    page.goto(BASE + "/catalog?product=987800&k=GOODKEY", wait_until="networkidle", timeout=30000)
+    page.wait_for_timeout(1200)
+    if not page.is_visible("#product-tab.active") or "Secret figure" not in page.inner_text("#product-tab"):
+        errors.append("the link with the right key did not open the hidden product")
+    if not any("k=GOODKEY" in u for u in seen):
+        errors.append("the key from the address was not sent to the server")
+    page.goto(BASE + "/catalog?product=987800&k=BAD", wait_until="networkidle", timeout=30000)
+    page.wait_for_timeout(1200)
+    if page.is_visible("#product-tab.active"):
+        errors.append("a wrong key opened the hidden product")
     return errors
 
 

@@ -4230,3 +4230,39 @@ label.disabled { opacity: 0.4; pointer-events: none; }
 .pp-description { margin: 0 0 22px; font-size: 15px; line-height: 1.7; color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; }
 .pp-description.hidden { display: none; }
 #product-description { padding: 10px 14px; font-size: 0.9rem; font-family: inherit; }
+/* ===== admin section bar ===== */
+.admin-subnav { position: sticky; top: 65px; z-index: 880; background: var(--card); border-bottom: 1px solid rgba(var(--ink-rgb), 0.12); }
+.admin-subnav.hidden { display: none; }
+.admin-subnav-inner { max-width: 1360px; margin: 0 auto; padding: 0 24px; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.admin-subnav-inner::-webkit-scrollbar { display: none; }
+.admin-subnav .nav-item { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; font-size: 13px; font-weight: 600; letter-spacing: 0.4px; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; border-radius: 0; background: none; }
+.admin-subnav .nav-item:hover { color: var(--ink); }
+.admin-subnav .nav-item.active { color: var(--ink); border-bottom-color: var(--primary); background: none; }
+@media (max-width: 1023px) { .admin-subnav { top: 0; position: static; } }
+/* ===== products list ===== */
+.products-toolbar { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(150px, 1fr)); gap: 10px; margin: 6px 0 12px; }
+.products-toolbar input, .products-toolbar select { height: 44px; padding: 0 12px; font: inherit; font-size: 14px; min-width: 0; }
+.products-count { margin: 0 0 8px; font-size: 13px; color: var(--muted); }
+#products-table td { vertical-align: middle; }
+@media (max-width: 900px) { .products-toolbar { grid-template-columns: 1fr 1fr; } .products-toolbar input { grid-column: 1 / -1; } }
+/* ===== stock ===== */
+.card-tag-sold { padding: 4px 8px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; line-height: 1.2; background: var(--ink); color: var(--card); border-radius: var(--r-sm); }
+.card-left { margin: 4px 0 -2px; font-size: 12px; font-weight: 600; color: var(--warn); }
+.card-cart-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* ===== forms taller than the window scroll inside themselves ===== */
+.modal { max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; }
+/* ===== phones/tablets: flat hero (iOS Safari turns 3D layers of cut-out images into translucent boxes) ===== */
+@media (max-width: 899px), (hover: none) {
+    .hero-collage { transform-style: flat; perspective: none; transform: none !important; will-change: auto; transition: none; }
+    .hero-fig { animation: none; filter: none; }
+    .hero-paper { animation: none; transform: none; }
+    .hero-scribble { animation: none; }
+}
+.card-tag-hidden { padding: 4px 8px; font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; line-height: 1.2; background: transparent; color: var(--ink); border: 1px dashed rgba(var(--ink-rgb), 0.5); border-radius: var(--r-sm); }
+/* the admin bar takes 44px of the screen: the product photo must leave room for it */
+body:has(#admin-subnav:not(.hidden)) { --admin-bar: 44px; }
+.pp-image-box { max-height: calc(100vh - 170px - var(--admin-bar, 0px)); }
+.pp-image-col:has(.pp-thumbs:not(.hidden)) .pp-image-box { max-height: calc(100vh - 260px - var(--admin-bar, 0px)); }
+.pp-image-col { top: calc(88px + var(--admin-bar, 0px)); }
+@media (max-width: 700px) { .pp-image-box, .pp-image-col:has(.pp-thumbs:not(.hidden)) .pp-image-box { max-height: none; } }
