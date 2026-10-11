@@ -50,7 +50,7 @@
 | `static/privacy.html`, `oferta.html`, `returns.html` | Header, TOC, link to `legal.css` | 9 |
 | scratchpad `invert_theme.py` (not committed) | One-off colour converter | 2, 3 |
 
-Run commands from the repo root. "Scratchpad" = `C:/Users/monya/AppData/Local/Temp/claude/c--Users-monya-Documents-funko-web/dd522797-9613-44c9-957f-9b562f84ec4a/scratchpad`, abbreviated `$SP`. The dev server must be running: `python -m uvicorn main:app --port 8000`. Admin checks need `UI_ADMIN_LOGIN=admi1ZV67` in the environment (local token signed with the local `SECRET_KEY`; it is useless against production).
+Run commands from the repo root. "Scratchpad" = `C:/Users/monya/AppData/Local/Temp/claude/c--Users-monya-Documents-funko-web/dd522797-9613-44c9-957f-9b562f84ec4a/scratchpad`, abbreviated `$SP`. The dev server must be running: `python -m uvicorn main:app --port 8000`. Admin checks need `UI_ADMIN_LOGIN=<admin-login>` in the environment (local token signed with the local `SECRET_KEY`; it is useless against production).
 
 ---
 
@@ -246,7 +246,7 @@ Expected: `selftest OK`
 
 - [ ] **Step 6: Record the baseline on the current dark site**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots-baseline"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots-baseline"`
 Expected: runs to the end and prints a failure count (any number). Note it; the light theme must end at 0.
 
 - [ ] **Step 7: Ignore screenshot folders and commit (if approved)**
@@ -514,7 +514,7 @@ Expected: `True`.
 
 - [ ] **Step 7: Run the checks, fix what the converter could not know**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots"`
 Expected: `light_base` passes. For each remaining `low contrast` line, open the screenshot, find the rule with `grep -n` on the printed text's class, and fix by these rules: white text on a red fill stays `#fff`; text on a white or paper surface uses `var(--ink)` / `var(--ink-2)` / `var(--muted)`; a dark fill that should now be a light surface becomes `var(--card)`. Re-run until the guest and admin sweeps at 1440 show 0 low-contrast lines (overflow at narrow widths is handled in later tasks).
 
 - [ ] **Step 8: Commit (if approved)**
@@ -555,7 +555,7 @@ For each hit, apply the converter's rule by hand (`#fff` → `var(--ink)`, near-
 
 - [ ] **Step 4: Re-run the sweep**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots"`
 Expected: `admin_orders_readable` passes; no new low-contrast lines on any page at 1440.
 
 - [ ] **Step 5: Commit (if approved)**
@@ -794,7 +794,7 @@ and remove each listed rule block (keep `.sidebar-toggle-btn` / `.sidebar-filter
 
 - [ ] **Step 5: Run the checks**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots"`
 Expected: the five header checks pass; no low-contrast lines; no header-caused overflow at 390. Look at `guest_390_home.png` and `guest_1440_catalog.png`.
 
 - [ ] **Step 6: Commit (if approved)**
@@ -959,7 +959,7 @@ Append to the LIGHT REDESIGN section:
 
 - [ ] **Step 4: Run the checks**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots"`
 Expected: `card_shape`, `long_name_card`, `many_chips`, `product_page` pass; catalog pages at all widths show no overflow and no low-contrast lines. Compare `admin_1440_catalog.png` with the canvas "Каталог — компьютер".
 
 - [ ] **Step 5: Commit (if approved)**
@@ -1171,7 +1171,7 @@ Restyle the remaining home blocks (`.home-hub-grid`, `.hub-card`, how-it-works, 
 
 - [ ] **Step 5: Run the checks**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots"`
 Expected: `hero`, `home_new_admin`, `home_new_guest` pass; home pages at all four widths show no overflow and no low-contrast lines. Compare `guest_1440_home.png` / `guest_390_home.png` with the canvas artboards "Главная — компьютер" / "Главная — телефон".
 
 - [ ] **Step 6: Commit (if approved)**
@@ -1257,7 +1257,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 
 - [ ] **Step 3: Run the checks**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots"`
 Expected: `login_modal`, `cart_modal`, `cookie_banner_phone` pass; no regressions elsewhere.
 
 - [ ] **Step 4: Commit (if approved)**
@@ -1309,7 +1309,7 @@ tbody tr:hover { background: var(--surface-hover); }
 
 - [ ] **Step 3: Run the checks, fix flagged status pills**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots"`
 Expected: `admin_tables_phone` passes. For any `low contrast` line on `/orders`, `/archive`, `/accounting`, `/clients`, restyle that status/pill class with a tinted pair from the tokens (`--ok`/`--ok-bg`, `--pre`/`--pre-bg`, `--warn` on `#F6E9C9`, `--ink` on `--paper-2`). Re-run until 0.
 
 - [ ] **Step 4: Commit (if approved)**
@@ -1445,7 +1445,7 @@ git commit -m "style: light legal pages with shared header and section index"
 
 - [ ] **Step 1: Full sweep**
 
-Run: `UI_ADMIN_LOGIN=admi1ZV67 python tests/ui_check.py --out "$SP/shots-final"`
+Run: `UI_ADMIN_LOGIN=<admin-login> python tests/ui_check.py --out "$SP/shots-final"`
 Expected: `0 failure(s)`.
 
 - [ ] **Step 2: Eyeball every page at every width**
