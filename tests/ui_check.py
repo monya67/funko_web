@@ -895,8 +895,13 @@ def phone_hero_is_flat(page):
     errors = []
     if info["style"] == "preserve-3d" or info["persp"] != "none":
         errors.append(f"collage still uses 3D on phones: {info['style']}, perspective {info['persp']}")
-    if info["figAnim"] != "none":
-        errors.append(f"figures still animate with 3D keyframes on phones: {info['figAnim']}")
+    if info["figAnim"] == "none":
+        errors.append("figures do not move on phones (a flat 2D float is safe and expected)")
+    else:
+        css = page.evaluate("""(name) => { for (const sh of document.styleSheets) { let rs; try { rs = sh.cssRules; } catch (e) { continue; }
+            for (const r of rs) { if (r.type === CSSRule.KEYFRAMES_RULE && r.name === name) return r.cssText; } } return ''; }""", info["figAnim"])
+        if not css or "3d" in css.lower() or "translatez" in css.lower() or "perspective" in css.lower():
+            errors.append(f"phone float keyframes {info['figAnim']!r} are missing or use 3D: {css[:80]}")
     if info["figFilter"] != "none":
         errors.append(f"figures keep a drop-shadow filter (rectangle artefacts on iOS): {info['figFilter']}")
     if info["paperAnim"] != "none":
@@ -1062,6 +1067,14 @@ def hidden_product_opens_by_link(page):
     if page.is_visible("#product-tab.active"):
         errors.append("a wrong key opened the hidden product")
     return errors
+
+
+@check("phone_motion_respects_reduced", widths=(390,))
+def phone_motion_respects_reduced(page):
+    page.emulate_media(reduced_motion="reduce")
+    page.wait_for_timeout(200)
+    names = page.evaluate("() => [...document.querySelectorAll('.hero-fig')].map(e => getComputedStyle(e).animationName)")
+    return [] if all(n == "none" for n in names) else [f"phone figures still move with reduced motion: {names}"]
 
 
 def run(out, only=None):

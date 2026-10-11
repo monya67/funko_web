@@ -4266,3 +4266,16 @@ body:has(#admin-subnav:not(.hidden)) { --admin-bar: 44px; }
 .pp-image-col:has(.pp-thumbs:not(.hidden)) .pp-image-box { max-height: calc(100vh - 260px - var(--admin-bar, 0px)); }
 .pp-image-col { top: calc(88px + var(--admin-bar, 0px)); }
 @media (max-width: 700px) { .pp-image-box, .pp-image-col:has(.pp-thumbs:not(.hidden)) .pp-image-box { max-height: none; } }
+/* phones: gentle flat float (no 3D, no filters), still off for people who asked for less motion */
+@keyframes fig-float-2d {
+    0%, 100% { transform: translateY(0) rotate(var(--r)); }
+    50% { transform: translateY(-9px) rotate(calc(var(--r) + 1.5deg)); }
+}
+@media (max-width: 899px), (hover: none) {
+    .hero-fig { animation: fig-float-2d 5.5s ease-in-out infinite; }
+    .hero-scribble { animation: wobble-flat 4s ease-in-out infinite; }
+}
+@keyframes wobble-flat { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(-5deg); } }
+@media (prefers-reduced-motion: reduce) {
+    .hero-fig, .hero-scribble { animation: none !important; }
+}
