@@ -2023,6 +2023,7 @@ function productCard(p) {
         <div class="product-card-body">
             <div class="product-card-brand">${p.category || ''}</div>
             <div class="product-card-title" title="${p.name}">${p.figure_number ? `<span class="card-number">#${p.figure_number}</span> ` : ''}${p.name}</div>
+            <div class="card-prepay">Предоплата 50%</div>
             <div class="product-card-price-row">
                 <div class="price-group"><span class="price-final">${finalPrice} ₽</span>${oldPrice}</div>
                 <button type="button" class="card-cart-btn" aria-label="В корзину" onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)">${ICON_CART}</button>
@@ -2213,6 +2214,8 @@ window.openProductDetail = function(productId) {
         priceRow.innerHTML = `<span>${finalPrice} ₽</span>`;
     }
 
+    const half = Math.round((p.final_price || p.price) * 0.5).toLocaleString('ru');
+    document.getElementById('pp-prepay').innerHTML = `<strong>Предоплата 50%</strong><span>Внесите ${half} ₽ сейчас, остальное при получении. Цена фиксируется после предоплаты.</span>`;
     document.getElementById('pp-stock').innerHTML = p.in_stock
         ? `<span style="color:var(--ok);">● В наличии</span>`
         : `<span style="color:var(--warn);">● Под заказ</span>`;
