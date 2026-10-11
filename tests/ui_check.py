@@ -80,7 +80,7 @@ def guard_writes(route, request):
     route.abort()
 
 
-def new_context(browser, width, token, consent=True):
+def new_context(browser, width, token, consent=True, theme=None):
     ctx = browser.new_context(viewport={"width": width, "height": 900})
     ctx.route("**/api/**", guard_writes)
     script = ""
@@ -88,9 +88,18 @@ def new_context(browser, width, token, consent=True):
         script += f"localStorage.setItem('funko_token', '{token}');"
     if consent:
         script += "localStorage.setItem('funko_cookie_consent', 'essential');"
+    if theme:
+        script += f"localStorage.setItem('funko_theme', '{theme}');"
     if script:
         ctx.add_init_script(script)
     return ctx
+
+
+def reveal_all(page):
+    """Scroll through the page so scroll-reveal sections appear; otherwise screenshots and contrast checks see opacity:0."""
+    page.evaluate("""async () => { const h = document.documentElement.scrollHeight;
+        for (let y = 0; y < h + 400; y += 400) { window.scrollTo({top: y, behavior: 'instant'}); await new Promise(r => setTimeout(r, 160)); }
+        window.scrollTo({top: 0, behavior: 'instant'}); await new Promise(r => setTimeout(r, 900)); }""")
 
 
 def open_page(ctx, path):
@@ -98,6 +107,7 @@ def open_page(ctx, path):
     page.set_default_timeout(5000)
     page.goto(BASE + path, wait_until="networkidle", timeout=30000)
     page.wait_for_timeout(400)
+    reveal_all(page)
     return page
 
 
@@ -294,7 +304,7 @@ def write_guard(page):
 def hero(page):
     errors = []
     h1 = page.inner_text("#home-tab h1").upper()
-    if "COLLECTIBLE" not in h1 or "РЕДКИЕ ФИГУРКИ" not in h1:
+    if "FUNKO" not in h1 or "POP!" not in h1 or "COLLECTIBLE" in h1 or "РЕДКИЕ ФИГУРКИ" not in h1:
         errors.append(f"hero h1 is {h1!r}")
     loaded = page.evaluate("() => [...document.querySelectorAll('.hero-fig')].filter(i => i.complete && i.naturalWidth > 0).length")
     if loaded != 3:
@@ -310,7 +320,14 @@ def home_new_admin(page):
 
 @check("home_new_guest")
 def home_new_guest(page):
-    return ["Новинки visible to guests while the catalog is closed"] if visible(page, "#home-new-section") else []
+    errors = []
+    if not visible(page, "#home-new-section"):
+        errors.append("Новинки section missing for guests")
+    elif "в разработке" not in page.inner_text("#home-new-section").lower():
+        errors.append("guest Новинки has no 'в разработке' stub")
+    if page.evaluate("() => document.querySelectorAll('#home-new-grid .product-card').length"):
+        errors.append("guests see product cards while the catalog is closed")
+    return errors
 
 
 @check("display_font_cyrillic")
@@ -457,14 +474,20 @@ def header_no_wrap(page):
         .map(([text, lines]) => `wraps onto ${lines} lines: ${text}`)""")
 
 
+@check("hero_title_big", widths=(1024, 1440))
+def hero_title_big(page):
+    fs = page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('.hero-title')).fontSize)")
+    return [] if fs >= 170 else [f"hero title only {fs}px, client asked for bigger"]
+
+
 @check("hero_title_unbroken", widths=(390, 768, 1024, 1280, 1440))
 def hero_title_unbroken(page):
-    # Each hero word must fit its column; the overflow-wrap safety net must not split "COLLECTIBLE" with the real font.
+    # Each hero word must fit its column; the overflow-wrap safety net must not split a word with the real font.
     page.evaluate("() => document.fonts.ready")
     lines = page.evaluate("""() => { const node = document.querySelector('.hero-title').firstChild; const r = document.createRange(); r.selectNodeContents(node);
         const tops = [...r.getClientRects()].map(b => b.top).sort((a, b) => a - b);
         return 1 + tops.slice(1).filter((t, i) => t - tops[i] > 8).length; }""")
-    return [] if lines == 1 else [f"'Collectible' split over {lines} lines"]
+    return [] if lines == 1 else [f"first hero word split over {lines} lines"]
 
 
 @check("scrollbar_visible", role="admin", path="/orders")
@@ -509,6 +532,140 @@ def product_photo_below_header(page):
     return [] if top >= header else [f"sticky photo top {top}px sits under the {header:.0f}px header"]
 
 
+@check("logo_one_font", widths=(390, 1440))
+def logo_one_font(page):
+    # The global `* { font-family: Outfit }` reset must not pull nested spans (the red "STOP") out of the display face.
+    fams = page.evaluate("() => { const a = document.querySelector('.site-logo'); return [getComputedStyle(a).fontFamily, getComputedStyle(a.querySelector('span')).fontFamily]; }")
+    return [] if fams[0] == fams[1] else [f"logo is {fams[0]!r} but STOP is {fams[1]!r}"]
+
+
+@check("benefits_copy")
+def benefits_copy(page):
+    text = page.inner_text(".benefits")
+    errors = []
+    if "30–60 ДНЕЙ ХРАНЕНИЯ" not in text.upper():  # benefit titles are uppercased by CSS
+        errors.append("storage benefit is not '30–60 дней хранения'")
+    if "Яндекс, Авито, Ozon, Почта, СДЭК" not in text:
+        errors.append("delivery list does not end with СДЭК")
+    return errors
+
+
+@check("hero_motion", widths=(1440,))
+def hero_motion(page):
+    errors = []
+    names = page.evaluate("() => [...document.querySelectorAll('.hero-fig')].map(e => getComputedStyle(e).animationName)")
+    if any(n == "none" for n in names):
+        errors.append(f"hero figures are not animated: {names}")
+    box = page.evaluate("() => { const r = document.querySelector('.hero-collage').getBoundingClientRect(); return [r.left + r.width * 0.9, r.top + r.height * 0.2]; }")
+    page.mouse.move(box[0], box[1])
+    page.wait_for_timeout(500)
+    tf = page.evaluate("() => getComputedStyle(document.querySelector('.hero-collage')).transform")
+    if tf in ("none", "matrix(1, 0, 0, 1, 0, 0)"):
+        errors.append("collage does not tilt toward the pointer")
+    return errors
+
+
+@check("motion_reduced", widths=(1440,))
+def motion_reduced(page):
+    page.emulate_media(reduced_motion="reduce")
+    page.mouse.move(1300, 300)
+    page.wait_for_timeout(400)
+    names = page.evaluate("() => [...document.querySelectorAll('.hero-fig')].map(e => getComputedStyle(e).animationName)")
+    tf = page.evaluate("() => getComputedStyle(document.querySelector('.hero-collage')).transform")
+    errors = [] if all(n == "none" for n in names) else [f"animations still run with reduced motion: {names}"]
+    if tf not in ("none", "matrix(1, 0, 0, 1, 0, 0)"):
+        errors.append("tilt still active with reduced motion")
+    return errors
+
+
+@check("reveal_completes", widths=(390, 1440))
+def reveal_completes(page):
+    left = page.evaluate("() => document.querySelectorAll('.reveal:not(.in)').length")
+    return [] if left == 0 else [f"{left} sections still hidden after scrolling the whole page"]
+
+
+@check("theme_toggle", widths=(390, 1440))
+def theme_toggle(page):
+    errors = []
+    if not visible(page, "#theme-toggle"):
+        return ["no theme toggle in the header"]
+    page.click("#theme-toggle")
+    page.wait_for_timeout(300)
+    if page.evaluate("() => document.documentElement.dataset.theme") != "dark":
+        errors.append("click did not switch to dark")
+    bg = page.evaluate("() => getComputedStyle(document.body).backgroundColor")
+    if bg == "rgb(239, 236, 230)":
+        errors.append("body is still paper-coloured in dark mode")
+    page.reload(wait_until="networkidle", timeout=30000)
+    if page.evaluate("() => document.documentElement.dataset.theme") != "dark":
+        errors.append("dark choice not remembered after reload")
+    page.click("#theme-toggle")
+    if page.evaluate("() => document.documentElement.dataset.theme") != "light":
+        errors.append("second click did not return to light")
+    return errors
+
+
+def _dark_sweep(path, role="guest"):
+    def fn(page):
+        reveal_all(page)
+        return [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
+    return fn
+
+
+for _n, _p, _r in (("dark_home", "/", "guest"), ("dark_catalog_stub", "/catalog", "guest"),
+                   ("dark_privacy", "/static/privacy.html", "guest"), ("dark_admin_orders", "/orders", "admin"),
+                   ("dark_admin_catalog", "/catalog", "admin")):
+    check(_n, role=_r, widths=(390, 1440), path=_p)(_dark_sweep(_p, _r))
+
+
+@check("soft_corners", role="admin", widths=(1440,), path="/catalog")
+def soft_corners(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    r = page.evaluate("""() => { const px = (s) => parseFloat(getComputedStyle(document.querySelector(s)).borderTopLeftRadius);
+        return {card: px('#catalog-grid .product-card'), btn: px('#catalog-tab .btn.primary'), input: px('#catalog-search'), tag: px('.card-tag-stock'), modal: px('#login-modal')}; }""")
+    errors = []
+    for name, v in r.items():
+        if not (4 <= v <= 14):
+            errors.append(f"{name} radius {v}px, expected small rounding 4-14px")
+    return errors
+
+
+@check("home_marquee", widths=(390, 1440))
+def home_marquee(page):
+    errors = []
+    if not visible(page, ".marquee"):
+        return ["no ticker strip on home"]
+    name = page.evaluate("() => getComputedStyle(document.querySelector('.marquee-track')).animationName")
+    if name == "none":
+        errors.append("ticker is not animated")
+    if page.evaluate(OVERFLOW_JS) > 1:
+        errors.append("ticker widens the page")
+    return errors
+
+
+@check("motion_extras", widths=(1440,))
+def motion_extras(page):
+    # nav underline grows on hover, header gains a shadow after scrolling
+    errors = []
+    page.evaluate("() => window.scrollTo(0, 400)")
+    page.wait_for_timeout(400)
+    if not page.evaluate("() => document.getElementById('site-header').classList.contains('scrolled')"):
+        errors.append("header does not react to scrolling")
+    return errors
+
+
+@check("smooth_scroll", widths=(1440,))
+def smooth_scroll(page):
+    errors = []
+    sb = page.evaluate("() => getComputedStyle(document.documentElement).scrollBehavior")
+    if sb != "smooth":
+        errors.append(f"html scroll-behavior is {sb}, expected smooth")
+    page.emulate_media(reduced_motion="reduce")
+    if page.evaluate("() => getComputedStyle(document.documentElement).scrollBehavior") == "smooth":
+        errors.append("smooth scrolling not disabled for reduced motion")
+    return errors
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
@@ -535,7 +692,8 @@ def run(out, only=None):
             if role not in roles or (only and name not in only):
                 continue
             for width in widths:
-                ctx = new_context(browser, width, roles[role], consent=(name != "cookie_banner_phone"))
+                ctx = new_context(browser, width, roles[role], consent=(name != "cookie_banner_phone"),
+                                  theme="dark" if name.startswith("dark_") else None)
                 page = open_page(ctx, path)
                 try:
                     errors = fn(page)

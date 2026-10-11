@@ -55,7 +55,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1791800000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1792300000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -183,6 +183,7 @@
             color: var(--ink); font-family: inherit; font-size: 0.9rem; padding: 3px 6px; border-radius: 6px;
         }
     </style>
+    <script>try{if(localStorage.getItem('funko_theme')==='dark')document.documentElement.dataset.theme='dark'}catch(e){}</script>
 </head>
 <body>
     <div class="background"></div>
@@ -200,6 +201,10 @@
             <div class="site-actions">
                 <label class="sr-only" for="header-search">Поиск по каталогу</label>
                 <input id="header-search" class="header-search admin-only hidden" type="search" placeholder="Поиск фигурок, серий, номеров…">
+                <button type="button" id="theme-toggle" class="icon-btn theme-toggle" aria-label="Тёмная тема" title="Тёмная / светлая тема">
+                    <svg class="icon-moon" aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+                    <svg class="icon-sun" aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><line x1="12" y1="2" x2="12" y2="4"></line><line x1="12" y1="20" x2="12" y2="22"></line><line x1="2" y1="12" x2="4" y2="12"></line><line x1="20" y1="12" x2="22" y2="12"></line><line x1="4.9" y1="4.9" x2="6.3" y2="6.3"></line><line x1="17.7" y1="17.7" x2="19.1" y2="19.1"></line><line x1="4.9" y1="19.1" x2="6.3" y2="17.7"></line><line x1="17.7" y1="6.3" x2="19.1" y2="4.9"></line></svg>
+                </button>
                 <button type="button" class="icon-btn" aria-label="Корзина" onclick="window.openCartModal()">
                     <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                     <span id="landing-cart-badge" class="cart-badge-count">0</span>
@@ -240,7 +245,7 @@
                     <section class="hero">
                         <div class="hero-text">
                             <h1>
-                                <span class="hero-title">Collectible<br>culture</span>
+                                <span class="hero-title">Funko<br>Pop!</span>
                                 <svg class="hero-zigzag" aria-hidden="true" width="64" height="28" viewBox="0 0 64 28" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 24 L12 5 L20 20 L30 4 L38 20 L48 6 L60 22"></path></svg>
                                 <span class="hero-sub">Редкие фигурки, эксклюзивы и коллекционные релизы</span>
                             </h1>
@@ -269,11 +274,13 @@
                         </div>
                     </section>
 
+                    <div class="marquee" aria-hidden="true"><div class="marquee-track"><span>Funko Pop</span><b aria-hidden="true">✦</b><span>Предзаказ из США и Европы</span><b aria-hidden="true">✦</b><span>50% предоплата</span><b aria-hidden="true">✦</b><span>Хранение на складе в Москве</span><b aria-hidden="true">✦</b><span>Доставка по всей РФ</span><b aria-hidden="true">✦</b><span>Гарантия подлинности</span><b aria-hidden="true">✦</b><span>Funko Pop</span><b aria-hidden="true">✦</b><span>Предзаказ из США и Европы</span><b aria-hidden="true">✦</b><span>50% предоплата</span><b aria-hidden="true">✦</b><span>Хранение на складе в Москве</span><b aria-hidden="true">✦</b><span>Доставка по всей РФ</span><b aria-hidden="true">✦</b><span>Гарантия подлинности</span><b aria-hidden="true">✦</b></div></div>
+
                     <section class="benefits" aria-label="Преимущества">
                         <div class="benefits-inner">
                             <div class="benefit">
                                 <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></span>
-                                <div><div class="benefit-title">Доставка по всей РФ</div><div class="benefit-text">СДЭК, Яндекс, Авито, Ozon, Почта</div></div>
+                                <div><div class="benefit-title">Доставка по всей РФ</div><div class="benefit-text">Яндекс, Авито, Ozon, Почта, СДЭК</div></div>
                             </div>
                             <div class="benefit">
                                 <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg></span>
@@ -281,7 +288,7 @@
                             </div>
                             <div class="benefit">
                                 <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg></span>
-                                <div><div class="benefit-title">30–90 дней хранения</div><div class="benefit-text">Бесплатно на нашем складе в Москве</div></div>
+                                <div><div class="benefit-title">30–60 дней хранения</div><div class="benefit-text">Бесплатно на нашем складе в Москве</div></div>
                             </div>
                             <div class="benefit">
                                 <span class="benefit-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="1"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg></span>
@@ -290,7 +297,7 @@
                         </div>
                     </section>
 
-                    <section id="home-new-section" class="home-new admin-only hidden" aria-labelledby="home-new-title">
+                    <section id="home-new-section" class="home-new" aria-labelledby="home-new-title">
                         <div class="home-new-head">
                             <div>
                                 <h2 id="home-new-title">Новинки<br>и предзаказы</h2>
@@ -298,6 +305,7 @@
                             </div>
                             <div id="home-new-tabs" class="home-new-tabs" role="tablist" aria-label="Бренды"></div>
                         </div>
+                        <div id="home-new-stub" class="home-new-stub"><strong>Раздел в разработке</strong><span>Новинки и предзаказы появятся здесь совсем скоро.</span></div>
                         <div id="home-new-grid" class="catalog-grid"></div>
                     </section>
 
@@ -1934,6 +1942,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1791800000000"></script>
+    <script src="/static/app.js?v=1792300000000"></script>
 </body>
 </html>

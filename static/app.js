@@ -181,12 +181,13 @@ function init() {
     history.replaceState({ tab: initialTab }, '', window.location.pathname + window.location.search + window.location.hash);
     const anchor = window.location.hash && document.getElementById(window.location.hash.slice(1));
     if (anchor && document.getElementById('home-tab').contains(anchor)) {
-        setTimeout(() => anchor.scrollIntoView(), 0);
+        setTimeout(() => anchor.scrollIntoView({ behavior: 'instant' }), 0);
     }
 }
 
 function updateRoleUI(role) {
     currentRole = role;
+    if (typeof renderHomeNew === 'function') renderHomeNew();
     const landingLoginBtn = document.getElementById('landing-login-btn');
     const landingUserChip = document.getElementById('landing-user-chip');
     const landingUserName = document.getElementById('landing-user-name');
@@ -2048,9 +2049,13 @@ function renderHomeNew() {
         b.addEventListener('click', () => { homeNewCategory = c; renderHomeNew(); });
         return b;
     }));
-    const items = rawCatalogProducts
+    const open = currentRole === 'admin';
+    document.getElementById('home-new-stub')?.classList.toggle('hidden', open);
+    tabs.classList.toggle('hidden', !open);
+    grid.classList.toggle('hidden', !open);
+    const items = open ? rawCatalogProducts
         .filter(p => !homeNewCategory || (p.category || '').toLowerCase() === homeNewCategory.toLowerCase())
-        .slice(0, 5);
+        .slice(0, 5) : [];
     grid.replaceChildren(...items.map(productCard));
 }
 
@@ -3320,3 +3325,51 @@ window.startInlineEdit = function(orderId, field, currentVal, cellEl) {
 initSidebar();
 init();
 
+// --- Home motion: pointer tilt on the hero collage, scroll reveal ---
+(function homeMotion() {
+    const collage = document.querySelector('.hero-collage');
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (collage && !still && window.matchMedia('(hover: hover)').matches) {
+        const hero = collage.closest('.hero');
+        hero.addEventListener('pointermove', (e) => {
+            const r = collage.getBoundingClientRect();
+            const x = (e.clientX - (r.left + r.width / 2)) / (window.innerWidth / 2);
+            const y = (e.clientY - (r.top + r.height / 2)) / (window.innerHeight / 2);
+            collage.style.setProperty('--tilt-y', `${Math.max(-1, Math.min(1, x)) * 12}deg`);
+            collage.style.setProperty('--tilt-x', `${Math.max(-1, Math.min(1, y)) * -9}deg`);
+        });
+        hero.addEventListener('pointerleave', () => {
+            collage.style.setProperty('--tilt-x', '0deg');
+            collage.style.setProperty('--tilt-y', '0deg');
+        });
+    }
+    const targets = document.querySelectorAll('.benefits, .home-new, .home-hub-grid > *, .landing-section');
+    if (still || !('IntersectionObserver' in window)) return;
+    const io = new IntersectionObserver((entries) => entries.forEach(en => {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+    }), { threshold: 0.12 });
+    targets.forEach(t => { t.classList.add('reveal'); io.observe(t); });
+})();
+
+// Late-loading images shift the page: re-aim deep links once everything is loaded
+window.addEventListener('load', () => {
+    const a = window.location.hash && document.getElementById(window.location.hash.slice(1));
+    if (a && document.getElementById('home-tab')?.contains(a)) a.scrollIntoView({ behavior: 'instant' });
+});
+
+// --- Theme toggle (choice remembered; the <head> script applies it before first paint) ---
+document.getElementById('theme-toggle')?.addEventListener('click', () => {
+    const dark = document.documentElement.dataset.theme !== 'dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    try { localStorage.setItem('funko_theme', dark ? 'dark' : 'light'); } catch {}
+    document.getElementById('theme-toggle').setAttribute('aria-pressed', String(dark));
+});
+
+// header gets a shadow once the page is scrolled
+(function headerScroll() {
+    const hdr = document.getElementById('site-header');
+    if (!hdr) return;
+    const on = () => hdr.classList.toggle('scrolled', window.scrollY > 8);
+    window.addEventListener('scroll', on, { passive: true });
+    on();
+})();
