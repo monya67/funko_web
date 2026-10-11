@@ -57,3 +57,12 @@ def test_product_sql_placeholders_match_their_values():
     for fn, marker in ((main.create_product, "INSERT INTO products"), (main.update_product, "UPDATE products")):
         ph, n = _sql_arity(fn, marker)
         assert ph == n, f"{fn.__name__}: {ph} placeholders but {n} values"
+
+
+def test_www_redirects_even_with_no_extra_domains(monkeypatch):
+    monkeypatch.setattr(main, "CANONICAL_HOST", "funkostop.org")
+    monkeypatch.setattr(main, "REDIRECT_HOSTS", main.build_redirect_hosts("funkostop.org", ""))
+    r = CLIENT.get("/orders", headers={"host": "www.funkostop.org"}, follow_redirects=False)
+    assert r.status_code == 301 and r.headers["location"] == "https://funkostop.org/orders"
+    assert main.build_redirect_hosts("funkostop.org", "") == {"www.funkostop.org"}
+    assert main.build_redirect_hosts("funkostop.org", "a.ru, b.ru") == {"www.funkostop.org", "a.ru", "b.ru"}

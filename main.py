@@ -972,9 +972,13 @@ def valid_email(value):
 
 # Extra domains that should 301 to the main one. Opt-in via env so a typo can never lock the site out.
 CANONICAL_HOST = os.getenv("CANONICAL_HOST", "funkostop.org").strip().lower()
-REDIRECT_HOSTS = {h.strip().lower() for h in os.getenv("REDIRECT_HOSTS", "").split(",") if h.strip()}
-if REDIRECT_HOSTS:
-    REDIRECT_HOSTS.add("www." + CANONICAL_HOST)
+def build_redirect_hosts(canonical, extra_csv):
+    hosts = {h.strip().lower() for h in (extra_csv or "").split(",") if h.strip()}
+    hosts.add("www." + canonical)
+    return hosts
+
+
+REDIRECT_HOSTS = build_redirect_hosts(CANONICAL_HOST, os.getenv("REDIRECT_HOSTS", ""))
 
 
 @app.middleware("http")
