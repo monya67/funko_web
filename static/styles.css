@@ -4226,3 +4226,7 @@ label.disabled { opacity: 0.4; pointer-events: none; }
 .product-card:hover .product-image-box img { transform: none; }
 /* catalog cart count: quiet ink tag instead of a glowing red dot */
 .catalog-btn-cart .cart-badge-count, #catalog-cart-badge { background: var(--ink); color: var(--card); box-shadow: none; border-radius: 6px; min-width: 22px; height: 22px; padding: 0 7px; font-size: 12px; font-weight: 700; animation: none; }
+/* product description */
+.pp-description { margin: 0 0 22px; font-size: 15px; line-height: 1.7; color: var(--ink-2); white-space: pre-line; overflow-wrap: anywhere; }
+.pp-description.hidden { display: none; }
+#product-description { padding: 10px 14px; font-size: 0.9rem; font-family: inherit; }

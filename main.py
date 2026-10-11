@@ -1,4 +1,5 @@
 import os
+import re
 import asyncpg
 import jwt
 import httpx
@@ -8,7 +9,7 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, Response, RedirectResponse
 from fastapi import UploadFile, File, Form
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -117,6 +118,9 @@ async def startup():
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS last_name TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS phone TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS tg_username TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS marketing_consent BOOLEAN DEFAULT FALSE")
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''")
 
         # Ledger (manual income/expense entries)
         await db.execute("""
@@ -256,6 +260,7 @@ class ProductCreate(BaseModel):
     photo_id: str = ""
     in_stock: bool = True
     badge: str = ""
+    description: str = ""
 
 class ProductUpdate(BaseModel):
     name: str
@@ -269,6 +274,7 @@ class ProductUpdate(BaseModel):
     photo_id: str = ""
     in_stock: bool = True
     badge: str = ""
+    description: str = ""
 
 class LedgerEntryCreate(BaseModel):
     entry_date: str
@@ -296,6 +302,8 @@ class CheckoutRequest(BaseModel):
     last_name: str = ""
     phone: str
     telegram: str
+    email: str
+    marketing_consent: bool = False
     payment_type: str = "50%"
     delivery_method: str = ""
     comment: str = ""
@@ -586,7 +594,7 @@ async def get_catalog_meta():
 async def get_catalog():
     async with pool.acquire() as db:
         products = await db.fetch(
-            "SELECT id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge, created_at FROM products ORDER BY id DESC"
+            "SELECT id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge, description, created_at FROM products ORDER BY id DESC"
         )
         return {"products": [dict(p) for p in products]}
 
@@ -611,10 +619,10 @@ async def create_product(product: ProductCreate, admin: dict = Depends(require_a
             
         new_id = await db.fetchval(
             """INSERT INTO products 
-               (name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge) 
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id""",
+               (name, figure_number, price, discount_percent, final_price, category, series, packs_count, photo_id, in_stock, badge, description) 
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id""",
             product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
-            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge
+            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product.description.strip()
         )
         return {"success": True, "id": new_id}
 
@@ -640,10 +648,10 @@ async def update_product(product_id: int, product: ProductUpdate, admin: dict = 
         res = await db.execute(
             """UPDATE products 
                SET name = $1, figure_number = $2, price = $3, discount_percent = $4, final_price = $5,
-                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10, badge = $11 
-               WHERE id = $12""",
+                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10, badge = $11, description = $12 
+               WHERE id = $13""",
             product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
-            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product_id
+            cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product.description.strip(), product_id
         )
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Product not found")
@@ -747,9 +755,12 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
 
     phone = (checkout.phone or "").strip()
     telegram = (checkout.telegram or "").strip()
+    email = (checkout.email or "").strip().lower()
 
     if (not first_name and not name) or not phone or not telegram:
         raise HTTPException(status_code=400, detail="Имя, телефон и Telegram обязательны для оформления")
+    if not valid_email(email):
+        raise HTTPException(status_code=400, detail="Укажите корректную электронную почту")
 
     # Calculate total price & item list
     total_price = 0
@@ -798,8 +809,8 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 is_new_client = True
                 generated_pwd = str(random.randint(100000, 999999))
                 client_id = await db.fetchval(
-                    "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-                    generated_pwd, name, first_name, last_name, phone, telegram
+                    "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username, email, marketing_consent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+                    generated_pwd, name, first_name, last_name, phone, telegram, email, checkout.marketing_consent
                 )
             new_token = create_access_token(data={"sub": str(client_id), "role": "client"})
         else:
@@ -809,9 +820,11 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                        first_name = COALESCE(NULLIF(first_name, ''), $2),
                        last_name = COALESCE(NULLIF(last_name, ''), $3),
                        phone = COALESCE(NULLIF(phone, ''), $4),
-                       tg_username = COALESCE(NULLIF(tg_username, ''), $5)
-                   WHERE id = $6""",
-                name, first_name, last_name, phone, telegram, client_id
+                       tg_username = COALESCE(NULLIF(tg_username, ''), $5),
+                       email = COALESCE(NULLIF(email, ''), $6),
+                       marketing_consent = COALESCE(marketing_consent, FALSE) OR $7
+                   WHERE id = $8""",
+                name, first_name, last_name, phone, telegram, email, checkout.marketing_consent, client_id
             )
 
         status_text = "Ожидает оплаты"
@@ -850,6 +863,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                     f"👤 Клиент #{client_id}: {name}\n"
                     f"📞 Телефон: {phone}\n"
                     f"✈️ Telegram: {telegram}\n"
+                    f"✉️ Почта: {email}{' (согласен на рассылку)' if checkout.marketing_consent else ''}\n"
                     f"📦 Доставка: {checkout.delivery_method or 'Не указан'}\n\n"
                     f"🛒 **Позиции:**\n{items_text}\n\n"
                     f"💰 Сумма: {total_price} ₽\n"
@@ -948,6 +962,31 @@ async def delete_ledger_entry(entry_id: int, admin: dict = Depends(require_admin
         if res == "DELETE 0":
             raise HTTPException(status_code=404, detail="Entry not found")
         return {"success": True}
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
+
+
+def valid_email(value):
+    return bool(EMAIL_RE.match((value or "").strip()))
+
+
+# Extra domains that should 301 to the main one. Opt-in via env so a typo can never lock the site out.
+CANONICAL_HOST = os.getenv("CANONICAL_HOST", "funkostop.org").strip().lower()
+REDIRECT_HOSTS = {h.strip().lower() for h in os.getenv("REDIRECT_HOSTS", "").split(",") if h.strip()}
+if REDIRECT_HOSTS:
+    REDIRECT_HOSTS.add("www." + CANONICAL_HOST)
+
+
+@app.middleware("http")
+async def redirect_to_canonical_host(request: Request, call_next):
+    host = (request.headers.get("host") or "").split(":")[0].lower()
+    if host in REDIRECT_HOSTS and host != CANONICAL_HOST:
+        target = f"https://{CANONICAL_HOST}{request.url.path}"
+        if request.url.query:
+            target += f"?{request.url.query}"
+        return RedirectResponse(target, status_code=301)
+    return await call_next(request)
+
 
 def first_photo_id(value):
     """Products may hold several photos as 'id1,id2'; orders and Telegram messages need just the first."""

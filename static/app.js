@@ -2200,6 +2200,9 @@ window.openProductDetail = function(productId) {
         if (placeholder) placeholder.style.display = 'flex';
     }
 
+    const descEl = document.getElementById('pp-description');
+    descEl.textContent = (p.description || '').trim();
+    descEl.classList.toggle('hidden', !descEl.textContent);
     setupProductGallery(ids, p.name);
     document.getElementById('pp-breadcrumb-name').textContent = p.name;
     document.getElementById('pp-tags').innerHTML =
@@ -2336,6 +2339,7 @@ window.openAddProductModal = function() {
     document.getElementById('product-discount').value = '0';
     document.getElementById('product-badge').value = '';
     document.getElementById('product-photo-id').value = '';
+    document.getElementById('product-description').value = '';
     renderProductPhotoThumbs();
     openModal(productModal);
 };
@@ -2358,6 +2362,7 @@ window.openEditProductModal = function(id) {
     document.getElementById('product-photo-id').value = p.photo_id || '';
     document.getElementById('product-badge').value = p.badge || '';
     
+    document.getElementById('product-description').value = p.description || '';
     renderProductPhotoThumbs();
     openModal(productModal);
 };
@@ -2452,7 +2457,8 @@ productForm?.addEventListener('submit', async (e) => {
         packs_count: parseInt(document.getElementById('product-packs').value) || 0,
         photo_id: document.getElementById('product-photo-id').value.trim(),
         in_stock: document.getElementById('product-in-stock').checked,
-        badge: (document.getElementById('product-badge')?.value || '').trim()
+        badge: (document.getElementById('product-badge')?.value || '').trim(),
+        description: (document.getElementById('product-description')?.value || '').trim()
     };
 
     try {
@@ -2991,6 +2997,8 @@ window.proceedToPayment = function(event) {
     const lnInput = document.getElementById('checkout-last-name');
     const phoneInput = document.getElementById('checkout-phone');
     const tgInput = document.getElementById('checkout-tg');
+    const emailInput = document.getElementById('checkout-email');
+    const marketingInput = document.getElementById('checkout-marketing');
     const deliveryInput = document.getElementById('checkout-delivery');
     const commentInput = document.getElementById('checkout-comment');
     const consentInput = document.getElementById('checkout-pd-consent');
@@ -3001,9 +3009,10 @@ window.proceedToPayment = function(event) {
     const lastName = (lnInput?.value || '').trim();
     const phone = (phoneInput?.value || '').trim();
     const tg = (tgInput?.value || '').trim();
+    const email = (emailInput?.value || '').trim();
 
     // Reset previous error classes
-    [fnInput, lnInput, phoneInput, tgInput].forEach(inp => inp?.classList.remove('field-error'));
+    [fnInput, lnInput, phoneInput, tgInput, emailInput].forEach(inp => inp?.classList.remove('field-error'));
     if (consentContainer) consentContainer.classList.remove('field-error');
     if (errBanner) errBanner.classList.add('hidden');
 
@@ -3031,6 +3040,11 @@ window.proceedToPayment = function(event) {
         hasError = true;
         if (!firstInvalid) firstInvalid = tgInput;
     }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
+        emailInput?.classList.add('field-error');
+        hasError = true;
+        if (!firstInvalid) firstInvalid = emailInput;
+    }
 
     // 152-FZ Mandatory Consent Check
     if (consentInput && !consentInput.checked) {
@@ -3044,7 +3058,7 @@ window.proceedToPayment = function(event) {
             if (consentInput && !consentInput.checked) {
                 errBanner.textContent = 'Для продолжения необходимо подтвердить согласие на обработку персональных данных (152-ФЗ)!';
             } else {
-                errBanner.textContent = 'Обязательно укажите Имя, Фамилию, Телефон и Telegram для связи перед оплатой!';
+                errBanner.textContent = 'Обязательно укажите Имя, Фамилию, Телефон, Telegram и почту для связи перед оплатой!';
             }
             errBanner.classList.remove('hidden');
             errBanner.classList.add('shake-it');
@@ -3072,6 +3086,8 @@ window.proceedToPayment = function(event) {
         customer_name: `${firstName} ${lastName}`.trim(),
         phone: phone,
         telegram: tg,
+        email: email,
+        marketing_consent: !!marketingInput?.checked,
         payment_type: window.currentPaymentOption,
         delivery_method: deliveryInput?.value || 'СДЭК',
         comment: commentInput?.value || '',

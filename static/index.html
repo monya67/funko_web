@@ -16,6 +16,7 @@
     <meta name="description" content="Оригинальные фигурки Funko POP, YouTooz, Monster High в наличии и под заказ. Доставка по всей России, предзаказы эксклюзивов и программа лояльности.">
     <meta name="keywords" content="Funko Stop, Funko POP, фигурки Funko, фанко поп купить, YouTooz, Monster High, оригинальные фигурки, коллекционные фигурки, Chase фигурки, GITD">
     <meta name="author" content="Funko Stop">
+    <link rel="canonical" href="https://funkostop.org/">
     <meta name="robots" content="index, follow">
 
     <!-- Open Graph (OG) for Google, Telegram, VK, WhatsApp -->
@@ -44,6 +45,15 @@
       "image": "https://funkostop.org/static/logo.jpg",
       "description": "Интернет-магазин оригинальных фигурок Funko POP, YouTooz, Monster High и коллекционных товаров.",
       "url": "https://funkostop.org",
+      "sameAs": [
+        "https://t.me/Funko_Stop",
+        "https://t.me/FunkoStopReviews",
+        "https://t.me/funkostop_bot",
+        "https://www.avito.ru/user/b48abaa746bfb44d73cc6536bb0c91f6/profile"
+      ],
+      "knowsAbout": ["Funko POP", "YouTooz", "Monster High", "коллекционные фигурки", "предзаказ фигурок из США и Европы"],
+      "areaServed": {"@type": "Country", "name": "Россия"},
+      "paymentAccepted": "Банковская карта, СБП",
       "currenciesAccepted": "RUB",
       "priceRange": "₽₽",
       "address": {
@@ -55,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1793200000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1793300000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -1066,6 +1076,7 @@
                         <div id="pp-price-row" style="font-size:1.8rem;font-weight:700;margin-bottom:8px;"></div>
                         <div id="pp-stock" style="font-size:0.88rem;margin-bottom:28px;"></div>
                         <div id="pp-prepay" class="pp-prepay"></div>
+                        <div id="pp-description" class="pp-description hidden"></div>
                         <div class="pp-actions" id="pp-actions"></div>
                         <div id="pp-copy-link" style="margin-top:16px;">
                             <button type="button" class="btn secondary outline" style="font-size:0.82rem;padding:7px 14px;display:inline-flex;align-items:center;gap:7px;" onclick="window.copyProductLink(window._ppCurrentId)">
@@ -1537,6 +1548,15 @@
                         </div>
                     </div>
 
+                    <div class="input-group" style="margin:0 0 10px;">
+                        <label style="font-size:0.82rem; color:var(--muted);">Электронная почта <span style="color:var(--pre);">*</span></label>
+                        <input type="email" id="checkout-email" placeholder="you@example.com" required autocomplete="email" inputmode="email" style="padding:10px 14px; font-size:0.9rem;">
+                    </div>
+                    <label class="checkout-marketing" style="display:flex; align-items:flex-start; gap:10px; margin:0 0 12px; font-size:0.82rem; color:var(--muted); cursor:pointer;">
+                        <input type="checkbox" id="checkout-marketing" style="width:18px; height:18px; margin-top:2px; flex:none;">
+                        <span>Хочу получать новости и предложения Funko Stop на почту (можно отписаться в любой момент)</span>
+                    </label>
+
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
                         <div class="input-group" style="margin:0;">
                             <label style="font-size:0.82rem; color:var(--muted);">Способ доставки / получения</label>
@@ -1774,6 +1794,11 @@
                     </div>
                 </div>
 
+                <div class="input-group">
+                    <label for="product-description">Описание</label>
+                    <textarea id="product-description" rows="4" maxlength="2000" placeholder="Коротко о фигурке: серия, особенности, комплектация…" style="width:100%; resize:vertical;"></textarea>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline close-modal">Отмена</button>
                     <button type="submit" class="btn primary" id="save-product-btn">Сохранить товар</button>
@@ -1947,6 +1972,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1793200000000"></script>
+    <script src="/static/app.js?v=1793300000000"></script>
 </body>
 </html>

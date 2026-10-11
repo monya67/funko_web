@@ -797,6 +797,74 @@ def cart_refreshes_stale_photo(page):
     return []
 
 
+@check("checkout_email", widths=(390, 1440))
+def checkout_email(page):
+    page.evaluate("() => { funkoCart.length = 0; funkoCart.push({ id: 1, name: 'x', figure_number: '', price: 100, final_price: 100, photo_id: '', qty: 1 }); window.openCheckoutModal(); }")
+    page.wait_for_timeout(400)
+    errors = []
+    info = page.evaluate("""() => { const e = document.getElementById('checkout-email'), m = document.getElementById('checkout-marketing');
+        return e ? { type: e.type, required: e.required, mType: m && m.type, mChecked: m && m.checked, mRequired: m && m.required } : null; }""")
+    if not info:
+        return ["no #checkout-email field in the checkout form"]
+    if info["type"] != "email" or not info["required"]:
+        errors.append(f"email field must be type=email and required, got {info}")
+    if info["mType"] != "checkbox" or info["mChecked"] or info["mRequired"]:
+        errors.append(f"newsletter consent must be an unchecked, optional checkbox, got {info}")
+    # filled except email -> blocked and flagged
+    page.evaluate("""() => { const set = (id, v) => { document.getElementById(id).value = v; };
+        set('checkout-first-name', 'Иван'); set('checkout-last-name', 'Петров'); set('checkout-phone', '+79990000000'); set('checkout-tg', '@ivan'); set('checkout-email', 'not-an-email'); }""")
+    page.evaluate("() => window.proceedToPayment()")
+    if "field-error" not in (page.get_attribute("#checkout-email", "class") or ""):
+        errors.append("invalid email is not flagged")
+    if page.evaluate("() => !!window.pendingCheckoutData"):
+        errors.append("checkout went ahead with an invalid email")
+    page.evaluate("() => { document.getElementById('checkout-email').value = 'Buyer@Example.com'; document.getElementById('checkout-marketing').checked = true; window.proceedToPayment(); }")
+    data = page.evaluate("() => window.pendingCheckoutData")
+    if not data or data.get("email") != "Buyer@Example.com" or data.get("marketing_consent") is not True:
+        errors.append(f"payload lacks email/consent: {data and {k: data.get(k) for k in ('email', 'marketing_consent')}}")
+    return errors
+
+
+@check("product_description", role="admin", widths=(390, 1440), path="/catalog")
+def product_description(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    errors = []
+    if not page.evaluate("() => !!document.getElementById('product-description')"):
+        return ["no description textarea in the product form"]
+    page.evaluate("() => { rawCatalogProducts.push({ ...%s, description: 'Первая строка. Вторая <b>строка</b>.' }); window.openEditProductModal(987654); }" % GALLERY_PRODUCT)
+    if page.evaluate("() => document.getElementById('product-description').value") != "Первая строка. Вторая <b>строка</b>.":
+        errors.append("edit form does not load the description")
+    page.evaluate("() => { closeModals(); window.openProductDetail(987654); }")
+    shown = page.evaluate("() => { const e = document.getElementById('pp-description'); return e ? [e.getBoundingClientRect().height > 0, e.textContent, !!e.querySelector('b')] : null; }")
+    if not shown or not shown[0]:
+        errors.append("description is not shown on the product page")
+    else:
+        if "Вторая <b>строка</b>." not in shown[1]:
+            errors.append("description must be rendered as plain text (no HTML injection)")
+        if shown[2]:
+            errors.append("description HTML was interpreted as markup")
+    page.evaluate("() => { rawCatalogProducts.push({ ...%s, id: 987656, description: '' }); window.openProductDetail(987656); }" % GALLERY_PRODUCT)
+    if page.evaluate("() => { const e = document.getElementById('pp-description'); return e && e.getBoundingClientRect().height > 0; }"):
+        errors.append("empty description still takes space")
+    return errors
+
+
+@check("seo_basics")
+def seo_basics(page):
+    errors = []
+    canon = page.evaluate("() => (document.querySelector('link[rel=canonical]') || {}).href")
+    if canon != "https://funkostop.org/":
+        errors.append(f"canonical is {canon!r}")
+    ld = page.evaluate('''() => JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent)''')
+    same = ld.get("sameAs") or []
+    for needle in ("t.me/Funko_Stop", "t.me/FunkoStopReviews", "avito.ru/user/b48abaa746bfb44d73cc6536bb0c91f6"):
+        if not any(needle in u for u in same):
+            errors.append(f"JSON-LD sameAs lacks {needle}")
+    if not ld.get("knowsAbout") and not ld.get("makesOffer"):
+        errors.append("JSON-LD does not say what the store sells")
+    return errors
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
