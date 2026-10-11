@@ -949,10 +949,25 @@ async def delete_ledger_entry(entry_id: int, admin: dict = Depends(require_admin
             raise HTTPException(status_code=404, detail="Entry not found")
         return {"success": True}
 
+def trim_transparent_margin(img, pad_ratio=0.03):
+    """Crop fully transparent borders (cut-out photos arrive on a big empty square) and keep a little air."""
+    if img.mode not in ("RGBA", "LA", "P"):
+        return img
+    rgba = img.convert("RGBA")
+    box = rgba.getchannel("A").point(lambda a: 255 if a > 8 else 0).getbbox()
+    if not box or box == (0, 0, rgba.width, rgba.height):
+        return img
+    pad = int(max(box[2] - box[0], box[3] - box[1]) * pad_ratio)
+    box = (max(0, box[0] - pad), max(0, box[1] - pad), min(rgba.width, box[2] + pad), min(rgba.height, box[3] + pad))
+    return rgba.crop(box)
+
 def convert_to_webp(content):
-    if len(content) > 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
-        return content
+    is_webp = len(content) > 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP"
     img = Image.open(io.BytesIO(content))
+    trimmed = trim_transparent_margin(img)
+    if is_webp and trimmed is img:
+        return content
+    img = trimmed
     out_io = io.BytesIO()
     if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
         if img.mode != "RGBA":
