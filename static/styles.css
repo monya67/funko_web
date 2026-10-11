@@ -4222,3 +4222,5 @@ label.disabled { opacity: 0.4; pointer-events: none; }
 .pp-image-box { max-height: calc(100vh - 170px); min-height: 340px; }
 .pp-image-col:has(.pp-thumbs:not(.hidden)) .pp-image-box { max-height: calc(100vh - 260px); }
 @media (max-width: 700px) { .pp-image-box, .pp-image-col:has(.pp-thumbs:not(.hidden)) .pp-image-box { max-height: none; } }
+/* product photos stay still on hover (the second photo cross-fades instead) */
+.product-card:hover .product-image-box img { transform: none; }

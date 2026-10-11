@@ -761,6 +761,15 @@ def product_fits_screen(page):
     return errors
 
 
+@check("card_photo_still_on_hover", role="admin", widths=(1440,), path="/catalog")
+def card_photo_still_on_hover(page):
+    page.wait_for_selector("#catalog-grid .product-card .product-image-box img", timeout=8000)
+    page.hover("#catalog-grid .product-card")
+    page.wait_for_timeout(700)
+    tf = page.evaluate("() => getComputedStyle(document.querySelector('#catalog-grid .product-card .product-image-box img')).transform")
+    return [] if tf in ("none", "matrix(1, 0, 0, 1, 0, 0)") else [f"card photo moves on hover: {tf}"]
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
