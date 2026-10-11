@@ -770,6 +770,17 @@ def card_photo_still_on_hover(page):
     return [] if tf in ("none", "matrix(1, 0, 0, 1, 0, 0)") else [f"card photo moves on hover: {tf}"]
 
 
+@check("catalog_cart_badge_quiet", role="admin", widths=(1440,), path="/catalog")
+def catalog_cart_badge_quiet(page):
+    st = page.evaluate("() => { const s = getComputedStyle(document.getElementById('catalog-cart-badge')); return [s.boxShadow, s.backgroundColor, s.borderTopLeftRadius]; }")
+    errors = []
+    if st[0] != "none":
+        errors.append(f"badge has a glow/shadow: {st[0][:50]}")
+    if st[1] == "rgb(229, 9, 20)":
+        errors.append("badge is still the red circle")
+    return errors
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
