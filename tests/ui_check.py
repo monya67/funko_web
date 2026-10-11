@@ -781,6 +781,22 @@ def catalog_cart_badge_quiet(page):
     return errors
 
 
+@check("cart_refreshes_stale_photo", widths=(1440,))
+def cart_refreshes_stale_photo(page):
+    # A cart saved before a product got its photo must pick the photo up once the catalog loads.
+    pid = page.evaluate("""async () => { const d = await (await fetch('/api/catalog')).json(); const p = d.products.find(x => x.photo_id); return p ? p.id : null; }""")
+    if pid is None:
+        return ["precondition: no product with a photo in the catalog"]
+    page.evaluate("""(id) => localStorage.setItem('funko_cart', JSON.stringify([{ id, name: 'x', figure_number: '', price: 100, final_price: 100, photo_id: '', qty: 1 }]))""", pid)
+    page.reload(wait_until="networkidle", timeout=30000)
+    page.wait_for_timeout(1500)
+    page.evaluate("() => window.openCartModal()")
+    page.wait_for_timeout(500)
+    if page.evaluate("() => !!document.querySelector('.cart-item-placeholder')"):
+        return ["cart still shows the 📦 placeholder although the product has a photo now"]
+    return []
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}

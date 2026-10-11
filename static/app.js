@@ -1970,6 +1970,7 @@ async function loadCatalog() {
     try {
         const data = await fetchAPI('/catalog');
         rawCatalogProducts = data.products || [];
+        syncCartWithCatalog();
         renderBrandCards();
         renderSidebarFilters();
         renderFranchiseChips();
@@ -2699,6 +2700,30 @@ function saveCartToStorage() {
     updateCartBadges();
 }
 
+// A cart lives in the browser and can outlive the product data it was built from (e.g. a photo added later).
+function refreshCartItem(item, product) {
+    item.name = product.name;
+    item.figure_number = product.figure_number || '';
+    item.price = product.price;
+    item.final_price = product.final_price || product.price;
+    item.photo_id = photoIds(product.photo_id)[0] || '';
+}
+
+function syncCartWithCatalog() {
+    let changed = false;
+    funkoCart.forEach(item => {
+        const product = rawCatalogProducts.find(p => p.id === item.id);
+        if (!product) return;
+        const before = JSON.stringify(item);
+        refreshCartItem(item, product);
+        if (JSON.stringify(item) !== before) changed = true;
+    });
+    if (changed) {
+        saveCartToStorage();
+        if (typeof renderCartModal === 'function') renderCartModal();
+    }
+}
+
 window.addToCart = function(productId, qty = 1) {
     const product = rawCatalogProducts.find(p => p.id === productId);
     if (!product) {
@@ -2708,6 +2733,7 @@ window.addToCart = function(productId, qty = 1) {
     const existing = funkoCart.find(item => item.id === productId);
     if (existing) {
         existing.qty += qty;
+        refreshCartItem(existing, product);
     } else {
         funkoCart.push({
             id: product.id,
