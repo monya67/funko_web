@@ -1995,16 +1995,18 @@ function getBadgeClass(badge) {
 const ICON_CART = '<svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>';
 const ICON_IMAGE = '<svg aria-hidden="true" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="3" width="18" height="18" rx="1"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
 
+function photoIds(value) { return (value || '').split(',').map(s => s.trim()).filter(Boolean); }
+function photoUrl(id) { return id.startsWith('http') || id.startsWith('/static/') ? id : `/api/photos/${id}`; }
+
 function productCard(p) {
     const card = document.createElement('article');
     card.className = 'product-card';
     card.addEventListener('click', () => window.openProductDetail(p.id));
 
-    const photoSrc = p.photo_id
-        ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
-        : '';
+    const ids = photoIds(p.photo_id);
+    const photoSrc = ids[0] ? photoUrl(ids[0]) : '';
     const imgHtml = photoSrc
-        ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">`
+        ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">` + (ids[1] ? `<img class="alt" src="${photoUrl(ids[1])}" alt="" loading="lazy" aria-hidden="true">` : '')
         : `<div class="product-image-placeholder">${ICON_IMAGE}<span>Фото скоро</span></div>`;
     const stockTag = p.in_stock ? '<span class="card-tag-stock">В наличии</span>' : '<span class="card-tag-pre">Предзаказ</span>';
     const discountTag = p.discount_percent > 0 ? `<span class="card-tag-discount">−${p.discount_percent}%</span>` : '';
@@ -2182,9 +2184,8 @@ window.openProductDetail = function(productId) {
     if (!p) return;
     window._ppCurrentId = productId;
 
-    const photoSrc = p.photo_id
-        ? (p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`)
-        : '';
+    const ids = photoIds(p.photo_id);
+    const photoSrc = ids[0] ? photoUrl(ids[0]) : '';
 
     const img = document.getElementById('pp-img');
     const placeholder = document.getElementById('pp-img-placeholder');
@@ -2198,6 +2199,7 @@ window.openProductDetail = function(productId) {
         if (placeholder) placeholder.style.display = 'flex';
     }
 
+    setupProductGallery(ids, p.name);
     document.getElementById('pp-breadcrumb-name').textContent = p.name;
     document.getElementById('pp-tags').innerHTML =
         (p.category ? `<span class="card-tag">${p.category}</span>` : '') +
@@ -2238,6 +2240,39 @@ window.openProductDetail = function(productId) {
     window.switchTab('product', false);
 };
 
+function setupProductGallery(ids, name) {
+    const img = document.getElementById('pp-img');
+    const thumbs = document.getElementById('pp-thumbs');
+    const prev = document.getElementById('pp-prev');
+    const next = document.getElementById('pp-next');
+    const multi = ids.length > 1;
+    thumbs.classList.toggle('hidden', !multi);
+    prev.classList.toggle('hidden', !multi);
+    next.classList.toggle('hidden', !multi);
+    thumbs.replaceChildren();
+    if (!multi) return;
+    let cur = 0;
+    const show = (i) => {
+        cur = (i + ids.length) % ids.length;
+        img.src = photoUrl(ids[cur]);
+        img.alt = name;
+        [...thumbs.children].forEach((b, k) => { b.classList.toggle('active', k === cur); b.setAttribute('aria-current', String(k === cur)); });
+    };
+    ids.forEach((id, k) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.setAttribute('aria-label', `Фото ${k + 1}`);
+        const t = document.createElement('img');
+        t.src = photoUrl(id); t.alt = ''; t.loading = 'lazy';
+        b.appendChild(t);
+        b.addEventListener('click', () => show(k));
+        thumbs.appendChild(b);
+    });
+    prev.onclick = () => show(cur - 1);
+    next.onclick = () => show(cur + 1);
+    show(0);
+}
+
 window.closeProductPage = function() {
     window.switchTab('catalog', true);
 };
@@ -2267,8 +2302,8 @@ window.openOrderInquiryModal = function(id) {
     const tgBtn = document.getElementById('inquiry-tg-btn');
 
     if (img) {
-        if (p.photo_id) {
-            img.src = p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`;
+        if (photoIds(p.photo_id)[0]) {
+            img.src = photoUrl(photoIds(p.photo_id)[0]);
             img.style.display = 'block';
         } else {
             img.style.display = 'none';
@@ -2299,8 +2334,8 @@ window.openAddProductModal = function() {
     document.getElementById('product-packs').value = '0';
     document.getElementById('product-discount').value = '0';
     document.getElementById('product-badge').value = '';
-    document.getElementById('product-photo-preview-wrap').style.display = 'none';
-    document.getElementById('product-photo-preview').src = '';
+    document.getElementById('product-photo-id').value = '';
+    renderProductPhotoThumbs();
     openModal(productModal);
 };
 
@@ -2322,14 +2357,7 @@ window.openEditProductModal = function(id) {
     document.getElementById('product-photo-id').value = p.photo_id || '';
     document.getElementById('product-badge').value = p.badge || '';
     
-    const previewWrap = document.getElementById('product-photo-preview-wrap');
-    const previewImg = document.getElementById('product-photo-preview');
-    if (p.photo_id) {
-        previewImg.src = p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`;
-        previewWrap.style.display = 'block';
-    } else {
-        previewWrap.style.display = 'none';
-    }
+    renderProductPhotoThumbs();
     openModal(productModal);
 };
 
@@ -2359,17 +2387,46 @@ discountInput?.addEventListener('input', calcFinalPrice);
 finalPriceInput?.addEventListener('input', calcDiscountFromFinal);
 
 // Product Photo Upload Listener
+const MAX_PRODUCT_PHOTOS = 6;
+function renderProductPhotoThumbs() {
+    const input = document.getElementById('product-photo-id');
+    const box = document.getElementById('product-photo-thumbs');
+    const ids = photoIds(input.value);
+    box.replaceChildren(...ids.map((id, i) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'photo-thumb';
+        const im = document.createElement('img');
+        im.src = photoUrl(id); im.alt = `Фото ${i + 1}`;
+        const rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'photo-thumb-remove'; rm.setAttribute('aria-label', `Убрать фото ${i + 1}`); rm.textContent = '×';
+        rm.addEventListener('click', () => { input.value = ids.filter((_, k) => k !== i).join(','); renderProductPhotoThumbs(); });
+        wrap.append(im, rm);
+        if (i > 0) {
+            const first = document.createElement('button');
+            first.type = 'button'; first.className = 'photo-thumb-first'; first.title = 'Сделать главным'; first.textContent = '★';
+            first.addEventListener('click', () => { input.value = [id, ...ids.filter((_, k) => k !== i)].join(','); renderProductPhotoThumbs(); });
+            wrap.appendChild(first);
+        } else {
+            const tag = document.createElement('span');
+            tag.className = 'photo-thumb-main'; tag.textContent = 'главное';
+            wrap.appendChild(tag);
+        }
+        return wrap;
+    }));
+    document.querySelector('label[for="product-photo-upload"]')?.classList.toggle('disabled', ids.length >= MAX_PRODUCT_PHOTOS);
+}
+document.getElementById('product-photo-id')?.addEventListener('input', renderProductPhotoThumbs);
+
 const productPhotoUpload = document.getElementById('product-photo-upload');
 if (productPhotoUpload) {
     productPhotoUpload.addEventListener('change', async (e) => {
+        const input = document.getElementById('product-photo-id');
+        const before = photoIds(input.value);
+        if (before.length >= MAX_PRODUCT_PHOTOS) { alert(`Не больше ${MAX_PRODUCT_PHOTOS} фото`); e.target.value = ''; return; }
         await handlePhotoUpload(e, 'product-photo-id');
-        const photoId = document.getElementById('product-photo-id').value;
-        if (photoId) {
-            const previewWrap = document.getElementById('product-photo-preview-wrap');
-            const previewImg = document.getElementById('product-photo-preview');
-            previewImg.src = photoId.startsWith('http') || photoId.startsWith('/static/') ? photoId : `/api/photos/${photoId}`;
-            previewWrap.style.display = 'block';
-        }
+        const uploaded = input.value.trim();
+        input.value = uploaded && !before.includes(uploaded) ? [...before, uploaded].join(',') : before.join(',');
+        renderProductPhotoThumbs();
     });
 }
 
@@ -2445,8 +2502,8 @@ window.openQuickOrderModal = function(id) {
     document.getElementById('quick-order-packs').textContent = p.packs_count > 0 ? `+${p.packs_count} пак.` : '';
     
     const imgEl = document.getElementById('quick-order-img');
-    if (p.photo_id) {
-        imgEl.src = p.photo_id.startsWith('http') || p.photo_id.startsWith('/static/') ? p.photo_id : `/api/photos/${p.photo_id}`;
+    if (photoIds(p.photo_id)[0]) {
+        imgEl.src = photoUrl(photoIds(p.photo_id)[0]);
         imgEl.style.display = 'block';
     } else {
         imgEl.style.display = 'none';
@@ -2658,7 +2715,7 @@ window.addToCart = function(productId, qty = 1) {
             figure_number: product.figure_number || '',
             price: product.price,
             final_price: product.final_price || product.price,
-            photo_id: product.photo_id || '',
+            photo_id: photoIds(product.photo_id)[0] || '',
             qty: qty
         });
     }

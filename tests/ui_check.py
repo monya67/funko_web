@@ -666,6 +666,77 @@ def smooth_scroll(page):
     return errors
 
 
+GALLERY_PRODUCT = """{ id: 987654, name: 'Gallery test', category: 'Funko', series: 'Test', price: 3000, final_price: 3000, discount_percent: 0,
+    in_stock: true, photo_id: 'PHOTOAAA,PHOTOBBB', figure_number: '1', packs_count: 0, badge: '' }"""
+
+
+@check("gallery_card", role="admin", widths=(1440,), path="/catalog")
+def gallery_card(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    r = page.evaluate("""() => { const c = productCard(%s);
+        return [c.querySelector('.product-image-box img:not(.alt)')?.getAttribute('src'), c.querySelector('.product-image-box img.alt')?.getAttribute('src')]; }""" % GALLERY_PRODUCT)
+    errors = []
+    if r[0] != "/api/photos/PHOTOAAA":
+        errors.append(f"card main photo is {r[0]!r}, expected the first id only")
+    if r[1] != "/api/photos/PHOTOBBB":
+        errors.append(f"card has no second photo for hover (got {r[1]!r})")
+    return errors
+
+
+@check("gallery_product_page", role="admin", widths=(390, 1440), path="/catalog")
+def gallery_product_page(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("() => { rawCatalogProducts.push(%s); window.openProductDetail(987654); }" % GALLERY_PRODUCT)
+    errors = []
+    if page.evaluate("() => document.querySelectorAll('#pp-thumbs button').length") != 2:
+        errors.append("product page does not show 2 thumbnails")
+        return errors
+    page.click("#pp-thumbs button:nth-child(2)")
+    if not page.evaluate("() => document.getElementById('pp-img').getAttribute('src').endsWith('PHOTOBBB')"):
+        errors.append("clicking thumbnail 2 did not show photo 2")
+    page.click("#pp-prev")
+    if not page.evaluate("() => document.getElementById('pp-img').getAttribute('src').endsWith('PHOTOAAA')"):
+        errors.append("previous arrow did not go back to photo 1")
+    page.click("#pp-next")
+    page.click("#pp-next")
+    if not page.evaluate("() => document.getElementById('pp-img').getAttribute('src').endsWith('PHOTOAAA')"):
+        errors.append("next arrow does not wrap around")
+    if page.evaluate(OVERFLOW_JS) > 1:
+        errors.append("gallery widens the page")
+    return errors
+
+
+@check("gallery_single_photo_clean", role="admin", widths=(1440,), path="/catalog")
+def gallery_single_photo_clean(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("() => { rawCatalogProducts.push({ ...%s, id: 987655, photo_id: 'ONLYONE' }); window.openProductDetail(987655); }" % GALLERY_PRODUCT)
+    shown = page.evaluate("() => [...document.querySelectorAll('#pp-thumbs, #pp-prev, #pp-next')].filter(e => e.getBoundingClientRect().width > 0).length")
+    return [] if shown == 0 else ["thumbnails/arrows visible for a product with one photo"]
+
+
+@check("gallery_cart_uses_first_photo", role="admin", widths=(1440,), path="/catalog")
+def gallery_cart_uses_first_photo(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    got = page.evaluate("() => { rawCatalogProducts.push(%s); window.addToCart(987654, 1); const it = funkoCart.find(x => x.id === 987654); return it && it.photo_id; }" % GALLERY_PRODUCT)
+    return [] if got == "PHOTOAAA" else [f"cart item photo_id is {got!r}, expected only the first id"]
+
+
+@check("gallery_form", role="admin", widths=(1440,), path="/catalog")
+def gallery_form(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("() => { rawCatalogProducts.push(%s); window.openEditProductModal(987654); }" % GALLERY_PRODUCT)
+    errors = []
+    n = page.evaluate("() => document.querySelectorAll('#product-photo-thumbs .photo-thumb').length")
+    if n != 2:
+        errors.append(f"edit form shows {n} thumbnails, expected 2")
+        return errors
+    page.click("#product-photo-thumbs .photo-thumb:first-child .photo-thumb-remove")
+    val = page.evaluate("() => document.getElementById('product-photo-id').value")
+    if val != "PHOTOBBB":
+        errors.append(f"after removing photo 1 the field holds {val!r}, expected 'PHOTOBBB'")
+    return errors
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}

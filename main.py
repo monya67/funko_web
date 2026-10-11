@@ -708,7 +708,7 @@ async def create_order_from_product(product_id: int, order_data: QuickOrderCreat
         new_order_id = await db.fetchval(
             """INSERT INTO orders (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost) 
                VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0) RETURNING id""",
-            order_data.client_id, item_title, order_price, order_data.paid_amount, "Заказ принят в обработку", product["photo_id"], order_date
+            order_data.client_id, item_title, order_price, order_data.paid_amount, "Заказ принят в обработку", first_photo_id(product["photo_id"]), order_date
         )
 
         # Telegram notification
@@ -716,10 +716,10 @@ async def create_order_from_product(product_id: int, order_data: QuickOrderCreat
             try:
                 msg = f"🎉 **У вас новый заказ!**\n\n🆔 Заказ #{new_order_id}\n🛒 Позиции:\n{item_title}\n\n💰 Стоимость: {order_price} ₽\n✅ Оплачено: {order_data.paid_amount} ₽"
                 async with httpx.AsyncClient() as http_client:
-                    if product["photo_id"]:
+                    if first_photo_id(product["photo_id"]):
                         await http_client.post(
                             f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
-                            data={"chat_id": client["user_tg_id"], "photo": product["photo_id"], "caption": msg, "parse_mode": "Markdown"}
+                            data={"chat_id": client["user_tg_id"], "photo": first_photo_id(product["photo_id"]), "caption": msg, "parse_mode": "Markdown"}
                         )
                     else:
                         await http_client.post(
@@ -949,6 +949,10 @@ async def delete_ledger_entry(entry_id: int, admin: dict = Depends(require_admin
             raise HTTPException(status_code=404, detail="Entry not found")
         return {"success": True}
 
+def first_photo_id(value):
+    """Products may hold several photos as 'id1,id2'; orders and Telegram messages need just the first."""
+    return (value or "").split(",")[0].strip()
+
 def trim_transparent_margin(img, pad_ratio=0.03):
     """Crop fully transparent borders (cut-out photos arrive on a big empty square) and keep a little air."""
     if img.mode not in ("RGBA", "LA", "P"):
@@ -980,6 +984,7 @@ def convert_to_webp(content):
 # --- Telegram Photo Proxy ---
 @app.get("/api/photos/{photo_id}")
 async def get_telegram_photo(photo_id: str):
+    photo_id = first_photo_id(photo_id)
     if photo_id in IMAGE_CACHE:
         return Response(content=IMAGE_CACHE[photo_id], media_type="image/webp", headers={"Content-Disposition": f'inline; filename="{photo_id}.webp"'})
 

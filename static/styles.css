@@ -4188,3 +4188,28 @@ html { scroll-behavior: smooth; scroll-padding-top: 76px; }
 .card-prepay { margin: 6px 0 -2px; font-size: 11px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase; color: var(--ok); }
 .pp-prepay { display: flex; flex-direction: column; gap: 4px; margin: 0 0 22px; padding: 14px 16px; background: var(--ok-bg); border-left: 3px solid var(--ok); border-radius: var(--r-sm); color: var(--ink-2); font-size: 14px; line-height: 1.5; }
 .pp-prepay strong { color: var(--ok); font-size: 12px; letter-spacing: 1.2px; text-transform: uppercase; }
+/* ===== photo gallery ===== */
+.product-image-box img.alt { position: absolute; inset: 0; opacity: 0; transition: opacity 0.35s ease; background: var(--img-bg); }
+.product-card:hover .product-image-box img.alt { opacity: 1; }
+@media (hover: none) { .product-image-box img.alt { display: none; } }
+.pp-image-box { position: relative; }
+.pp-arrow { position: absolute; top: 50%; z-index: 2; width: 44px; height: 44px; margin-top: -22px; border: 0; border-radius: 50%; background: rgba(var(--ink-rgb), 0.78); color: var(--card); font-size: 26px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease, transform 0.2s ease; }
+.pp-arrow:hover { background: var(--primary); color: #fff; transform: scale(1.06); }
+.pp-arrow-prev { left: 10px; } .pp-arrow-next { right: 10px; }
+.pp-arrow.hidden, .pp-thumbs.hidden { display: none; }
+.pp-thumbs { display: flex; gap: 10px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; }
+.pp-thumbs button { flex: none; width: 72px; height: 72px; padding: 3px; border: 2px solid transparent; border-radius: var(--r-sm); background: var(--img-bg); cursor: pointer; transition: border-color 0.2s ease, transform 0.2s ease; }
+.pp-thumbs button:hover { transform: translateY(-2px); }
+.pp-thumbs button.active { border-color: var(--ink); }
+.pp-thumbs img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.photo-thumbs { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.photo-thumb { position: relative; width: 72px; height: 72px; border: 1px solid rgba(var(--ink-rgb), 0.2); border-radius: var(--r-sm); background: var(--img-bg); }
+.photo-thumb img { width: 100%; height: 100%; object-fit: contain; border-radius: var(--r-sm); }
+.photo-thumb-remove, .photo-thumb-first { position: absolute; width: 24px; height: 24px; border: 0; border-radius: 50%; background: var(--ink); color: var(--card); font-size: 15px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.photo-thumb-remove { top: -8px; right: -8px; } .photo-thumb-remove:hover { background: var(--primary); color: #fff; }
+.photo-thumb-first { bottom: -8px; right: -8px; font-size: 12px; } .photo-thumb-first:hover { background: var(--ok); color: #fff; }
+.photo-thumb-main { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 0; text-align: center; font-size: 9px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; background: var(--ink); color: var(--card); border-radius: 0 0 var(--r-sm) var(--r-sm); }
+.photo-hint { margin-top: 8px; font-size: 12px; color: var(--muted); }
+label.disabled { opacity: 0.4; pointer-events: none; }
+/* one cart on desktop: the header icon is always in view, the floating button stays for phones */
+@media (min-width: 1024px) { .floating-cart-btn { display: none !important; } }
