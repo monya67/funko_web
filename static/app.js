@@ -2029,7 +2029,7 @@ function productCard(p) {
         ? `<img src="${photoSrc}" alt="${p.name}" loading="lazy">` + (ids[1] ? `<img class="alt" src="${photoUrl(ids[1])}" alt="" loading="lazy" aria-hidden="true">` : '')
         : `<div class="product-image-placeholder">${ICON_IMAGE}<span>Фото скоро</span></div>`;
     const st = stockInfo(p);
-    const stockTag = st.sold ? '<span class="card-tag-sold">Распродан</span>'
+    const stockTag = st.sold ? ''
         : (p.in_stock || st.tracked) ? '<span class="card-tag-stock">В наличии</span>'
         : '<span class="card-tag-pre">Предзаказ</span>';
     const discountTag = p.discount_percent > 0 ? `<span class="card-tag-discount">−${p.discount_percent}%</span>` : '';
@@ -2052,7 +2052,7 @@ function productCard(p) {
             ${st.sold ? '' : '<div class="card-prepay">Предоплата 50%</div>'}
             ${st.few ? `<div class="card-left">Осталось ${st.qty} шт.</div>` : ''}
             <div class="product-card-price-row">
-                <div class="price-group"><span class="price-final">${finalPrice} ₽</span>${oldPrice}</div>
+                <div class="price-group">${st.sold ? '<span class="price-sold">Распродан</span>' : `<span class="price-final">${finalPrice} ₽</span>${oldPrice}`}</div>
                 <button type="button" class="card-cart-btn" aria-label="${st.sold ? 'Распродан' : 'В корзину'}" ${st.sold ? 'disabled' : ''} onclick="event.stopPropagation(); window.addToCart(${p.id}, 1)">${ICON_CART}</button>
             </div>
         </div>`;
@@ -2231,7 +2231,10 @@ window.openProductDetail = function(productId) {
     const finalPrice = (p.final_price || p.price).toLocaleString('ru');
     const origPrice = p.price.toLocaleString('ru');
     const priceRow = document.getElementById('pp-price-row');
-    if (p.discount_percent > 0) {
+    const soldOut = stockInfo(p).sold;
+    if (soldOut) {
+        priceRow.innerHTML = '<span class="price-sold">Распродан</span>';
+    } else if (p.discount_percent > 0) {
         priceRow.innerHTML = `<span>${finalPrice} ₽</span> <span style="font-size:1.1rem;font-weight:400;text-decoration:line-through;color:var(--gray);margin-left:10px;">${origPrice} ₽</span> <span style="font-size:0.9rem;color:var(--accent);margin-left:8px;font-weight:600;">-${p.discount_percent}%</span>`;
     } else {
         priceRow.innerHTML = `<span>${finalPrice} ₽</span>`;

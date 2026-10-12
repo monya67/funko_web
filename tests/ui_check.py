@@ -1077,6 +1077,146 @@ def phone_motion_respects_reduced(page):
     return [] if all(n == "none" for n in names) else [f"phone figures still move with reduced motion: {names}"]
 
 
+SHADOW_JS = """(sel) => { const e = document.querySelector(sel); if (!e) return null; const sh = getComputedStyle(e).boxShadow;
+    const m = sh.match(/rgba?\\(([^)]+)\\)\\s+(-?[\\d.]+)px\\s+(-?[\\d.]+)px\\s+([\\d.]+)px/); if (!m) return { raw: sh };
+    const c = m[1].split(',').map(Number); return { raw: sh, rgb: c.slice(0, 3), alpha: c.length > 3 ? c[3] : 1, blur: +m[4] }; }"""
+
+
+def _hover_shadow(page, sel):
+    el = page.query_selector(sel)
+    if not el:
+        return None
+    el.scroll_into_view_if_needed()
+    page.hover(sel)
+    page.wait_for_timeout(800)
+    return page.evaluate(SHADOW_JS, sel)
+
+
+@check("logo_stable", widths=(1440,))
+def logo_stable(page):
+    info = page.evaluate("""() => { const a = document.querySelector('.site-logo'), s = a.querySelector('span'), h = document.getElementById('site-header');
+        const f = (e) => { const c = getComputedStyle(e); return [c.fontWeight, c.fontSynthesis, c.webkitFontSmoothing]; };
+        return { a: f(a), s: f(s), layer: getComputedStyle(h).willChange }; }""")
+    errors = []
+    for part in ("a", "s"):
+        w, syn, smooth = info[part]
+        if w != "400":
+            errors.append(f"logo {part} font-weight {w}, Anton only exists in 400 (anything else risks a fake bold)")
+        if "weight" in syn:
+            errors.append(f"logo {part} may synthesize bold ({syn})")
+        if smooth != "antialiased":
+            errors.append(f"logo {part} font smoothing is {smooth}")
+    if "transform" not in info["layer"]:
+        errors.append("header is not pinned to its own layer, so text rendering changes between top and scrolled")
+    return errors
+
+
+@check("shadows_dark_are_dark", widths=(1440,), path="/")
+def shadows_dark_are_dark(page):
+    page.evaluate("() => { document.documentElement.dataset.theme = 'dark'; }")
+    errors = []
+    for sel, hover in ((".glass-panel", False), (".hub-card", True), (".benefit", True)):
+        sh = _hover_shadow(page, sel) if hover else page.evaluate(SHADOW_JS, sel)
+        if not sh or "rgb" not in sh:
+            continue
+        if max(sh["rgb"]) > 70:
+            errors.append(f"{sel}{':hover' if hover else ''} casts a LIGHT shadow in dark mode: {sh['raw'][:70]}")
+    return errors
+
+
+@check("shadows_light_are_soft", widths=(1440,), path="/")
+def shadows_light_are_soft(page):
+    errors = []
+    for sel in (".hub-card", ".benefit"):
+        sh = _hover_shadow(page, sel)
+        if not sh:
+            errors.append(f"{sel} has no hover shadow to measure")
+        elif "rgb" in sh and (sh["alpha"] > 0.14 or sh["blur"] < 30):
+            errors.append(f"{sel}:hover shadow is harsh (alpha {sh['alpha']}, blur {sh['blur']}px): {sh['raw'][:70]}")
+    return errors
+
+
+@check("faq_opens_smoothly", widths=(1440,), path="/")
+def faq_opens_smoothly(page):
+    info = page.evaluate("""() => { const a = getComputedStyle(document.querySelector('.faq-answer-panel')), p = getComputedStyle(document.querySelector('.faq-answer-panel p'));
+        const dur = (s) => Math.max(...s.split(',').map(x => parseFloat(x))) ; return { prop: a.transitionProperty, dur: dur(a.transitionDuration), pprop: p.transitionProperty, pdur: dur(p.transitionDuration) }; }""")
+    errors = []
+    if info["dur"] < 0.45:
+        errors.append(f"FAQ panel opens in {info['dur']}s, expected a calm >= 0.45s")
+    if "max-height" in info["prop"]:
+        errors.append("FAQ still animates max-height with a fixed ceiling (jerky; the answer height is not known)")
+    if "opacity" not in info["pprop"] or info["pdur"] < 0.35:
+        errors.append("FAQ answer text does not fade in gently")
+    return errors
+
+
+@check("catalog_stub_blocks_turn_transparent", widths=(1440,), path="/catalog")
+def catalog_stub_blocks_turn_transparent(page):
+    page.hover(".under-dev-feature")
+    page.wait_for_timeout(700)
+    bg = page.evaluate("() => getComputedStyle(document.querySelector('.under-dev-feature')).backgroundColor")
+    return [] if bg in ("rgba(0, 0, 0, 0)", "transparent") else [f"stub block stays filled on hover: {bg}"]
+
+
+@check("cart_text_and_icon", widths=(1440,), path="/")
+def cart_text_and_icon(page):
+    page.evaluate("() => { funkoCart.length = 0; window.openCartModal(); }")
+    page.wait_for_timeout(500)
+    errors = []
+    stroke = page.evaluate("() => { const e = document.querySelector('#cart-empty-view svg'); return e ? e.getAttribute('stroke') : null; }")
+    if stroke is None or "255, 255, 255" in stroke or "255,255,255" in stroke:
+        errors.append(f"empty-cart icon stroke is {stroke!r}: invisible on the light theme")
+    fam = page.evaluate("() => getComputedStyle(document.getElementById('cart-modal-count-pill')).fontFamily")
+    if "Oswald" not in fam:
+        errors.append(f"cart counter font is {fam.split(',')[0]}; its round zero reads as the letter o")
+    tot = page.evaluate("() => getComputedStyle(document.getElementById('cart-total-display')).fontFamily")
+    if "Oswald" not in tot:
+        errors.append(f"cart total font is {tot.split(',')[0]}")
+    return errors
+
+
+@check("order_rows_react_on_hover_light", role="admin", widths=(1440,), path="/orders")
+def order_rows_react_on_hover_light(page):
+    page.wait_for_selector("#orders-table tbody tr", timeout=8000)
+    before = page.evaluate("() => getComputedStyle(document.querySelector('#orders-table tbody tr td')).backgroundColor")
+    page.hover("#orders-table tbody tr:nth-child(2)")
+    page.wait_for_timeout(600)
+    after = page.evaluate("() => { const td = document.querySelector('#orders-table tbody tr:nth-child(2) td'); const c = getComputedStyle(td); return [c.backgroundColor, c.boxShadow, c.transitionDuration]; }")
+    errors = []
+    if after[0] == before:
+        errors.append("hovering an order row does not change its background in the light theme")
+    if "inset" not in after[1]:
+        errors.append("hovered row has no accent edge")
+    if parseFloat_safe(after[2]) <= 0:
+        errors.append("row hover is instant, not eased")
+    return errors
+
+
+def parseFloat_safe(v):
+    try:
+        return max(float(x.strip().rstrip("s")) for x in v.split(","))
+    except ValueError:
+        return 0.0
+
+
+@check("sold_out_replaces_price", role="admin", widths=(1440,), path="/catalog")
+def sold_out_replaces_price(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    card = page.evaluate("""() => { const c = productCard({ id: 987654, name: 'Sold', category: 'Funko', price: 3000, final_price: 2000, discount_percent: 33, in_stock: true, photo_id: '',
+        figure_number: '1', packs_count: 0, badge: '', description: '', stock_qty: 0, hidden: false });
+        const row = c.querySelector('.product-card-price-row'); return { row: row.textContent.replace(/\\s+/g, ' ').trim(), hasPrice: !!c.querySelector('.price-final'), tags: c.querySelector('.card-tags').textContent }; }""")
+    errors = []
+    if "Распродан" not in card["row"] or card["hasPrice"]:
+        errors.append(f"sold-out card must show 'Распродан' INSTEAD of the price in the price row, got {card['row']!r}")
+    if "Распродан" in card["tags"]:
+        errors.append("'Распродан' is repeated as a corner tag; the price row says it now")
+    page.evaluate("() => { rawCatalogProducts.push({ id: 987654, name: 'Sold', category: 'Funko', price: 3000, final_price: 2000, discount_percent: 33, in_stock: true, photo_id: '', figure_number: '1', packs_count: 0, badge: '', description: '', stock_qty: 0, hidden: false }); window.openProductDetail(987654); }")
+    price = page.evaluate("() => document.getElementById('pp-price-row').textContent.trim()")
+    if "Распродан" not in price or "₽" in price:
+        errors.append(f"product page price line is {price!r}, expected 'Распродан' instead of the price")
+    return errors
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}
