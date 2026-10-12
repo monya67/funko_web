@@ -2030,7 +2030,7 @@ function productCard(p) {
         : `<div class="product-image-placeholder">${ICON_IMAGE}<span>Фото скоро</span></div>`;
     const st = stockInfo(p);
     const stockTag = st.sold ? ''
-        : (p.in_stock || st.tracked) ? '<span class="card-tag-stock">В наличии</span>'
+        : p.in_stock ? '<span class="card-tag-stock">В наличии</span>'
         : '<span class="card-tag-pre">Предзаказ</span>';
     const discountTag = p.discount_percent > 0 ? `<span class="card-tag-discount">−${p.discount_percent}%</span>` : '';
     const badgeTag = p.badge ? `<span class="card-tag-badge">${p.badge}</span>` : '';
@@ -2361,7 +2361,7 @@ window.openAddProductModal = function() {
     productForm.reset();
     document.getElementById('product-id').value = '';
     document.getElementById('product-modal-title').textContent = 'Добавить товар в каталог';
-    document.getElementById('product-in-stock').checked = true;
+    document.getElementById('product-availability').value = 'preorder';
     document.getElementById('product-packs').value = '0';
     document.getElementById('product-stock-qty').value = '';
     document.getElementById('product-hidden').checked = false;
@@ -2389,7 +2389,7 @@ window.openEditProductModal = function(id) {
     document.getElementById('product-packs').value = p.packs_count || 0;
     document.getElementById('product-stock-qty').value = (p.stock_qty === null || p.stock_qty === undefined) ? '' : p.stock_qty;
     document.getElementById('product-hidden').checked = !!p.hidden;
-    document.getElementById('product-in-stock').checked = !!p.in_stock;
+    document.getElementById('product-availability').value = p.in_stock ? 'instock' : 'preorder';
     document.getElementById('product-photo-id').value = p.photo_id || '';
     document.getElementById('product-badge').value = p.badge || '';
     
@@ -2487,7 +2487,7 @@ productForm?.addEventListener('submit', async (e) => {
         series: document.getElementById('product-series').value.trim(),
         packs_count: parseInt(document.getElementById('product-packs').value) || 0,
         photo_id: document.getElementById('product-photo-id').value.trim(),
-        in_stock: document.getElementById('product-in-stock').checked,
+        in_stock: document.getElementById('product-availability').value === 'instock',
         badge: (document.getElementById('product-badge')?.value || '').trim(),
         description: (document.getElementById('product-description')?.value || '').trim(),
         hidden: !!document.getElementById('product-hidden')?.checked,
@@ -3525,10 +3525,20 @@ document.getElementById('theme-toggle')?.addEventListener('click', () => {
 // --- Admin: products list with search, filters and sorting ---
 function productStatus(p) {
     const st = stockInfo(p);
-    if (st.sold) return { key: 'sold', label: 'Распродан', cls: 'card-tag-sold' };
-    if (st.few) return { key: 'low', label: 'Мало', cls: 'card-tag-pre' };
-    if (p.in_stock || st.tracked) return { key: 'instock', label: 'В наличии', cls: 'card-tag-stock' };
-    return { key: 'preorder', label: 'Под заказ', cls: 'card-tag-pre' };
+    if (st.sold) return { label: 'Распродан', cls: 'card-tag-sold' };
+    return p.in_stock ? { label: 'В наличии', cls: 'card-tag-stock' } : { label: 'Предзаказ', cls: 'card-tag-pre' };
+}
+
+// the filters are independent facts, so a preorder with 3 pieces left is both "preorder" and "low"
+function matchesStockFilter(p, filter) {
+    const st = stockInfo(p);
+    switch (filter) {
+        case 'instock': return !!p.in_stock && !st.sold;
+        case 'preorder': return !p.in_stock && !st.sold;
+        case 'low': return st.few;
+        case 'sold': return st.sold;
+        default: return true;
+    }
 }
 
 function renderProductsAdmin() {
@@ -3555,10 +3565,7 @@ function renderProductsAdmin() {
         const hay = `${p.name} ${p.figure_number || ''} ${p.category || ''} ${p.series || ''} ${p.badge || ''}`.toLowerCase();
         if (search && !hay.includes(search)) return false;
         if (cat && p.category !== cat) return false;
-        if (stockFilter !== 'all') {
-            const key = productStatus(p).key;
-            if (stockFilter === 'low' ? key !== 'low' : key !== stockFilter) return false;
-        }
+        if (!matchesStockFilter(p, stockFilter)) return false;
         return true;
     });
     const price = (p) => p.final_price || p.price || 0;

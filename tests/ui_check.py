@@ -1217,6 +1217,72 @@ def sold_out_replaces_price(page):
     return errors
 
 
+def _prod(extra):
+    base = "id: 987900, name: 'Type test', category: 'Funko', price: 1000, final_price: 1000, discount_percent: 0, photo_id: '', figure_number: '', packs_count: 0, badge: '', description: '', hidden: false"
+    return "{ " + base + ", " + extra + " }"
+
+
+@check("availability_comes_from_the_type_not_the_quantity", role="admin", widths=(1440,), path="/catalog")
+def availability_comes_from_the_type_not_the_quantity(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    cases = [("in_stock: false, stock_qty: 5", "Предзаказ", "В наличии"), ("in_stock: false, stock_qty: null", "Предзаказ", "В наличии"),
+             ("in_stock: true, stock_qty: 5", "В наличии", "Предзаказ"), ("in_stock: true, stock_qty: null", "В наличии", "Предзаказ")]
+    errors = []
+    for extra, want, notwant in cases:
+        tags = page.evaluate("() => productCard(%s).querySelector('.card-tags').textContent" % _prod(extra))
+        if want not in tags or notwant in tags:
+            errors.append(f"{extra}: card says {tags!r}, expected {want!r}")
+    sold = page.evaluate("() => productCard(%s).textContent" % _prod("in_stock: false, stock_qty: 0"))
+    if "Распродан" not in sold:
+        errors.append("quantity 0 must still say 'Распродан' for a preorder")
+    return errors
+
+
+@check("availability_select_in_form", role="admin", widths=(1440,), path="/catalog")
+def availability_select_in_form(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    errors = []
+    info = page.evaluate("""() => { const e = document.getElementById('product-availability'); return e && e.tagName === 'SELECT' ? [...e.options].map(o => o.value + ':' + o.textContent.trim()) : null; }""")
+    if not info:
+        return ["no #product-availability select in the product form"]
+    if info != ["preorder:Предзаказ", "instock:В наличии"]:
+        errors.append(f"options are {info}, expected preorder first, then instock")
+    page.evaluate("() => window.openAddProductModal()")
+    if page.evaluate("() => document.getElementById('product-availability').value") != "preorder":
+        errors.append("a new product must default to Предзаказ (the shop mostly sells preorders)")
+    page.evaluate("() => { rawCatalogProducts.push(%s); window.openEditProductModal(987900); }" % _prod("in_stock: true, stock_qty: null"))
+    if page.evaluate("() => document.getElementById('product-availability').value") != "instock":
+        errors.append("edit form does not load 'В наличии' for an in-stock product")
+    page.evaluate("() => { rawCatalogProducts.push({ ...%s, id: 987901 }); window.openEditProductModal(987901); }" % _prod("in_stock: false, stock_qty: 4"))
+    if page.evaluate("() => document.getElementById('product-availability').value") != "preorder":
+        errors.append("edit form loads the wrong type for a preorder that has a quantity")
+    return errors
+
+
+@check("products_list_filters_follow_the_type", role="admin", widths=(1440,), path="/catalog")
+def products_list_filters_follow_the_type(page):
+    page.wait_for_selector("#catalog-grid .product-card", timeout=8000)
+    page.evaluate("() => window.switchTab('products')")
+    page.wait_for_selector("#products-table tbody tr", timeout=10000)
+    page.wait_for_load_state("networkidle")   # the section reloads the catalog; inject only after that finished
+    page.wait_for_timeout(800)
+    page.evaluate("""() => { rawCatalogProducts.length = 0;
+        rawCatalogProducts.push({ ...%s, id: 1, name: 'PRE-with-qty', in_stock: false, stock_qty: 3 }, { ...%s, id: 2, name: 'STOCK-with-qty', in_stock: true, stock_qty: 3 },
+                                { ...%s, id: 3, name: 'PRE-plain', in_stock: false, stock_qty: null }, { ...%s, id: 4, name: 'SOLD-pre', in_stock: false, stock_qty: 0 }); renderProductsAdmin(); }""" % ((_prod("stock_qty: null"),) * 4))
+
+    def names(flt):
+        page.select_option("#products-filter-stock", flt)
+        page.wait_for_timeout(200)
+        return sorted(page.evaluate("() => [...document.querySelectorAll('#products-table tbody tr .product-name-cell')].map(e => e.textContent.replace(/Скрыт/, '').trim())"))
+    errors = []
+    expect = {"instock": ["STOCK-with-qty"], "preorder": ["PRE-plain", "PRE-with-qty"], "low": ["PRE-with-qty", "STOCK-with-qty"], "sold": ["SOLD-pre"]}
+    for flt, want in expect.items():
+        got = names(flt)
+        if got != want:
+            errors.append(f"filter {flt!r} shows {got}, expected {want}")
+    return errors
+
+
 def run(out, only=None):
     login = os.getenv("UI_ADMIN_LOGIN")
     roles = {"guest": None}

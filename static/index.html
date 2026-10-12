@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1793900000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1794000000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -1818,18 +1818,19 @@
                         <label>Количество паков</label>
                         <input type="number" id="product-packs" placeholder="0" min="0" value="0">
                     </div>
-                    <div style="flex: 1; display: flex; align-items: flex-end; padding-bottom: 8px;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
-                            <input type="checkbox" id="product-in-stock" checked style="width: 18px; height: 18px; accent-color: var(--primary);">
-                            <span style="font-size: 0.9rem; font-weight: 500;">В наличии на складе</span>
-                        </label>
+                    <div style="flex: 1;">
+                        <label for="product-availability">Тип товара</label>
+                        <select id="product-availability">
+                            <option value="preorder">Предзаказ</option>
+                            <option value="instock">В наличии</option>
+                        </select>
                     </div>
                 </div>
 
                 <div class="input-group">
-                    <label for="product-stock-qty">Количество в наличии</label>
+                    <label for="product-stock-qty">Количество (необязательно)</label>
                     <input type="number" id="product-stock-qty" min="0" step="1" placeholder="без учёта">
-                    <div class="photo-hint">Пусто: количество не считается. Число: столько можно продать; когда купят всё, товар станет «Распродан».</div>
+                    <div class="photo-hint">Пусто: не считается. Число: сколько можно продать, в предзаказе и в наличии; когда купят всё, товар станет «Распродан».</div>
                 </div>
 
                 <div class="input-group">
@@ -2042,6 +2043,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1793900000000"></script>
+    <script src="/static/app.js?v=1794000000000"></script>
 </body>
 </html>
