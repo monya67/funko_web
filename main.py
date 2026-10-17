@@ -10,7 +10,8 @@ import jwt
 import httpx
 import ssl
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import asyncio
 from fastapi import FastAPI, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
@@ -106,6 +107,7 @@ pool = None
 async def startup():
     global pool
     pool = await asyncpg.create_pool(DATABASE_URL)
+    app.state.cleanup_task = asyncio.create_task(unpaid_orders_loop())
     # Add archived column if it doesn't exist yet
     async with pool.acquire() as db:
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE")
@@ -118,6 +120,8 @@ async def startup():
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_type TEXT DEFAULT '50%'")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tbank_payment_id TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS checkout_note TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now()")
+        await db.execute("CREATE TABLE IF NOT EXISTS login_throttle (key TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, locked_until DOUBLE PRECISION NOT NULL DEFAULT 0, updated DOUBLE PRECISION NOT NULL DEFAULT 0)")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending'")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS full_name TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT ''")
@@ -333,6 +337,9 @@ def tbank_generate_token(params: dict) -> str:
     concat = "".join(("true" if v is True else "false" if v is False else str(v)) for _, v in sorted_pairs)
     return hashlib.sha256(concat.encode("utf-8")).hexdigest()
 
+UNPAID_ORDER_MINUTES = 60
+
+
 async def tbank_init_payment(amount_kopecks: int, order_id: int, description: str) -> dict:
     params = {
         "TerminalKey": TBANK_TERMINAL_KEY,
@@ -340,10 +347,49 @@ async def tbank_init_payment(amount_kopecks: int, order_id: int, description: st
         "OrderId": str(order_id),
         "Description": description[:250],
     }
-    params["Token"] = tbank_generate_token(params)
+
+    def signed(p):
+        return {**p, "Token": tbank_generate_token(p)}
+
+    # the payment link dies with the unpaid order, so nobody can pay for an order that is already gone
+    due = (datetime.now(timezone(timedelta(hours=3))) + timedelta(minutes=UNPAID_ORDER_MINUTES)).strftime("%Y-%m-%dT%H:%M:%S+03:00")
     async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
-        resp = await client.post("https://securepay.tinkoff.ru/v2/Init", json=params, timeout=15)
-        return resp.json()
+        resp = (await client.post("https://securepay.tinkoff.ru/v2/Init", json=signed({**params, "RedirectDueDate": due}), timeout=15)).json()
+        if not resp.get("Success"):
+            print(f"T-Bank Init with a link lifetime failed, retrying without it: {resp}")
+            resp = (await client.post("https://securepay.tinkoff.ru/v2/Init", json=signed(params), timeout=15)).json()
+        return resp
+
+
+async def expire_unpaid_orders(db, minutes=UNPAID_ORDER_MINUTES + 15):
+    """Remove checkout orders that never got paid and give their stock back. Returns how many were removed."""
+    ids = await db.fetch(
+        "SELECT id FROM orders WHERE status = $1 AND payment_status = 'pending' AND created_at < now() - ($2 * interval '1 minute')",
+        AWAITING_PAYMENT, minutes)
+    removed = 0
+    for row in ids:
+        # one atomic claim: a payment confirmed meanwhile changes the status, and then nothing is deleted
+        stock = await db.fetchrow(
+            "DELETE FROM orders WHERE id = $1 AND status = $2 AND payment_status = 'pending' RETURNING stock_items",
+            row["id"], AWAITING_PAYMENT)
+        if stock is None:
+            continue
+        removed += 1
+        if stock["stock_items"]:
+            await restore_stock(db, parse_stock_items(stock["stock_items"]))
+    return removed
+
+
+async def unpaid_orders_loop():
+    while True:
+        await asyncio.sleep(300)
+        try:
+            async with pool.acquire() as db:
+                n = await expire_unpaid_orders(db)
+                if n:
+                    print(f"Removed {n} unpaid order(s) and returned their stock")
+        except Exception as e:
+            print(f"unpaid orders cleanup failed: {e}")
 
 # --- Public Health / Ping (for cron-job keep-alive) ---
 @app.get("/health")
@@ -356,60 +402,72 @@ async def ping_user(request: Request, user: dict = Depends(get_current_user)):
     update_user_session(request, user)
     return {"online_count": get_online_count()}
 
-class LoginGuard:
-    """Counts failed logins per account name. After `limit` failures the name is locked for `lock_seconds`;
-    while locked every attempt fails the same way as a wrong password, so the limit is never revealed.
-    Keyed by name, not IP: behind the proxy the client address can be forged."""
-
-    def __init__(self, limit=10, lock_seconds=900, clock=None):
-        self.limit = limit
-        self.lock_seconds = lock_seconds
-        self.clock = clock or time.monotonic
-        self._fails = {}
-        self._locked_until = {}
-
-    def blocked(self, name):
-        until = self._locked_until.get(name)
-        if until is None:
-            return False
-        if self.clock() >= until:
-            self._locked_until.pop(name, None)
-            self._fails.pop(name, None)
-            return False
-        return True
-
-    def failed(self, name):
-        count = self._fails.get(name, 0) + 1
-        self._fails[name] = count
-        if count >= self.limit:
-            self._locked_until[name] = self.clock() + self.lock_seconds
-        if len(self._fails) > 5000:  # keep memory bounded: forget everything that is not locked
-            self._fails = {k: v for k, v in self._fails.items() if k in self._locked_until}
-
-    def succeeded(self, name):
-        self._fails.pop(name, None)
+THROTTLE_LIMITS = {"u": 10, "ip": 20}  # failed logins per account name / per client address
+THROTTLE_LOCK_SECONDS = 900
+THROTTLE_FORGET_SECONDS = 3600
 
 
-login_guard = LoginGuard()
+def throttle_after_failure(fails, locked_until, updated, now, limit, lock_seconds=THROTTLE_LOCK_SECONDS, forget_seconds=THROTTLE_FORGET_SECONDS):
+    """New (fails, locked_until) after one more failed login. Old failures fade after an hour or once a lock has ended."""
+    if locked_until and locked_until <= now:
+        fails, locked_until = 0, 0.0
+    elif not locked_until and now - updated > forget_seconds:
+        fails = 0
+    fails += 1
+    if fails >= limit:
+        locked_until = now + lock_seconds
+    return fails, locked_until
+
+
+def client_ip(request):
+    """The real visitor address: Cloudflare sets CF-Connecting-IP; otherwise the first X-Forwarded-For hop."""
+    ip = request.headers.get("cf-connecting-ip") or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    return (ip or (request.client.host if request.client else "unknown"))[:64]
+
+
+async def throttle_is_blocked(db, keys, now):
+    row = await db.fetchval("SELECT 1 FROM login_throttle WHERE key = ANY($1::text[]) AND locked_until > $2 LIMIT 1", keys, now)
+    return bool(row)
+
+
+async def throttle_register_failure(db, keys, now):
+    """keys: {'u:184': 10, 'ip:1.2.3.4': 20}. Every failure is counted per name and per address."""
+    async with db.transaction():
+        for key, limit in keys.items():
+            row = await db.fetchrow("SELECT fails, locked_until, updated FROM login_throttle WHERE key = $1 FOR UPDATE", key)
+            fails, locked, updated = (row["fails"], row["locked_until"], row["updated"]) if row else (0, 0.0, 0.0)
+            fails, locked = throttle_after_failure(fails, locked, updated, now, limit)
+            await db.execute(
+                "INSERT INTO login_throttle (key, fails, locked_until, updated) VALUES ($1, $2, $3, $4) "
+                "ON CONFLICT (key) DO UPDATE SET fails = $2, locked_until = $3, updated = $4",
+                key, fails, locked, now)
+        await db.execute("DELETE FROM login_throttle WHERE updated < $1 AND locked_until < $2", now - 86400, now)
+
+
+async def throttle_clear(db, key):
+    await db.execute("DELETE FROM login_throttle WHERE key = $1", key)
 
 
 @app.post("/api/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     username = (form_data.username or "")[:64]
     password = form_data.password
     wrong = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Неверный логин (ID) или пароль",
     )
-    if login_guard.blocked(username):
-        raise wrong
+    now = time.time()
+    ip = client_ip(request)
+    keys = {f"u:{username}": THROTTLE_LIMITS["u"], f"ip:{ip}": THROTTLE_LIMITS["ip"]}
 
     async with pool.acquire() as db:
+        if await throttle_is_blocked(db, list(keys), now):
+            raise wrong
         if username.isdigit():
             client_id = int(username)
             client = await db.fetchrow("SELECT id FROM clients WHERE id = $1 AND password = $2", client_id, password)
             if client:
-                login_guard.succeeded(username)
+                await throttle_clear(db, f"u:{username}")
                 access_token = create_access_token(data={"sub": str(client_id), "role": "client"})
                 return {"access_token": access_token, "token_type": "bearer"}
         
@@ -418,11 +476,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             username, password
         )
         if user:
-            login_guard.succeeded(username)
+            await throttle_clear(db, f"u:{username}")
             access_token = create_access_token(data={"sub": user["login_id"], "role": "admin"})
             return {"access_token": access_token, "token_type": "bearer"}
             
-        login_guard.failed(username)
+        await throttle_register_failure(db, keys, now)
         raise wrong
 
 @app.get("/api/dashboard")
@@ -1024,6 +1082,9 @@ async def tbank_notification(req: Request):
     async with pool.acquire() as db:
         order = await db.fetchrow("SELECT id, status, client_id, items, total_price, paid_amount, customer_name, customer_phone, customer_tg, payment_type, checkout_note FROM orders WHERE id = $1", oid)
         if not order:
+            if tbank_status == "CONFIRMED":
+                await notify_admins(f"⚠️ **Пришла оплата по заказу #{oid}, но заказа нет** (удалён как неоплаченный или вручную). "
+                                    f"Платёж Т-Банка {payment_id}: проверьте и верните деньги или создайте заказ вручную.")
             return Response(content="OK")
 
         if tbank_status == "CONFIRMED":

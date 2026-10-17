@@ -210,27 +210,54 @@ def test_awaiting_payment_orders_are_kept_out_of_every_order_list():
     assert all("status <> 'Ожидает оплаты'" in l for l in lists)
 
 
-def test_login_guard_locks_a_name_after_ten_failures_and_unlocks_later():
-    now = [0.0]
-    guard = main.LoginGuard(limit=10, lock_seconds=900, clock=lambda: now[0])
-    for _ in range(9):
-        guard.failed("184")
-    assert not guard.blocked("184")
-    guard.failed("184")
-    assert guard.blocked("184")
-    assert not guard.blocked("183")  # other accounts are not affected
-    now[0] = 899
-    assert guard.blocked("184")
-    now[0] = 901
-    assert not guard.blocked("184")
+def test_throttle_locks_after_the_limit_and_unlocks_later():
+    fails, locked, updated = 0, 0.0, 0.0
+    for i in range(9):
+        fails, locked = main.throttle_after_failure(fails, locked, 100.0, 100.0, 10)
+        updated = 100.0
+    assert locked == 0
+    fails, locked = main.throttle_after_failure(fails, locked, updated, 100.0, 10)
+    assert locked == 100.0 + main.THROTTLE_LOCK_SECONDS
+    # after the lock ends the count starts again
+    fails, locked = main.throttle_after_failure(fails, locked, updated, locked + 1, 10)
+    assert (fails, locked) == (1, 0.0)
 
 
-def test_login_guard_forgets_failures_after_a_good_login():
-    guard = main.LoginGuard(limit=3)
-    guard.failed("184"); guard.failed("184")
-    guard.succeeded("184")
-    guard.failed("184"); guard.failed("184")
-    assert not guard.blocked("184")
+def test_throttle_forgets_old_failures():
+    fails, locked = main.throttle_after_failure(9, 0.0, 0.0, main.THROTTLE_FORGET_SECONDS + 1, 10)
+    assert (fails, locked) == (1, 0.0)
+
+
+def test_client_ip_prefers_the_cloudflare_header():
+    class R:
+        def __init__(self, headers, host="10.0.0.1"):
+            self.headers = headers
+            self.client = type("C", (), {"host": host})()
+    assert main.client_ip(R({"cf-connecting-ip": "1.2.3.4", "x-forwarded-for": "9.9.9.9"})) == "1.2.3.4"
+    assert main.client_ip(R({"x-forwarded-for": "5.6.7.8, 10.1.1.1"})) == "5.6.7.8"
+    assert main.client_ip(R({})) == "10.0.0.1"
+
+
+def test_expire_unpaid_orders_returns_stock_and_skips_orders_paid_meanwhile():
+    import asyncio
+
+    class FakeDB:
+        def __init__(self):
+            self.executed = []
+
+        async def fetch(self, sql, *args):
+            return [{"id": 1}, {"id": 2}]
+
+        async def fetchrow(self, sql, *args):
+            # order 1 is still unpaid and is removed; order 2 got paid between the two queries
+            return {"stock_items": main.dump_stock_items([(5, 2)])} if args[0] == 1 else None
+
+        async def execute(self, sql, *args):
+            self.executed.append(args)
+
+    db = FakeDB()
+    assert asyncio.run(main.expire_unpaid_orders(db)) == 1
+    assert db.executed == [(2, 5)]
 
 
 def test_login_error_does_not_reveal_the_limit():
