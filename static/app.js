@@ -3552,18 +3552,6 @@ init();
             });
         });
     }
-    const mega = document.querySelector('.footer-mega span');
-    if (mega) {
-        const fill = () => {
-            const r = mega.getBoundingClientRect();
-            // 0 when the wordmark enters at the bottom of the screen, 1 when it is 55% up the screen
-            const p = Math.max(0, Math.min(1, (window.innerHeight - r.top) / (window.innerHeight * 0.55)));
-            mega.style.setProperty('--fill', `${(p * 100).toFixed(1)}%`);
-            mega.style.setProperty('--fillp', p.toFixed(3));
-        };
-        window.addEventListener('scroll', () => requestAnimationFrame(fill), { passive: true });
-        fill();
-    }
     const banner = document.querySelector('.avito-banner-card');
     const stage = banner && banner.querySelector('.avito-stage-inner');
     if (!stage) return;
@@ -3588,6 +3576,49 @@ init();
     };
     window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(spin); } }, { passive: true });
     spin();
+})();
+
+// --- Footer terminal: an ASCII Funko that blinks and sparkles, and a typewriter pitch ---
+(function footerAscii() {
+    const fig = document.querySelector('.ascii-fig');
+    const out = document.querySelector('.ascii-type');
+    if (!fig || !out) return;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const sp = ['*', '+', '.', 'o'];
+    const draw = (eye, mouth, s) => [
+        `  ${s[0]}   .-----------.   ${s[1]}`,
+        `    /  _       _  \\`,
+        `   |  (<b class="r">${eye}</b>)     (<b class="r">${eye}</b>)  |`,
+        `   |       v       |`,
+        `   |    <b class="r">${mouth}</b>    |`,
+        `    '-.__     __.-'  ${s[2]}`,
+        `  ${s[3]}  |   FUNKO   |`,
+        `     |   POP!    |`,
+        `     '-----------'`
+    ].join('\n');
+    let blink = false, tick = 0;
+    const paint = () => {
+        const s = [0, 1, 2, 3].map(i => `<b class="s">${sp[(tick + i) % sp.length]}</b>`);
+        fig.innerHTML = draw(blink ? '-' : 'O', tick % 6 < 3 ? '\\_____/' : '\\_____/'.replace('\\_____/', ' \\___/ '), s);
+    };
+    paint();
+    if (still) { out.textContent = '$ funko --collect\n> original figures\n> preorders from the US and Europe\n> delivery across Russia'; return; }
+    setInterval(() => { tick++; paint(); }, 420);
+    (function blinker() {
+        setTimeout(() => { blink = true; paint(); setTimeout(() => { blink = false; paint(); blinker(); }, 140); }, 1800 + Math.random() * 2400);
+    })();
+    const lines = ['funko --collect', 'figures --original', 'preorder --from "USA, Europe"', 'delivery --to "all Russia"', 'echo "collect. trade. repeat."'];
+    let li = 0, ci = 0, erasing = false;
+    const caret = '<span class="c"></span>';
+    const type = () => {
+        const text = lines[li];
+        out.innerHTML = `<span class="p">$</span> ${text.slice(0, ci).replace(/</g, '&lt;')}${caret}`;
+        if (!erasing && ci < text.length) { ci++; return setTimeout(type, 55 + Math.random() * 45); }
+        if (!erasing) { erasing = true; return setTimeout(type, 1500); }
+        if (ci > 0) { ci -= 2; ci = Math.max(0, ci); return setTimeout(type, 22); }
+        erasing = false; li = (li + 1) % lines.length; setTimeout(type, 350);
+    };
+    type();
 })();
 
 // Late-loading images shift the page: re-aim deep links once everything is loaded
