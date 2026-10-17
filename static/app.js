@@ -3517,7 +3517,7 @@ init();
             collage.style.setProperty('--tilt-y', '0deg');
         });
     }
-    const targets = document.querySelectorAll('.benefits, .home-new, .home-hub-grid > *, .landing-section');
+    const targets = document.querySelectorAll('.benefits, .home-new, .home-hub-grid > *, .landing-section, .landing-footer');
     if (still || !('IntersectionObserver' in window)) return;
     const io = new IntersectionObserver((entries) => entries.forEach(en => {
         if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
@@ -3530,12 +3530,13 @@ init();
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const hover = window.matchMedia('(hover: hover)').matches;
     if (hover) {
-        document.querySelectorAll('.step-card, .info-card, .feature-card').forEach(card => {
+        document.querySelectorAll('.step-card, .info-card, .feature-card, .faq-accordion-item, .faq-manager-callout').forEach(card => {
             card.addEventListener('pointermove', (e) => {
                 const r = card.getBoundingClientRect();
                 const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
-                card.style.setProperty('--ry', `${((x - 0.5) * 12).toFixed(2)}deg`);
-                card.style.setProperty('--rx', `${((0.5 - y) * 10).toFixed(2)}deg`);
+                const k = Math.min(1, 420 / r.width); // wide cards tilt less, so a long FAQ row does not swing
+                card.style.setProperty('--ry', `${((x - 0.5) * 12 * k).toFixed(2)}deg`);
+                card.style.setProperty('--rx', `${((0.5 - y) * 10 * k).toFixed(2)}deg`);
                 card.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`);
                 card.style.setProperty('--my', `${(y * 100).toFixed(1)}%`);
             });
@@ -3544,6 +3545,16 @@ init();
                 card.style.setProperty('--ry', '0deg');
             });
         });
+    }
+    const footFig = document.querySelector('.footer-fig-stage');
+    if (footFig) {
+        const turn = () => {
+            const r = footFig.getBoundingClientRect();
+            const t = (r.top + r.height / 2) / window.innerHeight - 0.5;
+            footFig.style.setProperty('--scroll-r', `${Math.max(-1, Math.min(1, t * 2)) * -30}deg`);
+        };
+        window.addEventListener('scroll', () => requestAnimationFrame(turn), { passive: true });
+        turn();
     }
     const banner = document.querySelector('.avito-banner-card');
     const stage = banner && banner.querySelector('.avito-stage-inner');
