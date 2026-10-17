@@ -828,8 +828,9 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 phone, name
             )
             if existing_client:
+                # A guest who typed someone's phone or name is not proof of identity: the order joins that
+                # cabinet, but neither the password nor a login token is handed out.
                 client_id = existing_client["id"]
-                generated_pwd = existing_client["password"]
             else:
                 is_new_client = True
                 generated_pwd = str(random.randint(100000, 999999))
@@ -837,7 +838,8 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                     "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username, email, marketing_consent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
                     generated_pwd, name, first_name, last_name, phone, telegram, email, checkout.marketing_consent
                 )
-            new_token = create_access_token(data={"sub": str(client_id), "role": "client"})
+            if is_new_client:
+                new_token = create_access_token(data={"sub": str(client_id), "role": "client"})
         else:
             await db.execute(
                 """UPDATE clients 

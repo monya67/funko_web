@@ -360,7 +360,8 @@ loginForm.addEventListener('submit', async (e) => {
             body: formData
         });
         if (!res.ok) {
-            const errData = await res.json();
+            const errData = await res.json().catch(() => ({}));
+            if (res.status >= 500 || res.status === 429 || !errData.detail && res.status !== 401) throw new Error('Сервер временно недоступен, попробуйте через минуту');
             throw new Error(errData.detail || 'Неверный логин или пароль');
         }
         const data = await res.json();
