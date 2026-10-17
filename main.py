@@ -227,6 +227,7 @@ class ClientCreate(BaseModel):
     full_name: str = ""
     phone: str = ""
     tg_username: str = ""
+    email: str = ""
 
 class ClientUpdate(BaseModel):
     password: str = ""
@@ -235,6 +236,7 @@ class ClientUpdate(BaseModel):
     full_name: str = ""
     phone: str = ""
     tg_username: str = ""
+    email: str = ""
 
 class OrderCreate(BaseModel):
     client_id: int
@@ -389,7 +391,8 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
                        COALESCE(first_name, '') as first_name,
                        COALESCE(last_name, '') as last_name,
                        COALESCE(phone, '') as phone,
-                       COALESCE(tg_username, '') as tg_username
+                       COALESCE(tg_username, '') as tg_username,
+                       COALESCE(email, '') as email
                 FROM clients ORDER BY id DESC
             """)
             orders = await db.fetch(
@@ -442,13 +445,16 @@ async def create_client(client: ClientCreate, admin: dict = Depends(require_admi
         last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
     phone = (client.phone or "").strip()
     tg_username = (client.tg_username or "").strip()
+    email = (client.email or "").strip().lower()
+    if email and not valid_email(email):
+        raise HTTPException(status_code=400, detail="Некорректная почта")
 
     if not pwd:
         raise HTTPException(status_code=400, detail="Пароль обязателен")
     async with pool.acquire() as db:
         new_id = await db.fetchval(
-            "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
-            pwd, full_name, first_name, last_name, phone, tg_username
+            "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username, email) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id",
+            pwd, full_name, first_name, last_name, phone, tg_username, email
         )
         return {"success": True, "id": new_id}
 
@@ -465,18 +471,21 @@ async def update_client(client_id: int, client: ClientUpdate, admin: dict = Depe
         last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
     phone = (client.phone or "").strip()
     tg_username = (client.tg_username or "").strip()
+    email = (client.email or "").strip().lower()
+    if email and not valid_email(email):
+        raise HTTPException(status_code=400, detail="Некорректная почта")
     pwd = (client.password or "").strip()
 
     async with pool.acquire() as db:
         if pwd:
             res = await db.execute(
-                "UPDATE clients SET password = $1, full_name = $2, first_name = $3, last_name = $4, phone = $5, tg_username = $6 WHERE id = $7",
-                pwd, full_name, first_name, last_name, phone, tg_username, client_id
+                "UPDATE clients SET password = $1, full_name = $2, first_name = $3, last_name = $4, phone = $5, tg_username = $6, email = $7 WHERE id = $8",
+                pwd, full_name, first_name, last_name, phone, tg_username, email, client_id
             )
         else:
             res = await db.execute(
-                "UPDATE clients SET full_name = $1, first_name = $2, last_name = $3, phone = $4, tg_username = $5 WHERE id = $6",
-                full_name, first_name, last_name, phone, tg_username, client_id
+                "UPDATE clients SET full_name = $1, first_name = $2, last_name = $3, phone = $4, tg_username = $5, email = $6 WHERE id = $7",
+                full_name, first_name, last_name, phone, tg_username, email, client_id
             )
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Клиент не найден")

@@ -1048,6 +1048,7 @@ function renderClients(clients) {
         const fnDisplay = firstName ? escapeHtml(firstName) : '<span style="color:var(--gray-light); font-style:italic;">Не указано</span>';
         const lnDisplay = lastName ? escapeHtml(lastName) : '<span style="color:var(--gray-light); font-style:italic;">Не указано</span>';
         const phoneDisplay = client.phone ? escapeHtml(client.phone) : '—';
+        const emailDisplay = client.email ? escapeHtml(client.email) : '—';
         const tgDisplay = (client.tg_username || client.user_tg_id) 
             ? (client.tg_username ? (client.tg_username.startsWith('@') ? client.tg_username : `@${client.tg_username}`) : `ID: ${client.user_tg_id}`)
             : '—';
@@ -1059,6 +1060,7 @@ function renderClients(clients) {
             <td style="font-weight:600; color:var(--ink);">${lnDisplay}</td>
             <td style="color:var(--ink); font-size:0.88rem;">${phoneDisplay}</td>
             <td style="color:${tgDisplay !== '—' ? '#1C6EA4' : 'var(--gray-light)'};">${tgDisplay}</td>
+            <td style="color:var(--ink); font-size:0.88rem;">${emailDisplay}</td>
             <td style="font-family:monospace; color:var(--muted);">${escapeHtml(client.password)}</td>
             <td style="text-align:center; white-space:nowrap;">
                 <button type="button" class="edit-btn" onclick="window.openEditClientModal(${client.id})" title="Редактировать клиента">Ред.</button>
@@ -1484,6 +1486,7 @@ createClientForm.addEventListener('submit', async (e) => {
     const lastName = document.getElementById('new-client-last-name')?.value.trim() || '';
     const phone = document.getElementById('new-client-phone')?.value.trim() || '';
     const tg = document.getElementById('new-client-tg')?.value.trim() || '';
+    const email = document.getElementById('new-client-email')?.value.trim() || '';
 
     if (!pwd) {
         alert('Укажите пароль!');
@@ -1498,7 +1501,8 @@ createClientForm.addEventListener('submit', async (e) => {
                 last_name: lastName,
                 full_name: `${firstName} ${lastName}`.trim(),
                 phone: phone,
-                tg_username: tg
+                tg_username: tg,
+                email: email
             })
         });
         closeModals();
@@ -1531,6 +1535,8 @@ window.openEditClientModal = function(clientId) {
     if (lnInput) lnInput.value = lastName;
     if (phoneInput) phoneInput.value = client.phone || '';
     if (tgInput) tgInput.value = client.tg_username || (client.user_tg_id ? String(client.user_tg_id) : '');
+    const emailEdit = document.getElementById('edit-client-email');
+    if (emailEdit) emailEdit.value = client.email || '';
     document.getElementById('edit-client-password').value = '';
     openModal(editClientModal);
 };
@@ -1542,6 +1548,7 @@ editClientForm?.addEventListener('submit', async (e) => {
     const lastName = document.getElementById('edit-client-last-name')?.value.trim() || '';
     const phone = document.getElementById('edit-client-phone')?.value.trim() || '';
     const tg = document.getElementById('edit-client-tg')?.value.trim() || '';
+    const email = document.getElementById('edit-client-email')?.value.trim() || '';
     const pwd = document.getElementById('edit-client-password').value.trim();
 
     try {
@@ -1553,6 +1560,7 @@ editClientForm?.addEventListener('submit', async (e) => {
                 full_name: `${firstName} ${lastName}`.trim(),
                 phone: phone,
                 tg_username: tg,
+                email: email,
                 password: pwd
             })
         });
