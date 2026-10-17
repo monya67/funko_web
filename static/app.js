@@ -3510,6 +3510,52 @@ init();
     targets.forEach(t => { t.classList.add('reveal'); io.observe(t); });
 })();
 
+// --- Lower home sections: cards tilt toward the pointer, the stock banner boxes turn with pointer and scroll ---
+(function lowerSectionsMotion() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const hover = window.matchMedia('(hover: hover)').matches;
+    if (hover) {
+        document.querySelectorAll('.step-card, .info-card, .feature-card').forEach(card => {
+            card.addEventListener('pointermove', (e) => {
+                const r = card.getBoundingClientRect();
+                const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+                card.style.setProperty('--ry', `${((x - 0.5) * 12).toFixed(2)}deg`);
+                card.style.setProperty('--rx', `${((0.5 - y) * 10).toFixed(2)}deg`);
+                card.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`);
+                card.style.setProperty('--my', `${(y * 100).toFixed(1)}%`);
+            });
+            card.addEventListener('pointerleave', () => {
+                card.style.setProperty('--rx', '0deg');
+                card.style.setProperty('--ry', '0deg');
+            });
+        });
+    }
+    const banner = document.querySelector('.avito-banner-card');
+    const stage = banner && banner.querySelector('.avito-stage-inner');
+    if (!stage) return;
+    if (hover) {
+        banner.addEventListener('pointermove', (e) => {
+            const r = banner.getBoundingClientRect();
+            const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+            stage.style.setProperty('--tilt-y', `${(x * 26).toFixed(1)}deg`);
+            stage.style.setProperty('--tilt-x', `${(-y * 18).toFixed(1)}deg`);
+        });
+        banner.addEventListener('pointerleave', () => {
+            stage.style.setProperty('--tilt-x', '0deg');
+            stage.style.setProperty('--tilt-y', '0deg');
+        });
+    }
+    let ticking = false;
+    const spin = () => {
+        ticking = false;
+        const r = banner.getBoundingClientRect();
+        const t = (r.top + r.height / 2) / window.innerHeight - 0.5; // -0.5 .. 0.5 across the viewport
+        stage.style.setProperty('--scroll-r', `${Math.max(-1, Math.min(1, t * 2)) * -22}deg`);
+    };
+    window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(spin); } }, { passive: true });
+    spin();
+})();
+
 // Late-loading images shift the page: re-aim deep links once everything is loaded
 window.addEventListener('load', () => {
     const a = window.location.hash && document.getElementById(window.location.hash.slice(1));

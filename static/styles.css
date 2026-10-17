@@ -4321,43 +4321,56 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
     .faq-answer-panel, .faq-answer-panel p, tbody tr td { transition: none; }
 }
 
-/* ---- lower home sections: same language as the hero (display type, paper accents, motion) ---- */
+/* ---- lower home sections: same language as the hero (display type, paper accents, real 3D) ---- */
 .landing-section .section-title { font-family: var(--font-display); font-weight: 400; text-transform: uppercase; font-size: clamp(34px, 4.4vw, 60px); line-height: 0.98; letter-spacing: 0.2px; }
 .landing-section .section-label { display: inline-block; align-self: flex-start; padding: 4px 10px; background: var(--pre); color: #fff; transform: rotate(-1.5deg); letter-spacing: 1.6px; }
 .landing-section .section-subtitle { max-width: 560px; }
 
-.step-card, .info-card, .feature-card { position: relative; overflow: hidden; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.1); }
-.step-card::before, .info-card::before, .feature-card::before { content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 100%; background: var(--pre); transform: scaleX(0); transform-origin: left; transition: transform 0.45s var(--ease); }
+/* grids give their cards a shared vanishing point; cards tilt toward the pointer and lift their content off the surface */
+.home-steps-grid, .landing-info-triad, .home-features-grid { perspective: 1100px; }
+.step-card, .info-card, .feature-card {
+    position: relative; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.1);
+    transform-style: preserve-3d; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+    transition: transform 0.18s ease-out, translate 0.35s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s var(--ease);
+    }
+.step-card:hover, .info-card:hover, .feature-card:hover { translate: 0 -4px; box-shadow: 0 18px 30px rgba(var(--shadow-rgb), 0.14); }
+.step-card::before, .info-card::before, .feature-card::before { content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 100%; background: var(--pre); clip-path: inset(0 round 18px 18px 0 0); transform: scaleX(0); transform-origin: left; transition: transform 0.45s var(--ease); }
 .step-card:hover::before, .info-card:hover::before, .feature-card:hover::before { transform: scaleX(1); }
-.step-card:hover, .info-card:hover, .feature-card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(var(--shadow-rgb), 0.12); }
+.step-card::after, .info-card::after, .feature-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.25s; background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgba(var(--ink-rgb), 0.09), transparent 55%); }
+.step-card:hover::after, .info-card:hover::after, .feature-card:hover::after { opacity: 1; }
 
-.step-number { font-family: var(--font-display); font-weight: 400; font-size: clamp(54px, 5vw, 76px); line-height: 0.9; color: transparent; -webkit-text-stroke: 1.5px var(--pre); transition: color 0.35s var(--ease), transform 0.35s var(--ease); }
-.step-card:hover .step-number { color: var(--pre); transform: translateX(4px) rotate(-3deg); }
+.step-number { font-family: var(--font-display); font-weight: 400; font-size: clamp(54px, 5vw, 76px); line-height: 0.9; color: transparent; -webkit-text-stroke: 1.5px var(--pre); transform: translateZ(14px); transition: color 0.35s var(--ease), transform 0.35s var(--ease); }
+.step-card:hover .step-number { color: var(--pre); transform: translateZ(22px) rotate(-3deg); }
+.info-card-icon, .feature-icon { transition: transform 0.35s var(--ease); }
+.info-card:hover .info-card-icon, .feature-card:hover .feature-icon { transform: translateZ(16px) rotate(-8deg) scale(1.08); }
 .step-arrow svg { animation: nudge-x 2s var(--ease) infinite; }
 @keyframes nudge-x { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
 
-.info-card-icon, .feature-icon { transition: transform 0.35s var(--ease); }
-.info-card:hover .info-card-icon, .feature-card:hover .feature-icon { transform: rotate(-8deg) scale(1.08); }
-
-/* the stock banner gets a figure that floats like the hero ones */
+/* the stock banner: three boxes on their own depth planes, turned by the pointer and by scrolling */
 .avito-banner-side { position: relative; }
-.avito-fig { position: absolute; right: -6%; top: -46%; width: 46%; max-width: 190px; z-index: 0; pointer-events: none; transform: rotate(8deg); animation: avito-float 5.5s ease-in-out infinite; }
+.avito-stage { position: absolute; left: 0; right: 0; top: -104px; height: 124px; z-index: 0; pointer-events: none; perspective: 700px; }
+.avito-stage-inner { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateX(var(--tilt-x, 0deg)) rotateY(calc(var(--tilt-y, 0deg) + var(--scroll-r, 0deg))); transition: transform 0.25s ease-out; }
+.avito-fig { position: absolute; bottom: 0; height: 100%; width: auto; animation: avito-float 5.5s ease-in-out infinite; }
+.avito-fig-1 { left: 4%; --r: -8deg; --z: 10px; }
+.avito-fig-2 { left: 32%; height: 115%; --r: 2deg; --z: 70px; animation-delay: -1.8s; }
+.avito-fig-3 { right: 4%; --r: 9deg; --z: 30px; animation-delay: -3.4s; }
+@keyframes avito-float { 0%, 100% { transform: translate3d(0, 0, var(--z)) rotate(var(--r)); } 50% { transform: translate3d(0, -10px, var(--z)) rotate(calc(var(--r) + 2deg)); } }
 .reserve-box { position: relative; z-index: 1; }
-@keyframes avito-float { 0%, 100% { transform: translateY(0) rotate(8deg); } 50% { transform: translateY(-10px) rotate(5deg); } }
 
-/* cards inside a revealed section rise one after another */
-.reveal .step-card, .reveal .info-card, .reveal .feature-card, .reveal .reserve-box { opacity: 0; transform: translateY(24px); transition: opacity 0.6s var(--ease), transform 0.6s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s var(--ease); }
-.reveal.in .step-card, .reveal.in .info-card, .reveal.in .feature-card, .reveal.in .reserve-box { opacity: 1; transform: none; }
-.reveal.in .step-card:nth-child(1), .reveal.in .info-card:nth-child(1), .reveal.in .feature-card:nth-child(1) { transition-delay: 0.05s; }
-.reveal.in .step-card:nth-child(3), .reveal.in .info-card:nth-child(2), .reveal.in .feature-card:nth-child(2) { transition-delay: 0.17s; }
-.reveal.in .step-card:nth-child(5), .reveal.in .info-card:nth-child(3), .reveal.in .feature-card:nth-child(3) { transition-delay: 0.29s; }
-.reveal.in .step-card:nth-child(7), .reveal.in .feature-card:nth-child(4) { transition-delay: 0.41s; }
-.reveal.in .step-card:hover, .reveal.in .info-card:hover, .reveal.in .feature-card:hover { transition-delay: 0s; transform: translateY(-4px); }
+/* cards flip up out of the page one after another when their section scrolls in */
+.reveal .step-card, .reveal .info-card, .reveal .feature-card, .reveal .reserve-box { opacity: 0; translate: 0 30px -60px; rotate: x -32deg; transition: transform 0.18s ease-out, opacity 0.7s var(--ease), translate 0.8s var(--ease), rotate 0.8s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s var(--ease); }
+.reveal.in .step-card, .reveal.in .info-card, .reveal.in .feature-card, .reveal.in .reserve-box { opacity: 1; translate: none; rotate: none; }
+.reveal.in .step-card:nth-child(1), .reveal.in .info-card:nth-child(1), .reveal.in .feature-card:nth-child(1) { transition-delay: 0s, 0.05s, 0.05s, 0.05s; }
+.reveal.in .step-card:nth-child(3), .reveal.in .info-card:nth-child(2), .reveal.in .feature-card:nth-child(2) { transition-delay: 0s, 0.19s, 0.19s, 0.19s; }
+.reveal.in .step-card:nth-child(5), .reveal.in .info-card:nth-child(3), .reveal.in .feature-card:nth-child(3) { transition-delay: 0s, 0.33s, 0.33s, 0.33s; }
+.reveal.in .step-card:nth-child(7), .reveal.in .feature-card:nth-child(4) { transition-delay: 0s, 0.47s, 0.47s, 0.47s; }
+.reveal.in .step-card:hover, .reveal.in .info-card:hover, .reveal.in .feature-card:hover { translate: 0 -4px; transition-delay: 0s; }
 
 @media (max-width: 760px) {
-    .avito-fig { width: 34%; right: 2%; top: -38%; }
+    .avito-stage { top: -70px; height: 100px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .step-arrow svg, .avito-fig { animation: none; }
-    .reveal .step-card, .reveal .info-card, .reveal .feature-card, .reveal .reserve-box { opacity: 1; transform: none; transition: none; }
+    .step-card, .info-card, .feature-card { transform: none !important; }
+    .reveal .step-card, .reveal .info-card, .reveal .feature-card, .reveal .reserve-box { opacity: 1; translate: none; rotate: none; transition: none; }
 }
