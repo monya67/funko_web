@@ -903,9 +903,9 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
         # Notify admin in Telegram
         if BOT_TOKEN and ADMIN_IDS:
             try:
-                pay_status = "⏳ Ожидает оплаты" if payment_url else "⚠️ Без онлайн-оплаты"
+                pay_status = "⏳ Статус: ожидает оплаты, придёт отдельное сообщение «ОПЛАЧЕН»" if payment_url else "⚠️ Без онлайн-оплаты: свяжитесь с клиентом"
                 admin_msg = (
-                    f"🔥 **Новый заказ #{order_id} на сайте funkostop.org!**\n\n"
+                    f"{new_order_title(order_id, bool(payment_url))}\n\n"
                     f"👤 Клиент #{client_id}: {name}\n"
                     f"📞 Телефон: {phone}\n"
                     f"✈️ Telegram: {telegram}\n"
@@ -968,8 +968,9 @@ async def tbank_notification(req: Request):
                 payment_id, oid
             )
             await notify_admins(
-                f"✅ **Оплата подтверждена! Заказ #{oid}**\n\n"
-                f"💳 Сумма: {order['paid_amount']} ₽\n👤 {order['customer_name']}"
+                f"{paid_order_title(oid)}\n\n"
+                f"🛒 {order['items']}\n"
+                f"💳 Оплачено: {order['paid_amount']} ₽ из {order['total_price']} ₽\n👤 {order['customer_name']}"
             )
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
             await db.execute(
@@ -1097,6 +1098,23 @@ def aggregate_cart_qty(items):
     return totals
 
 
+def order_line_text(product, qty):
+    """One order line in the house format of older orders: '<number> - <name>' plus ' xN' for several pieces."""
+    number = (product.get("figure_number") or "").strip()
+    text = f"{number} - {product['name']}" if number else product["name"]
+    return f"{text} x{qty}" if qty > 1 else text
+
+
+def new_order_title(order_id, payment_pending):
+    if payment_pending:
+        return f"🕓 **Заказ #{order_id} создан, но НЕ оплачен** (клиент ещё на странице оплаты)"
+    return f"🔥 **Новый заказ #{order_id}**"
+
+
+def paid_order_title(order_id):
+    return f"✅ **ОПЛАЧЕН: заказ #{order_id}**"
+
+
 def price_cart(items, products_by_id):
     """Total, order lines and first photo computed ONLY from database rows.
     Names, prices and photos sent by the browser are ignored: they are editable by any visitor."""
@@ -1111,9 +1129,7 @@ def price_cart(items, products_by_id):
         qty = line_qty(it)
         subtotal = unit * qty
         total += subtotal
-        qty_str = f" x{qty}" if qty > 1 else ""
-        num_str = f" #{product['figure_number']}" if product.get("figure_number") else ""
-        lines.append(f"{product['name']}{num_str}{qty_str} — {subtotal} ₽")
+        lines.append(order_line_text(product, qty))
         if not first_photo:
             first_photo = first_photo_id(product.get("photo_id"))
     return total, lines, first_photo

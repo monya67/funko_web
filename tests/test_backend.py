@@ -146,8 +146,8 @@ def test_prices_come_from_the_database_not_from_the_browser():
     cheat = main.CartItem(id=5, name="Totally Free", figure_number="1", price=1, final_price=1, photo_id="HACK", qty=2)
     total, lines, photo = main.price_cart([cheat], DB_PRODUCTS)
     assert total == 6000, total                      # 2 x 3000, not 2 x 1
-    assert "Real Name #77" in lines[0] and "Totally Free" not in lines[0]
-    assert "x2" in lines[0] and "6000" in lines[0]
+    assert lines[0] == "77 - Real Name x2", lines[0]      # same house format as older orders; the total lives in its own column
+    assert "Totally Free" not in lines[0]
     assert photo == "PH1"                             # first photo of the real product
 
 
@@ -168,3 +168,18 @@ def test_absurd_quantities_are_capped_and_never_negative():
     assert total == 1500
     total, _, _ = main.price_cart([main.CartItem(id=9, name="x", qty=10**9)], DB_PRODUCTS)
     assert total == 1500 * main.MAX_LINE_QTY
+
+
+def test_order_line_matches_the_format_of_older_orders():
+    assert main.order_line_text({"name": "Vox", "figure_number": "2536"}, 1) == "2536 - Vox"
+    assert main.order_line_text({"name": "Vox", "figure_number": "2536"}, 3) == "2536 - Vox x3"
+    assert main.order_line_text({"name": "Vox", "figure_number": ""}, 1) == "Vox"
+    assert main.order_line_text({"name": "Vox", "figure_number": None}, 2) == "Vox x2"
+
+
+def test_admin_alert_says_plainly_when_the_order_is_not_paid():
+    unpaid = main.new_order_title(479, payment_pending=True)
+    assert "479" in unpaid and "НЕ оплачен" in unpaid
+    manual = main.new_order_title(480, payment_pending=False)
+    assert "НЕ оплачен" not in manual
+    assert "ОПЛАЧЕН" in main.paid_order_title(479)

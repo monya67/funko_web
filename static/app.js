@@ -678,6 +678,7 @@ function makePhotoCell(photoId) {
 }
 
 const ALL_STATUSES_LIST = [
+    'Ожидает оплаты',
     'Заказ принят в обработку',
     'Заказ ожидает отправки из магазина',
     'Заказ едет на склад США',
@@ -691,7 +692,9 @@ const ALL_STATUSES_LIST = [
 ];
 
 function makeInlineStatusCell(order) {
-    const opts = ALL_STATUSES_LIST.map(s =>
+    // a status the list does not know (older or custom) must still show up as the selected one, not as the first option
+    const known = ALL_STATUSES_LIST.includes(order.status) ? ALL_STATUSES_LIST : [order.status, ...ALL_STATUSES_LIST];
+    const opts = known.map(s =>
         `<option value="${s}" ${order.status === s ? 'selected' : ''}>${s}${s === 'Выдано' ? ' (→ в архив)' : ''}</option>`
     ).join('');
     return `<td>
