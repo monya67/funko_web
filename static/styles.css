@@ -4444,3 +4444,9 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .hub-card:hover .hub-card-content::after { transform: translateX(4px); }
 .hub-card .hub-card-action-text { margin-top: auto; padding-top: 12px; }
 @media (max-width: 760px) { .hub-card { min-height: 0; } .hub-card-content::before { font-size: 52px; } }
+
+/* footer wordmark: outlined at first, filled with red as the footer scrolls into view */
+.footer-fig-stage { display: none; }
+.footer-mega { overflow: hidden; margin: 8px 0 18px; text-align: center; line-height: 0.9; }
+.footer-mega span { display: inline-block; font-family: var(--font-display); text-transform: uppercase; font-size: clamp(54px, 15.5vw, 230px); letter-spacing: 0.5px; color: transparent; -webkit-text-stroke: 2px var(--pre); background: linear-gradient(90deg, var(--pre) var(--fill, 0%), transparent var(--fill, 0%)); -webkit-background-clip: text; background-clip: text; transform: translateY(calc((1 - var(--fillp, 0)) * 30px)); }
+@media (prefers-reduced-motion: reduce) { .footer-mega span { background: var(--pre); -webkit-text-stroke: 0; transform: none; } }

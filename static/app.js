@@ -3552,15 +3552,17 @@ init();
             });
         });
     }
-    const footFig = document.querySelector('.footer-fig-stage');
-    if (footFig) {
-        const turn = () => {
-            const r = footFig.getBoundingClientRect();
-            const t = (r.top + r.height / 2) / window.innerHeight - 0.5;
-            footFig.style.setProperty('--scroll-r', `${Math.max(-1, Math.min(1, t * 2)) * -30}deg`);
+    const mega = document.querySelector('.footer-mega span');
+    if (mega) {
+        const fill = () => {
+            const r = mega.getBoundingClientRect();
+            // 0 when the wordmark enters at the bottom of the screen, 1 when it is 55% up the screen
+            const p = Math.max(0, Math.min(1, (window.innerHeight - r.top) / (window.innerHeight * 0.55)));
+            mega.style.setProperty('--fill', `${(p * 100).toFixed(1)}%`);
+            mega.style.setProperty('--fillp', p.toFixed(3));
         };
-        window.addEventListener('scroll', () => requestAnimationFrame(turn), { passive: true });
-        turn();
+        window.addEventListener('scroll', () => requestAnimationFrame(fill), { passive: true });
+        fill();
     }
     const banner = document.querySelector('.avito-banner-card');
     const stage = banner && banner.querySelector('.avito-stage-inner');
