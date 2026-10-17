@@ -4416,3 +4416,15 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
     .reveal .faq-accordion-item, .reveal .faq-manager-callout, .reveal .footer-col-brand, .reveal .footer-link-group { opacity: 1; translate: none; rotate: none; transition: none; }
 }
 .footer-logo span { font-family: inherit; font-weight: 400; }
+
+/* hub cards (reviews, bot, tracking, stock): same tilt, red edge and depth as the other cards */
+.home-hub-grid { perspective: 1100px; }
+.hub-card { position: relative; transform-style: preserve-3d; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform 0.18s ease-out, translate 0.35s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s var(--ease); }
+.hub-card:hover { translate: 0 -4px; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); box-shadow: 0 18px 30px rgba(var(--shadow-rgb), 0.14); }
+.hub-card::before { content: ""; position: absolute; left: 0; top: 0; height: 3px; width: 100%; background: var(--pre); clip-path: inset(0 round 18px 18px 0 0); transform: scaleX(0); transform-origin: left; transition: transform 0.45s var(--ease); }
+.hub-card:hover::before { transform: scaleX(1); }
+.hub-card::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 0.25s; background: radial-gradient(circle at var(--mx, 50%) var(--my, 0%), rgba(var(--ink-rgb), 0.09), transparent 55%); }
+.hub-card:hover::after { opacity: 1; }
+.hub-card-icon { transform: translateZ(14px); transition: transform 0.35s var(--ease); }
+.hub-card:hover .hub-card-icon { transform: translateZ(16px) rotate(-8deg) scale(1.08); }
+@media (prefers-reduced-motion: reduce) { .hub-card { transform: none !important; } }

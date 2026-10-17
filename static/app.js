@@ -3530,7 +3530,7 @@ init();
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const hover = window.matchMedia('(hover: hover)').matches;
     if (hover) {
-        document.querySelectorAll('.step-card, .info-card, .feature-card, .faq-accordion-item, .faq-manager-callout').forEach(card => {
+        document.querySelectorAll('.step-card, .info-card, .feature-card, .faq-accordion-item, .faq-manager-callout, .hub-card').forEach(card => {
             card.addEventListener('pointermove', (e) => {
                 const r = card.getBoundingClientRect();
                 const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
