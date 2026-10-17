@@ -325,7 +325,8 @@ def tbank_generate_token(params: dict) -> str:
     filtered = {k: v for k, v in params.items() if k not in ("Shops", "DATA", "Receipt", "Items")}
     filtered["Password"] = TBANK_PASSWORD
     sorted_pairs = sorted(filtered.items(), key=lambda x: x[0])
-    concat = "".join(str(v) for _, v in sorted_pairs)
+    # T-Bank signs booleans as true/false; Python would write True/False and the webhook token would never match
+    concat = "".join(("true" if v is True else "false" if v is False else str(v)) for _, v in sorted_pairs)
     return hashlib.sha256(concat.encode("utf-8")).hexdigest()
 
 async def tbank_init_payment(amount_kopecks: int, order_id: int, description: str) -> dict:

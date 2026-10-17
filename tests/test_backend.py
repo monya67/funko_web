@@ -183,3 +183,11 @@ def test_admin_alert_says_plainly_when_the_order_is_not_paid():
     manual = main.new_order_title(480, payment_pending=False)
     assert "НЕ оплачен" not in manual
     assert "ОПЛАЧЕН" in main.paid_order_title(479)
+
+
+def test_tbank_token_signs_booleans_like_the_bank(monkeypatch):
+    import hashlib
+    monkeypatch.setattr(main, "TBANK_PASSWORD", "pw")
+    got = main.tbank_generate_token({"Success": True, "OrderId": "480", "Status": "CONFIRMED"})
+    # alphabetical by key: OrderId, Password, Status, Success
+    assert got == hashlib.sha256("480pwCONFIRMEDtrue".encode()).hexdigest()
