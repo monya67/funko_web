@@ -1,4 +1,5 @@
 import os
+import time
 import hmac
 import secrets
 import json
@@ -355,16 +356,60 @@ async def ping_user(request: Request, user: dict = Depends(get_current_user)):
     update_user_session(request, user)
     return {"online_count": get_online_count()}
 
+class LoginGuard:
+    """Counts failed logins per account name. After `limit` failures the name is locked for `lock_seconds`;
+    while locked every attempt fails the same way as a wrong password, so the limit is never revealed.
+    Keyed by name, not IP: behind the proxy the client address can be forged."""
+
+    def __init__(self, limit=10, lock_seconds=900, clock=None):
+        self.limit = limit
+        self.lock_seconds = lock_seconds
+        self.clock = clock or time.monotonic
+        self._fails = {}
+        self._locked_until = {}
+
+    def blocked(self, name):
+        until = self._locked_until.get(name)
+        if until is None:
+            return False
+        if self.clock() >= until:
+            self._locked_until.pop(name, None)
+            self._fails.pop(name, None)
+            return False
+        return True
+
+    def failed(self, name):
+        count = self._fails.get(name, 0) + 1
+        self._fails[name] = count
+        if count >= self.limit:
+            self._locked_until[name] = self.clock() + self.lock_seconds
+        if len(self._fails) > 5000:  # keep memory bounded: forget everything that is not locked
+            self._fails = {k: v for k, v in self._fails.items() if k in self._locked_until}
+
+    def succeeded(self, name):
+        self._fails.pop(name, None)
+
+
+login_guard = LoginGuard()
+
+
 @app.post("/api/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    username = form_data.username
+    username = (form_data.username or "")[:64]
     password = form_data.password
-    
+    wrong = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Неверный логин (ID) или пароль",
+    )
+    if login_guard.blocked(username):
+        raise wrong
+
     async with pool.acquire() as db:
         if username.isdigit():
             client_id = int(username)
             client = await db.fetchrow("SELECT id FROM clients WHERE id = $1 AND password = $2", client_id, password)
             if client:
+                login_guard.succeeded(username)
                 access_token = create_access_token(data={"sub": str(client_id), "role": "client"})
                 return {"access_token": access_token, "token_type": "bearer"}
         
@@ -373,13 +418,12 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             username, password
         )
         if user:
+            login_guard.succeeded(username)
             access_token = create_access_token(data={"sub": user["login_id"], "role": "admin"})
             return {"access_token": access_token, "token_type": "bearer"}
             
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверный логин (ID) или пароль",
-        )
+        login_guard.failed(username)
+        raise wrong
 
 @app.get("/api/dashboard")
 async def get_dashboard(user: dict = Depends(get_current_user)):
@@ -847,7 +891,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 client_id = existing_client["id"]
             else:
                 is_new_client = True
-                generated_pwd = str(random.randint(100000, 999999))
+                generated_pwd = str(100000 + secrets.randbelow(900000))
                 client_id = await db.fetchval(
                     "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username, email, marketing_consent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
                     generated_pwd, name, first_name, last_name, phone, telegram, email, checkout.marketing_consent

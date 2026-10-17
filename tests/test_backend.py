@@ -208,3 +208,32 @@ def test_awaiting_payment_orders_are_kept_out_of_every_order_list():
     lists = [l for l in src.splitlines() if "FROM orders WHERE" in l and "archived" in l]
     assert len(lists) >= 4
     assert all("status <> 'Ожидает оплаты'" in l for l in lists)
+
+
+def test_login_guard_locks_a_name_after_ten_failures_and_unlocks_later():
+    now = [0.0]
+    guard = main.LoginGuard(limit=10, lock_seconds=900, clock=lambda: now[0])
+    for _ in range(9):
+        guard.failed("184")
+    assert not guard.blocked("184")
+    guard.failed("184")
+    assert guard.blocked("184")
+    assert not guard.blocked("183")  # other accounts are not affected
+    now[0] = 899
+    assert guard.blocked("184")
+    now[0] = 901
+    assert not guard.blocked("184")
+
+
+def test_login_guard_forgets_failures_after_a_good_login():
+    guard = main.LoginGuard(limit=3)
+    guard.failed("184"); guard.failed("184")
+    guard.succeeded("184")
+    guard.failed("184"); guard.failed("184")
+    assert not guard.blocked("184")
+
+
+def test_login_error_does_not_reveal_the_limit():
+    import inspect
+    src = inspect.getsource(main.login)
+    assert "попыт" not in src.lower() and "заблок" not in src.lower()
