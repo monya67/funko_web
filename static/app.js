@@ -265,6 +265,12 @@ function updateRoleUI(role) {
     window.updateCatalogDevMode();
 }
 
+// Clients who get the catalog before it opens for everyone (client ids)
+const CATALOG_PREVIEW_CLIENT_IDS = [184];
+function catalogOpenForMe() {
+    return currentRole === 'admin' || (currentRole === 'client' && CATALOG_PREVIEW_CLIENT_IDS.includes(Number(currentClientId)));
+}
+
 window.updateCatalogDevMode = function() {
     const devBanner = document.getElementById('catalog-guest-under-dev');
     const catalogHeader = document.getElementById('catalog-header-bar');
@@ -273,11 +279,11 @@ window.updateCatalogDevMode = function() {
     const catalogCartBtn = document.querySelector('.catalog-btn-cart');
     const viewToggle = document.getElementById('catalog-view-toggle');
 
-    if (currentRole === 'admin') {
+    if (catalogOpenForMe()) {
         if (devBanner) devBanner.classList.add('hidden');
         if (catalogHeader) catalogHeader.style.display = 'flex';
         if (catalogBody) catalogBody.style.display = 'grid';
-        if (adminNotice) adminNotice.classList.remove('hidden');
+        if (adminNotice) adminNotice.classList.toggle('hidden', currentRole !== 'admin');
         if (catalogCartBtn) catalogCartBtn.style.display = 'inline-flex';
         if (viewToggle) viewToggle.style.display = 'flex';
     } else {
@@ -427,7 +433,7 @@ window.switchTab = function(tabName, pushState = true) {
     });
     if (tabName === 'catalog') {
         window.updateCatalogDevMode();
-        if (currentRole === 'admin' && rawCatalogProducts.length === 0) {
+        if (catalogOpenForMe() && rawCatalogProducts.length === 0) {
             loadCatalog();
             loadCatalogMeta();
         }
@@ -2100,7 +2106,7 @@ function renderHomeNew() {
         b.addEventListener('click', () => { homeNewCategory = c; renderHomeNew(); });
         return b;
     }));
-    const open = currentRole === 'admin';
+    const open = catalogOpenForMe();
     document.getElementById('home-new-stub')?.classList.toggle('hidden', open);
     tabs.classList.toggle('hidden', !open);
     grid.classList.toggle('hidden', !open);
