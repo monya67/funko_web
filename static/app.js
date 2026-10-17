@@ -3552,30 +3552,6 @@ init();
             });
         });
     }
-    const banner = document.querySelector('.avito-banner-card');
-    const stage = banner && banner.querySelector('.avito-stage-inner');
-    if (!stage) return;
-    if (hover) {
-        banner.addEventListener('pointermove', (e) => {
-            const r = banner.getBoundingClientRect();
-            const x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-            stage.style.setProperty('--tilt-y', `${(x * 26).toFixed(1)}deg`);
-            stage.style.setProperty('--tilt-x', `${(-y * 18).toFixed(1)}deg`);
-        });
-        banner.addEventListener('pointerleave', () => {
-            stage.style.setProperty('--tilt-x', '0deg');
-            stage.style.setProperty('--tilt-y', '0deg');
-        });
-    }
-    let ticking = false;
-    const spin = () => {
-        ticking = false;
-        const r = banner.getBoundingClientRect();
-        const t = (r.top + r.height / 2) / window.innerHeight - 0.5; // -0.5 .. 0.5 across the viewport
-        stage.style.setProperty('--scroll-r', `${Math.max(-1, Math.min(1, t * 2)) * -22}deg`);
-    };
-    window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(spin); } }, { passive: true });
-    spin();
 })();
 
 // --- Footer terminal: an ASCII Funko that blinks and sparkles, and a typewriter pitch ---

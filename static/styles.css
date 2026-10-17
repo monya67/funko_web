@@ -4346,15 +4346,6 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .step-arrow svg { animation: nudge-x 2s var(--ease) infinite; }
 @keyframes nudge-x { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
 
-/* the stock banner: three boxes on their own depth planes, turned by the pointer and by scrolling */
-.avito-banner-side { position: relative; }
-.avito-stage { position: absolute; left: 0; right: 0; top: -104px; height: 124px; z-index: 0; pointer-events: none; perspective: 700px; }
-.avito-stage-inner { position: absolute; inset: 0; transform-style: preserve-3d; transform: rotateX(var(--tilt-x, 0deg)) rotateY(calc(var(--tilt-y, 0deg) + var(--scroll-r, 0deg))); transition: transform 0.25s ease-out; }
-.avito-fig { position: absolute; bottom: 0; height: 100%; width: auto; animation: avito-float 5.5s ease-in-out infinite; }
-.avito-fig-1 { left: 4%; --r: -8deg; --z: 10px; }
-.avito-fig-2 { left: 32%; height: 115%; --r: 2deg; --z: 70px; animation-delay: -1.8s; }
-.avito-fig-3 { right: 4%; --r: 9deg; --z: 30px; animation-delay: -3.4s; }
-@keyframes avito-float { 0%, 100% { transform: translate3d(0, 0, var(--z)) rotate(var(--r)); } 50% { transform: translate3d(0, -10px, var(--z)) rotate(calc(var(--r) + 2deg)); } }
 .reserve-box { position: relative; z-index: 1; }
 
 /* cards flip up out of the page one after another when their section scrolls in */
@@ -4366,11 +4357,8 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .reveal.in .step-card:nth-child(7), .reveal.in .feature-card:nth-child(4) { transition-delay: 0s, 0.47s, 0.47s, 0.47s; }
 .reveal.in .step-card:hover, .reveal.in .info-card:hover, .reveal.in .feature-card:hover { translate: 0 -4px; transition-delay: 0s; }
 
-@media (max-width: 760px) {
-    .avito-stage { top: -70px; height: 100px; }
-}
 @media (prefers-reduced-motion: reduce) {
-    .step-arrow svg, .avito-fig { animation: none; }
+    .step-arrow svg { animation: none; }
     .step-card, .info-card, .feature-card { transform: none !important; }
     .reveal .step-card, .reveal .info-card, .reveal .feature-card, .reveal .reserve-box { opacity: 1; translate: none; rotate: none; transition: none; }
 }
