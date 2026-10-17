@@ -191,3 +191,20 @@ def test_tbank_token_signs_booleans_like_the_bank(monkeypatch):
     got = main.tbank_generate_token({"Success": True, "OrderId": "480", "Status": "CONFIRMED"})
     # alphabetical by key: OrderId, Password, Status, Success
     assert got == hashlib.sha256("480pwCONFIRMEDtrue".encode()).hexdigest()
+
+
+def test_paid_alert_has_everything_the_manager_needs():
+    order = {"id": 480, "customer_name": "Ален", "customer_phone": "+77054540001", "customer_tg": "@monya325",
+             "items": "2536 - Vox", "total_price": 2, "paid_amount": 1, "payment_type": "50%"}
+    text = main.paid_alert_text(order, 184, "a@b.ru", "📦 Доставка: СДЭК\n💬 Комментарий: позвонить")
+    for part in ("ОПЛАЧЕН", "480", "184", "+77054540001", "@monya325", "a@b.ru", "СДЭК", "позвонить", "2536 - Vox", "50%"):
+        assert part in text
+    assert "Почта: —" in main.paid_alert_text(order, 184, "", "")
+
+
+def test_awaiting_payment_orders_are_kept_out_of_every_order_list():
+    import inspect
+    src = inspect.getsource(main.dashboard) if hasattr(main, "dashboard") else open(main.__file__, encoding="utf-8").read()
+    lists = [l for l in src.splitlines() if "FROM orders WHERE" in l and "archived" in l]
+    assert len(lists) >= 4
+    assert all("status <> 'Ожидает оплаты'" in l for l in lists)

@@ -116,6 +116,7 @@ async def startup():
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_tg TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_type TEXT DEFAULT '50%'")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tbank_payment_id TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS checkout_note TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending'")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS full_name TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS first_name TEXT DEFAULT ''")
@@ -396,10 +397,10 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
                 FROM clients ORDER BY id DESC
             """)
             orders = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = FALSE ORDER BY id DESC"
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = FALSE AND status <> 'Ожидает оплаты' ORDER BY id DESC"
             )
             archived = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = TRUE ORDER BY id DESC"
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = TRUE AND status <> 'Ожидает оплаты' ORDER BY id DESC"
             )
             return {
                 "role": "admin",
@@ -412,11 +413,11 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             client_id = user["id"]
             client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name, COALESCE(phone, '') as phone, COALESCE(tg_username, '') as tg_username, COALESCE(email, '') as email FROM clients WHERE id = $1", client_id)
             orders = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = FALSE ORDER BY id DESC",
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = FALSE AND status <> 'Ожидает оплаты' ORDER BY id DESC",
                 client_id
             )
             archived = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = TRUE ORDER BY id DESC",
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = TRUE AND status <> 'Ожидает оплаты' ORDER BY id DESC",
                 client_id
             )
             return {
@@ -884,14 +885,17 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                     msg = f"«{row['name']}» распродан" if left <= 0 else f"«{row['name']}»: осталось только {left} шт."
                     raise HTTPException(status_code=409, detail=msg)
 
-        status_text = "Ожидает оплаты"
+        status_text = AWAITING_PAYMENT
+        checkout_note = f"📦 Доставка: {checkout.delivery_method or 'Не указан'}"
+        if checkout.comment:
+            checkout_note += f"\n💬 Комментарий: {checkout.comment}"
         try:
           order_id = await db.fetchval(
             """INSERT INTO orders
-               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items)
-               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12) RETURNING id""",
+               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items, checkout_note)
+               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13) RETURNING id""",
             client_id, items_text, total_price, paid_amount, status_text, first_photo, order_date,
-            name, phone, telegram, checkout.payment_type, dump_stock_items(reserved) if reserved else ""
+            name, phone, telegram, checkout.payment_type, dump_stock_items(reserved) if reserved else "", checkout_note
           )
         except Exception:
             await restore_stock(db, reserved)
@@ -915,8 +919,9 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
             except Exception as e:
                 print(f"T-Bank Init exception: {e}")
 
-        # Notify admin in Telegram
-        if BOT_TOKEN and ADMIN_IDS:
+        # With an online payment the admins hear about the order only when it is paid (see the T-Bank webhook);
+        # without a payment link the order stands as it is and the manager must be told now.
+        if BOT_TOKEN and ADMIN_IDS and not payment_url:
             try:
                 pay_status = "⏳ Статус: ожидает оплаты, придёт отдельное сообщение «ОПЛАЧЕН»" if payment_url else "⚠️ Без онлайн-оплаты: свяжитесь с клиентом"
                 admin_msg = (
@@ -973,20 +978,20 @@ async def tbank_notification(req: Request):
         return Response(content="OK")
 
     async with pool.acquire() as db:
-        order = await db.fetchrow("SELECT id, status, client_id, items, total_price, paid_amount, customer_name FROM orders WHERE id = $1", oid)
+        order = await db.fetchrow("SELECT id, status, client_id, items, total_price, paid_amount, customer_name, customer_phone, customer_tg, payment_type, checkout_note FROM orders WHERE id = $1", oid)
         if not order:
             return Response(content="OK")
 
         if tbank_status == "CONFIRMED":
-            await db.execute(
-                "UPDATE orders SET payment_status = 'paid', status = 'Заказ принят в обработку', tbank_payment_id = $1 WHERE id = $2",
+            # T-Bank repeats notifications: only the first CONFIRMED moves the order and alerts the admins
+            first = await db.fetchval(
+                "UPDATE orders SET payment_status = 'paid', status = 'Заказ принят в обработку', tbank_payment_id = $1 "
+                "WHERE id = $2 AND payment_status <> 'paid' RETURNING id",
                 payment_id, oid
             )
-            await notify_admins(
-                f"{paid_order_title(oid)}\n\n"
-                f"🛒 {order['items']}\n"
-                f"💳 Оплачено: {order['paid_amount']} ₽ из {order['total_price']} ₽\n👤 {order['customer_name']}"
-            )
+            if first:
+                email = await db.fetchval("SELECT email FROM clients WHERE id = $1", order["client_id"])
+                await notify_admins(paid_alert_text(order, order["client_id"], email, order["checkout_note"]))
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
             await db.execute(
                 "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
@@ -1118,6 +1123,31 @@ def order_line_text(product, qty):
     number = (product.get("figure_number") or "").strip()
     text = f"{number} - {product['name']}" if number else product["name"]
     return f"{text} x{qty}" if qty > 1 else text
+
+
+AWAITING_PAYMENT = "Ожидает оплаты"
+
+
+def paid_alert_text(order, client_id, email, note):
+    """The admin message sent once the bank confirms the payment: everything the manager needs to start work."""
+    lines = [
+        paid_order_title(order["id"]),
+        "",
+        f"👤 Клиент #{client_id}: {order['customer_name']}",
+        f"📞 Телефон: {order['customer_phone'] or '—'}",
+        f"✈️ Telegram: {order['customer_tg'] or '—'}",
+        f"✉️ Почта: {email or '—'}",
+    ]
+    if note:
+        lines.append(note)
+    lines += [
+        "",
+        f"🛒 **Позиции:**\n{order['items']}",
+        "",
+        f"💰 Сумма: {order['total_price']} ₽",
+        f"💳 Оплачено: {order['paid_amount']} ₽ ({order['payment_type']})",
+    ]
+    return "\n".join(lines)
 
 
 def new_order_title(order_id, payment_pending):
