@@ -4428,3 +4428,19 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .hub-card-icon { transform: translateZ(14px); transition: transform 0.35s var(--ease); }
 .hub-card:hover .hub-card-icon { transform: translateZ(16px) rotate(-8deg) scale(1.08); }
 @media (prefers-reduced-motion: reduce) { .hub-card { transform: none !important; } }
+
+/* hub cards redesign: stacked layout, display-type title, red tag, ghost number, call to action */
+.home-hub-grid { counter-reset: hub; gap: 18px; }
+.hub-card { counter-increment: hub; flex-direction: column; align-items: stretch; gap: 0; padding: 26px 24px 22px; min-height: 250px; border-radius: 18px; overflow: visible; }
+.hub-card-icon { width: 54px; height: 54px; border-radius: 14px; margin-bottom: 22px; }
+.hub-card-icon svg { width: 26px; height: 26px; }
+.hub-card-content { position: static; flex: 1; gap: 8px; }
+.hub-card-content::before { content: counter(hub, decimal-leading-zero); position: absolute; right: 20px; top: 14px; font-family: var(--font-display); font-size: 64px; line-height: 1; color: transparent; -webkit-text-stroke: 1.5px rgba(var(--ink-rgb), 0.16); transition: -webkit-text-stroke-color 0.3s, transform 0.35s var(--ease); transform: translateZ(10px); }
+.hub-card:hover .hub-card-content::before { -webkit-text-stroke-color: var(--pre); transform: translateZ(22px) rotate(-4deg); }
+.hub-card-tag { color: var(--pre); font-size: 11px; letter-spacing: 1.6px; }
+.hub-card h4 { font-family: var(--font-display); font-weight: 400; text-transform: uppercase; font-size: clamp(22px, 2vw, 27px); line-height: 1.02; letter-spacing: 0.2px; overflow-wrap: anywhere; }
+.hub-card p { font-size: 0.86rem; line-height: 1.55; }
+.hub-card:not(#hub-tracking-card) .hub-card-content::after { content: "Открыть →"; margin-top: auto; padding-top: 12px; font-size: 0.8rem; font-weight: 700; color: var(--pre); transition: transform 0.25s var(--ease); display: inline-block; }
+.hub-card:hover .hub-card-content::after { transform: translateX(4px); }
+.hub-card .hub-card-action-text { margin-top: auto; padding-top: 12px; }
+@media (max-width: 760px) { .hub-card { min-height: 0; } .hub-card-content::before { font-size: 52px; } }
