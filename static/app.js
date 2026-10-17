@@ -343,6 +343,13 @@ window.goToOrdersOrLogin = function() {
 if (sidebarLoginBtn) sidebarLoginBtn.addEventListener('click', window.openLoginModal);
 if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
+// 'paid_amount' is the sum the client has to pay; until the bank confirms it, show it as awaited, not as paid
+function paidCell(order) {
+    const sum = `${(order.paid_amount || 0).toLocaleString('ru')} &#8381;`;
+    if (order.status === 'Ожидает оплаты') return `<td style="white-space:nowrap; color:var(--muted);" title="Ждём оплату">ждём ${sum}</td>`;
+    return `<td style="white-space:nowrap;">${sum}</td>`;
+}
+
 loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value;
@@ -905,7 +912,7 @@ function renderOrders() {
         html += makePhotoCell(order.photo_id);
         html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
         html += `<td style="white-space:nowrap;font-weight:500;">${(order.total_price || 0).toLocaleString('ru')} &#8381;</td>`;
-        html += `<td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>`;
+        html += paidCell(order);
 
         if (role === 'admin') {
             html += makeInlineStatusCell(order);
@@ -989,7 +996,7 @@ function renderArchivedOrders() {
         html += makePhotoCell(order.photo_id);
         html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
         html += `<td style="white-space:nowrap;font-weight:500;">${(order.total_price || 0).toLocaleString('ru')} &#8381;</td>`;
-        html += `<td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>`;
+        html += paidCell(order);
         html += `<td><span class="status-badge" style="background:rgba(0,200,80,0.15);color:var(--ok);">${order.status}</span></td>`;
 
         if (role === 'admin') {
@@ -1162,7 +1169,7 @@ function renderAccounting() {
             <td style="white-space:nowrap;">${order.price.toLocaleString('ru')} &#8381;</td>
             <td class="inline-edit-cell" style="white-space:nowrap;" title="Нажмите для редактирования" onclick="window.startInlineEdit(${order.id}, 'cost_price', ${order.cost}, this)">${order.cost.toLocaleString('ru')} &#8381;</td>
             <td class="inline-edit-cell" style="white-space:nowrap;" title="Нажмите для редактирования" onclick="window.startInlineEdit(${order.id}, 'delivery_cost', ${order.delivery}, this)">${order.delivery.toLocaleString('ru')} &#8381;</td>
-            <td style="white-space:nowrap;">${(order.paid_amount || 0).toLocaleString('ru')} &#8381;</td>
+            ${paidCell(order)}
             <td style="color:var(--pre);font-weight:bold;white-space:nowrap;">${order.totalTax.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.usn.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.checks.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
