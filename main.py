@@ -407,7 +407,7 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             }
         else:
             client_id = user["id"]
-            client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name FROM clients WHERE id = $1", client_id)
+            client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name, COALESCE(phone, '') as phone, COALESCE(tg_username, '') as tg_username, COALESCE(email, '') as email FROM clients WHERE id = $1", client_id)
             orders = await db.fetch(
                 "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = FALSE ORDER BY id DESC",
                 client_id
@@ -420,6 +420,9 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
                 "role": "client",
                 "client_id": client_id,
                 "full_name": client_info["full_name"] if client_info else "",
+                "phone": client_info["phone"] if client_info else "",
+                "tg_username": client_info["tg_username"] if client_info else "",
+                "email": client_info["email"] if client_info else "",
                 "online_count": online,
                 "orders": [dict(o) for o in orders],
                 "archived": [dict(o) for o in archived]

@@ -295,6 +295,7 @@ function handleLogout() {
     currentRole = 'guest';
     currentClientId = null;
     window.currentClientFullName = null;
+    window.currentClientPhone = window.currentClientTg = window.currentClientEmail = null;
     if (heartbeatInterval) clearInterval(heartbeatInterval);
     localStorage.removeItem('funko_token');
     ordersTableBody.innerHTML = '';
@@ -605,6 +606,9 @@ async function loadDashboardData() {
         if (data.role === 'client' && data.client_id) {
             currentClientId = data.client_id;
             window.currentClientFullName = data.full_name || '';
+            window.currentClientPhone = data.phone || '';
+            window.currentClientTg = data.tg_username || '';
+            window.currentClientEmail = data.email || '';
         }
         updateRoleUI(data.role);
         if (data.online_count) updateOnlineBadge(data.online_count);
@@ -3004,6 +3008,9 @@ window.openCheckoutModal = function() {
     if (window.currentClientTg && tgInput && !tgInput.value) {
         tgInput.value = window.currentClientTg;
     }
+
+    const emailPre = document.getElementById('checkout-email');
+    if (window.currentClientEmail && emailPre && !emailPre.value) emailPre.value = window.currentClientEmail;
 
     openModal(document.getElementById('checkout-modal'));
 };
