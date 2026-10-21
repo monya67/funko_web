@@ -335,3 +335,10 @@ def test_clients_never_receive_cost_numbers():
     assert not set(main.PRODUCT_PRIVATE_FIELDS) & set(public)
     assert main.product_payload(row, is_admin=True)["purchase_usd"] == 14.99
 
+
+
+def test_product_finance_fields_change_only_when_the_form_sends_them():
+    old_form = main.ProductUpdate(name="Vox", price=100)
+    assert main.product_finance_values(old_form) == {}
+    sent = main.ProductUpdate(name="Vox", price=100, purchase_usd=14.999, planned_shipping_rub=0, purchase_source=" Funko.com ", product_kind="Standard Pop")
+    assert main.product_finance_values(sent) == {"purchase_usd": 15.0, "planned_shipping_rub": None, "purchase_source": "Funko.com", "product_kind": "Standard Pop"}

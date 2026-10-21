@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1795300000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1795400000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -1992,6 +1992,19 @@
                     <textarea id="product-description" rows="4" maxlength="2000" placeholder="Коротко о фигурке: серия, особенности, комплектация…" style="width:100%; resize:vertical;"></textarea>
                 </div>
 
+                <fieldset class="fin-block">
+                    <legend>Закупка <span>видно только администратору, покупатели эти цифры не получают</span></legend>
+                    <div class="fin-grid">
+                        <div class="input-group"><label for="product-purchase-usd">Цена закупки, $</label><input type="number" id="product-purchase-usd" min="0" step="0.01" placeholder="14.99"></div>
+                        <div class="input-group"><label for="product-shipping-rub">Доставка до РФ, ₽</label><input type="number" id="product-shipping-rub" min="0" step="1" placeholder="по нормативу типа"></div>
+                        <div class="input-group"><label for="product-source">Где покупаем</label><input type="text" id="product-source" list="product-source-list" placeholder="Funko.com"></div>
+                        <div class="input-group"><label for="product-kind">Тип товара</label><input type="text" id="product-kind" list="product-kind-list" placeholder="Standard Pop"></div>
+                    </div>
+                    <p class="fin-note">При каждом заказе цена в $ пересчитывается по курсу ЦБ (с наценкой из настроек бухгалтерии) и вместе с доставкой сохраняется в заказе как план.</p>
+                    <datalist id="product-source-list"><option value="Funko.com"><option value="Mattel Creations"><option value="eBay"><option value="Hot Topic"><option value="BoxLunch"><option value="Amazon"><option value="Другое"></datalist>
+                    <datalist id="product-kind-list"><option value="Standard Pop"><option value="Exclusive"><option value="2-Pack"><option value="Deluxe"><option value="Jumbo"><option value="Monster High"><option value="Youtooz"></datalist>
+                </fieldset>
+
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline close-modal">Отмена</button>
                     <button type="submit" class="btn primary" id="save-product-btn">Сохранить товар</button>
@@ -2165,6 +2178,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1795300000000"></script>
+    <script src="/static/app.js?v=1795400000000"></script>
 </body>
 </html>

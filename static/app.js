@@ -2433,9 +2433,31 @@ window.openAddProductModal = function() {
     document.getElementById('product-badge').value = '';
     document.getElementById('product-photo-id').value = '';
     document.getElementById('product-description').value = '';
+    fillProductFinance({});
     renderProductPhotoThumbs();
     openModal(productModal);
 };
+
+// Private purchase data of a product (admins only receive these fields from the server)
+function fillProductFinance(p) {
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v === null || v === undefined) ? '' : v; };
+    set('product-purchase-usd', p.purchase_usd);
+    set('product-shipping-rub', p.planned_shipping_rub);
+    set('product-source', p.purchase_source);
+    set('product-kind', p.product_kind);
+}
+
+function readProductFinance() {
+    const val = id => (document.getElementById(id)?.value ?? '').trim();
+    const usd = parseFloat(val('product-purchase-usd').replace(',', '.'));
+    const ship = parseInt(val('product-shipping-rub'), 10);
+    return {
+        purchase_usd: usd > 0 ? usd : null,
+        planned_shipping_rub: ship > 0 ? ship : null,
+        purchase_source: val('product-source'),
+        product_kind: val('product-kind')
+    };
+}
 
 // --- Edit Product Modal ---
 window.openEditProductModal = function(id) {
@@ -2458,6 +2480,7 @@ window.openEditProductModal = function(id) {
     document.getElementById('product-badge').value = p.badge || '';
     
     document.getElementById('product-description').value = p.description || '';
+    fillProductFinance(p);
     renderProductPhotoThumbs();
     openModal(productModal);
 };
@@ -2555,7 +2578,8 @@ productForm?.addEventListener('submit', async (e) => {
         badge: (document.getElementById('product-badge')?.value || '').trim(),
         description: (document.getElementById('product-description')?.value || '').trim(),
         hidden: !!document.getElementById('product-hidden')?.checked,
-        stock_qty: (document.getElementById('product-stock-qty')?.value ?? '') === '' ? null : Math.max(0, parseInt(document.getElementById('product-stock-qty').value, 10) || 0)
+        stock_qty: (document.getElementById('product-stock-qty')?.value ?? '') === '' ? null : Math.max(0, parseInt(document.getElementById('product-stock-qty').value, 10) || 0),
+        ...readProductFinance()
     };
 
     try {
