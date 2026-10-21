@@ -4451,3 +4451,20 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 @keyframes ascii-caret { 50% { opacity: 0; } }
 @media (max-width: 560px) { .ascii-body { flex-direction: column; align-items: flex-start; gap: 14px; } .ascii-body pre { font-size: 12px; } }
 @media (prefers-reduced-motion: reduce) { .ascii-fig, .ascii-type .c { animation: none; } }
+
+/* accounting: ledger rows are editable by double click */
+.ledger-row { cursor: default; }
+.ledger-row:hover td { background: rgba(var(--ink-rgb), 0.03); }
+.ledger-row.editing td { padding-top: 6px; padding-bottom: 6px; }
+.ledger-row .inline-edit-input { width: 100%; min-width: 0; }
+.ledger-row td:nth-child(3) .inline-edit-input { max-width: 120px; }
+.ledger-save { padding: 6px 12px; min-height: 0; }
+.ledger-hint { margin: 8px 2px 0; font-size: 12px; color: var(--muted); }
+.ledger-summary-card .sub { margin-top: 2px; font-size: 11px; color: var(--muted); }
+.accounting-filters > * { flex: 0 0 auto; width: auto; }
+.accounting-filters #accounting-search { flex: 1 1 240px; min-width: 180px; width: auto; }
+.ledger-add-form > * { flex: 0 0 auto; width: auto; }
+.ledger-add-form #ledger-desc { flex: 1 1 200px; width: auto; }
+.ledger-add-form #ledger-date { width: 150px; }
+.ledger-add-form #ledger-amount { width: 120px; }
+@media (max-width: 640px) { .ledger-add-form > * { flex: 1 1 100%; width: 100%; } .ledger-add-form #ledger-date, .ledger-add-form #ledger-amount { width: 100%; } }

@@ -454,6 +454,18 @@ window.switchTab = function(tabName, pushState = true) {
         renderProductsAdmin();
     }
     if (tabName === 'accounting' && currentRole === 'admin') {
+        // the first visit opens the current month; the period stays as the admin leaves it afterwards
+        if (!window.accountingPeriodSet) {
+            window.accountingPeriodSet = true;
+            const now = new Date();
+            const ys = document.getElementById('accounting-year-filter');
+            const ms = document.getElementById('accounting-month-filter');
+            const y = String(now.getFullYear());
+            if (ys && ![...ys.options].some(o => o.value === y)) ys.add(new Option(y, y));
+            if (ys) ys.value = y;
+            if (ms) ms.value = String(now.getMonth() + 1).padStart(2, '0');
+            renderAccounting();
+        }
         loadLedger();
     }
 
@@ -1095,13 +1107,35 @@ window.toggleTaxes = function(e) {
     });
 };
 
+// Money of one order: taxes and margin in rubles. Margin is negative when costs exceed the price.
+function orderFinance(o) {
+    const cost = o.cost_price || 0;
+    const delivery = o.delivery_cost || 0;
+    const price = o.total_price || 0;
+    const usn = price * 0.06;
+    const checks = price * 0.015;
+    const acquiring = price * 0.02;
+    const totalTax = usn + checks + acquiring;
+    const margin = price - cost - delivery - totalTax;
+    return { cost, delivery, price, usn, checks, acquiring, totalTax, margin };
+}
+
+// An order's margin counts in the accounting totals once both its cost and its delivery are filled in
+function orderMarginCounts(o) {
+    return (o.cost_price || 0) > 0 && (o.delivery_cost || 0) > 0;
+}
+
+function accountingPeriodOrders() {
+    return filterByDate([...allOrders], 'accounting-year-filter', 'accounting-month-filter');
+}
+
 function renderAccounting() {
     if (!accountingTableBody) return;
     accountingTableBody.innerHTML = '';
     const emptyMsg = document.getElementById('no-accounting');
 
-    let orders = [...allOrders];
-    orders = filterByDate(orders, 'accounting-year-filter', 'accounting-month-filter');
+    let orders = accountingPeriodOrders();
+    renderLedger();
 
     const accountingSearch = document.getElementById('accounting-search');
     if (accountingSearch && accountingSearch.value) {
@@ -1117,23 +1151,19 @@ function renderAccounting() {
     emptyMsg.classList.add('hidden');
 
     const processed = orders.map(o => {
-        const cost = o.cost_price || 0;
-        const delivery = o.delivery_cost || 0;
-        const price = o.total_price || 0;
-        const usn = price * 0.06;
-        const checks = price * 0.015;
-        const acquiring = price * 0.02;
-        const totalTax = usn + checks + acquiring;
-        let marginVal = price - cost - delivery - totalTax;
-        let marginDisplay = '';
+        const f = orderFinance(o);
+        const rub = f.margin.toLocaleString('ru', {maximumFractionDigits: 0}) + ' ₽';
+        let marginVal = f.margin;
+        let marginDisplay = rub;
         if (window.marginMode === 'percent') {
-            const pct = price > 0 ? (marginVal / price) * 100 : 0;
-            marginDisplay = pct.toFixed(1) + '%';
-            marginVal = pct;
-        } else {
-            marginDisplay = marginVal.toLocaleString('ru', {maximumFractionDigits: 0}) + ' ₽';
+            if (f.price > 0) {
+                marginVal = (f.margin / f.price) * 100;
+                marginDisplay = marginVal.toFixed(1) + '%';
+            }
+            // no price: a percentage means nothing, the loss is shown in rubles
+            else marginVal = f.margin < 0 ? -Infinity : 0;
         }
-        return { ...o, cost, delivery, usn, checks, acquiring, totalTax, marginVal, marginDisplay, price };
+        return { ...o, ...f, marginVal, marginDisplay, marginSign: Math.sign(Math.round(f.margin)) };
     });
 
     processed.sort((a, b) => {
@@ -1186,7 +1216,7 @@ function renderAccounting() {
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.usn.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.checks.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
             <td class="tax-column ${window.taxesExpanded ? '' : 'hidden'}" style="white-space:nowrap;">${order.acquiring.toLocaleString('ru', {maximumFractionDigits:0})} &#8381;</td>
-            <td style="color:${order.marginVal >= 0 ? 'var(--ok)' : 'var(--pre)'};font-weight:bold;white-space:nowrap;">${order.marginDisplay}</td>
+            <td style="color:${order.marginSign < 0 ? 'var(--pre)' : order.marginSign > 0 ? 'var(--ok)' : 'var(--muted)'};font-weight:bold;white-space:nowrap;">${order.marginDisplay}</td>
         `;
         accountingTableBody.appendChild(tr);
     });
@@ -3337,49 +3367,125 @@ async function loadLedger() {
     }
 }
 
+function ledgerDateParts(d) {
+    // entries are stored as dd.mm.yyyy
+    const p = String(d || '').split('.');
+    return p.length === 3 ? { day: p[0], month: p[1], year: p[2] } : null;
+}
+
+function ledgerInPeriod(e) {
+    const year = document.getElementById('accounting-year-filter')?.value;
+    const month = document.getElementById('accounting-month-filter')?.value;
+    if (!year && !month) return true;
+    const p = ledgerDateParts(e.entry_date);
+    return !!p && (!year || p.year === year) && (!month || p.month === month);
+}
+
+function ledgerPeriodLabel() {
+    const year = document.getElementById('accounting-year-filter')?.value;
+    const monthSel = document.getElementById('accounting-month-filter');
+    const month = monthSel?.value ? monthSel.options[monthSel.selectedIndex].text : '';
+    if (!year && !month) return '· за всё время';
+    return '· ' + [month, year].filter(Boolean).join(' ');
+}
+
 function renderLedger() {
     const tbody = document.getElementById('ledger-table-body');
     const noMsg = document.getElementById('no-ledger');
     if (!tbody) return;
     tbody.innerHTML = '';
+    const period = document.getElementById('ledger-period');
+    if (period) period.textContent = ledgerPeriodLabel();
 
-    if (rawLedgerEntries.length === 0) {
-        if (noMsg) noMsg.classList.remove('hidden');
-        updateLedgerSummary(0, 0);
-        return;
-    }
-    if (noMsg) noMsg.classList.add('hidden');
-
+    const entries = rawLedgerEntries.filter(ledgerInPeriod);
     let totalIncome = 0, totalExpense = 0;
-    rawLedgerEntries.forEach(e => {
+    entries.forEach(e => {
         if (e.entry_type === 'income') totalIncome += e.amount;
         else totalExpense += e.amount;
     });
-    updateLedgerSummary(totalIncome, totalExpense);
+    const counted = accountingPeriodOrders().filter(orderMarginCounts);
+    const marginTotal = Math.round(counted.reduce((s, o) => s + orderFinance(o).margin, 0));
+    updateLedgerSummary(totalIncome, totalExpense, marginTotal, counted.length);
 
-    rawLedgerEntries.forEach(e => {
+    if (noMsg) noMsg.classList.toggle('hidden', entries.length > 0);
+    entries.forEach(e => {
         const tr = document.createElement('tr');
         const isIncome = e.entry_type === 'income';
+        tr.className = 'ledger-row';
+        tr.title = 'Двойной клик — изменить';
         tr.innerHTML = `
-            <td style="white-space:nowrap;">${e.entry_date}</td>
-            <td>${e.description || '—'}</td>
+            <td style="white-space:nowrap;">${escapeHtml(e.entry_date)}</td>
+            <td>${e.description ? escapeHtml(e.description) : '—'}</td>
             <td style="white-space:nowrap;color:${isIncome ? 'var(--ok)' : 'var(--pre)'};font-weight:600;">
                 ${isIncome ? '+' : '−'}${e.amount.toLocaleString('ru')} ₽
             </td>
             <td>${isIncome ? 'Доход' : 'Расход'}</td>
             <td><button class="delete-btn" onclick="window.deleteLedgerEntry(${e.id}, this)" title="Нажми ещё раз для подтверждения">✕</button></td>
         `;
+        tr.addEventListener('dblclick', (ev) => {
+            if (ev.target.closest('button')) return;
+            startLedgerEdit(tr, e);
+        });
         tbody.appendChild(tr);
     });
 }
 
-function updateLedgerSummary(income, expense) {
-    const net = income - expense;
+function startLedgerEdit(tr, e) {
+    if (tr.classList.contains('editing')) return;
+    tr.classList.add('editing');
+    const p = ledgerDateParts(e.entry_date);
+    const iso = p ? `${p.year}-${p.month}-${p.day}` : '';
+    tr.innerHTML = `
+        <td><input type="date" class="inline-edit-input" data-f="date" value="${iso}"></td>
+        <td><input type="text" class="inline-edit-input" data-f="desc" value="${escapeHtml(e.description || '')}" placeholder="Описание"></td>
+        <td><input type="number" class="inline-edit-input" data-f="amount" min="1" value="${e.amount}"></td>
+        <td><select class="inline-edit-input" data-f="type"><option value="income"${e.entry_type === 'income' ? ' selected' : ''}>Доход</option><option value="expense"${e.entry_type !== 'income' ? ' selected' : ''}>Расход</option></select></td>
+        <td style="white-space:nowrap;"><button type="button" class="btn primary ledger-save" title="Сохранить (Enter)">✓</button></td>
+    `;
+    const field = f => tr.querySelector(`[data-f="${f}"]`);
+    let done = false;
+    const save = async () => {
+        if (done) return;
+        const isoVal = field('date').value;
+        const amount = parseInt(field('amount').value);
+        if (!isoVal || !amount || amount <= 0) { field(!isoVal ? 'date' : 'amount').focus(); return; }
+        done = true;
+        const [y, mo, d] = isoVal.split('-');
+        try {
+            await fetchAPI(`/ledger/${e.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ entry_date: `${d}.${mo}.${y}`, description: field('desc').value.trim(), amount, entry_type: field('type').value })
+            });
+            await loadLedger();
+        } catch (err) {
+            done = false;
+            alert('Ошибка: ' + err.message);
+        }
+    };
+    tr.querySelector('.ledger-save').addEventListener('click', save);
+    tr.querySelectorAll('.inline-edit-input').forEach(inp => inp.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') { ev.preventDefault(); save(); }
+        if (ev.key === 'Escape') { done = true; renderLedger(); }
+    }));
+    // leaving the row saves it, the same way the cost and delivery cells do
+    tr.addEventListener('focusout', () => setTimeout(() => { if (!tr.contains(document.activeElement)) save(); }, 0));
+    field('desc').focus();
+}
+
+function updateLedgerSummary(income, expense, margin = 0, marginCount = 0) {
+    const net = income - expense + margin;
     const incEl = document.getElementById('ledger-income-total');
     const expEl = document.getElementById('ledger-expense-total');
+    const marEl = document.getElementById('ledger-margin-total');
+    const marCnt = document.getElementById('ledger-margin-count');
     const netEl = document.getElementById('ledger-net-total');
     if (incEl) incEl.textContent = income.toLocaleString('ru') + ' ₽';
     if (expEl) expEl.textContent = expense.toLocaleString('ru') + ' ₽';
+    if (marEl) {
+        marEl.textContent = (margin > 0 ? '+' : '') + margin.toLocaleString('ru') + ' ₽';
+        marEl.style.color = margin < 0 ? 'var(--pre)' : 'var(--ok)';
+    }
+    if (marCnt) marCnt.textContent = marginCount ? `заказов: ${marginCount}` : 'нет заказов с себест. и доставкой';
     if (netEl) {
         netEl.textContent = (net >= 0 ? '+' : '') + net.toLocaleString('ru') + ' ₽';
         netEl.style.color = net >= 0 ? 'var(--ok)' : 'var(--pre)';

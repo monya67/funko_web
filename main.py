@@ -1132,6 +1132,19 @@ async def create_ledger_entry(entry: LedgerEntryCreate, admin: dict = Depends(re
         )
         return {"success": True, "id": new_id}
 
+@app.put("/api/ledger/{entry_id}")
+async def update_ledger_entry(entry_id: int, entry: LedgerEntryCreate, admin: dict = Depends(require_admin)):
+    if entry.entry_type not in ("income", "expense") or entry.amount <= 0:
+        raise HTTPException(status_code=400, detail="Неверная сумма или тип")
+    async with pool.acquire() as db:
+        res = await db.execute(
+            "UPDATE ledger_entries SET entry_date = $1, description = $2, amount = $3, entry_type = $4 WHERE id = $5",
+            entry.entry_date, entry.description, entry.amount, entry.entry_type, entry_id
+        )
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Entry not found")
+        return {"success": True}
+
 @app.delete("/api/ledger/{entry_id}")
 async def delete_ledger_entry(entry_id: int, admin: dict = Depends(require_admin)):
     async with pool.acquire() as db:

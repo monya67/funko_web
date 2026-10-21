@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1795000000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1795100000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -1236,13 +1236,24 @@
             <!-- ACCOUNTING TAB -->
             <section id="accounting-tab" class="tab-content">
                 <div class="header-flex"><h2>Бухгалтерия</h2></div>
+                <div class="accounting-filters" style="margin-bottom:14px;">
+                    <select id="accounting-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
+                    <select id="accounting-month-filter" class="filter-input narrow">
+                        <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
+                    </select>
+                    <input type="text" id="accounting-search" class="filter-input wide" placeholder="Поиск по ID или товару...">
+                    <button onclick="window.toggleMarginMode()" class="filter-dropdown-btn" style="min-width:auto;" title="Переключить ₽ / %">
+                        Маржа: <span id="margin-mode-indicator">&#8381;</span>
+                    </button>
+                </div>
 
                 <!-- Ledger: manual income/expense -->
                 <div class="glass-panel" style="margin-bottom:20px;padding:16px 20px;">
-                    <h3 style="margin:0 0 14px;font-size:1rem;color:var(--gray-light);">Прочие доходы и расходы</h3>
+                    <h3 style="margin:0 0 14px;font-size:1rem;color:var(--gray-light);">Прочие доходы и расходы <span id="ledger-period" style="font-weight:500;"></span></h3>
                     <div class="ledger-summary" id="ledger-summary">
                         <div class="ledger-summary-card income"><div class="label">Доходы</div><div class="value" id="ledger-income-total">0 ₽</div></div>
                         <div class="ledger-summary-card expense"><div class="label">Расходы</div><div class="value" id="ledger-expense-total">0 ₽</div></div>
+                        <div class="ledger-summary-card margin" title="Маржа заказов, у которых заполнены себестоимость и доставка"><div class="label">Маржа заказов</div><div class="value" id="ledger-margin-total">0 ₽</div><div class="sub" id="ledger-margin-count"></div></div>
                         <div class="ledger-summary-card net"><div class="label">Итог</div><div class="value" id="ledger-net-total">0 ₽</div></div>
                     </div>
                     <div class="ledger-add-form">
@@ -1267,17 +1278,8 @@
                             <tbody id="ledger-table-body"></tbody>
                         </table>
                         <p id="no-ledger" class="empty-msg">Записи отсутствуют</p>
+                        <p class="ledger-hint">Двойной клик по записи — изменить</p>
                     </div>
-                </div>
-                <div class="accounting-filters">
-                    <select id="accounting-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
-                    <select id="accounting-month-filter" class="filter-input narrow">
-                        <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
-                    </select>
-                    <input type="text" id="accounting-search" class="filter-input wide" placeholder="Поиск по ID или товару...">
-                    <button onclick="window.toggleMarginMode()" class="filter-dropdown-btn" style="min-width:auto;" title="Переключить ₽ / %">
-                        Маржа: <span id="margin-mode-indicator">&#8381;</span>
-                    </button>
                 </div>
                 <div class="glass-panel table-container">
                     <table id="accounting-table">
@@ -2061,6 +2063,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1795000000000"></script>
+    <script src="/static/app.js?v=1795100000000"></script>
 </body>
 </html>
