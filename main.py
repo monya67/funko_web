@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 import io
 import random
 from PIL import Image
+import finance as F
 
 load_dotenv()
 
@@ -116,6 +117,7 @@ async def startup():
     global pool
     pool = await asyncpg.create_pool(DATABASE_URL)
     app.state.cleanup_task = asyncio.create_task(unpaid_orders_loop())
+    app.state.finance_baseline = asyncio.create_task(finance_baseline())
     # Add archived column if it doesn't exist yet
     async with pool.acquire() as db:
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE")
@@ -155,6 +157,35 @@ async def startup():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Accounting: planned costs copied into each order, private purchase data of products, history
+        for col, typ in (("planned_purchase_cost", "INTEGER"), ("planned_shipping", "INTEGER"), ("purchase_usd", "NUMERIC(10,2)"),
+                         ("fx_rate", "NUMERIC(10,4)"), ("product_kind", "TEXT DEFAULT ''"), ("completed_at", "TIMESTAMPTZ")):
+            await db.execute(f"ALTER TABLE orders ADD COLUMN IF NOT EXISTS {col} {typ}")
+        for col, typ in (("purchase_usd", "NUMERIC(10,2)"), ("planned_shipping_rub", "INTEGER"),
+                         ("purchase_source", "TEXT DEFAULT ''"), ("product_kind", "TEXT DEFAULT ''")):
+            await db.execute(f"ALTER TABLE products ADD COLUMN IF NOT EXISTS {col} {typ}")
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS finance_events (
+                id SERIAL PRIMARY KEY,
+                created_at TIMESTAMPTZ DEFAULT now(),
+                order_id INTEGER,
+                kind TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                note TEXT DEFAULT ''
+            )
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS finance_events_order ON finance_events (order_id)")
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS owner_withdrawals (
+                id SERIAL PRIMARY KEY,
+                wd_date TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                comment TEXT DEFAULT '',
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        """)
+        await db.execute("CREATE TABLE IF NOT EXISTS finance_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
 
         # Admin registers: purchases bought for clients in other shops, and promo codes for those shops
         await db.execute("""
@@ -315,6 +346,10 @@ class ProductCreate(BaseModel):
     description: str = ""
     stock_qty: Optional[int] = None
     hidden: bool = False
+    purchase_usd: Optional[float] = None
+    planned_shipping_rub: Optional[int] = None
+    purchase_source: Optional[str] = None
+    product_kind: Optional[str] = None
 
 class ProductUpdate(BaseModel):
     name: str
@@ -331,6 +366,10 @@ class ProductUpdate(BaseModel):
     description: str = ""
     stock_qty: Optional[int] = None
     hidden: bool = False
+    purchase_usd: Optional[float] = None
+    planned_shipping_rub: Optional[int] = None
+    purchase_source: Optional[str] = None
+    product_kind: Optional[str] = None
 
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -708,6 +747,7 @@ async def create_order(order: OrderCreate, admin: dict = Depends(require_admin))
             "INSERT INTO orders (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost) VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, $8, $9) RETURNING id",
             order.client_id, order.items, order.total_price, order.paid_amount, "Заказ принят в обработку", order.photo_id, order_date, order.cost_price, order.delivery_cost
         )
+        await reconcile_order(db, new_id)
         
         # Send Telegram notification if client is linked to TG
         if client["user_tg_id"] and BOT_TOKEN:
@@ -747,6 +787,13 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Order not found")
             
+        # the month of the profit is the month the order was handed over
+        if order.status == FINAL_STATUS and (not old_data or old_data["status"] != FINAL_STATUS):
+            await db.execute("UPDATE orders SET completed_at = now() WHERE id = $1 AND completed_at IS NULL", order_id)
+        elif order.status != FINAL_STATUS and old_data and old_data["status"] == FINAL_STATUS:
+            await db.execute("UPDATE orders SET completed_at = NULL WHERE id = $1", order_id)
+        await reconcile_order(db, order_id)
+
         # If status changed, send notification to client
         if old_data and old_data["user_tg_id"] and BOT_TOKEN and old_data["status"] != order.status:
             debt = order.total_price - order.paid_amount
@@ -793,6 +840,7 @@ async def unarchive_order(order_id: int, admin: dict = Depends(require_admin)):
 @app.delete("/api/orders/{order_id}")
 async def delete_order(order_id: int, admin: dict = Depends(require_admin)):
     async with pool.acquire() as db:
+        await reconcile_order(db, order_id, deleted=True, note="заказ удалён")
         res = await db.execute("DELETE FROM orders WHERE id = $1", order_id)
         if res == "DELETE 0":
             raise HTTPException(status_code=404, detail="Order not found")
@@ -858,7 +906,37 @@ async def create_product(product: ProductCreate, admin: dict = Depends(require_a
             product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
             cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product.description.strip(), product.stock_qty, product.hidden, make_link_key()
         )
+        await save_product_finance(db, new_id, product)
         return {"success": True, "id": new_id}
+
+PRODUCT_FINANCE_FIELDS = ("purchase_usd", "planned_shipping_rub", "purchase_source", "product_kind")
+
+
+def product_finance_values(product):
+    """The private purchase fields the admin form actually sent, cleaned. Fields it did not send stay untouched."""
+    sent = getattr(product, "model_fields_set", set())
+    out = {}
+    for f in PRODUCT_FINANCE_FIELDS:
+        if f not in sent:
+            continue
+        v = getattr(product, f)
+        if f == "purchase_usd":
+            v = round(float(v), 2) if v is not None and float(v) > 0 else None
+        elif f == "planned_shipping_rub":
+            v = int(v) if v is not None and int(v) > 0 else None
+        else:
+            v = (v or "").strip()[:100]
+        out[f] = v
+    return out
+
+
+async def save_product_finance(db, product_id, product):
+    vals = product_finance_values(product)
+    if not vals:
+        return
+    sets = ", ".join(f"{k} = ${i}" for i, k in enumerate(vals, start=1))
+    await db.execute(f"UPDATE products SET {sets} WHERE id = ${len(vals) + 1}", *vals.values(), product_id)
+
 
 @app.put("/api/catalog/{product_id}")
 async def update_product(product_id: int, product: ProductUpdate, admin: dict = Depends(require_admin)):
@@ -889,6 +967,7 @@ async def update_product(product_id: int, product: ProductUpdate, admin: dict = 
         )
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Product not found")
+        await save_product_finance(db, product_id, product)
         return {"success": True}
 
 @app.delete("/api/catalog/{product_id}")
@@ -947,11 +1026,15 @@ async def create_order_from_product(product_id: int, order_data: QuickOrderCreat
         order_price = product["final_price"] if product["final_price"] > 0 else product["price"]
         order_date = datetime.now().strftime("%d.%m.%Y")
 
+        snap = await order_snapshot(db, {product_id: 1}, {product_id: dict(product)})
         new_order_id = await db.fetchval(
-            """INSERT INTO orders (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost) 
-               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0) RETURNING id""",
-            order_data.client_id, item_title, order_price, order_data.paid_amount, "Заказ принят в обработку", first_photo_id(product["photo_id"]), order_date
+            """INSERT INTO orders (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost,
+                                  planned_purchase_cost, planned_shipping, purchase_usd, fx_rate, product_kind)
+               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, $12) RETURNING id""",
+            order_data.client_id, item_title, order_price, order_data.paid_amount, "Заказ принят в обработку", first_photo_id(product["photo_id"]), order_date,
+            snap["planned_purchase_cost"], snap["planned_shipping"], snap["purchase_usd"], snap["fx_rate"], snap["product_kind"]
         )
+        await reconcile_order(db, new_order_id)
 
         # Telegram notification
         if client["user_tg_id"] and BOT_TOKEN:
@@ -1000,7 +1083,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
     wanted_ids = sorted({it.id for it in checkout.items})
     async with pool.acquire() as price_db:
         rows = await price_db.fetch(
-            "SELECT id, name, figure_number, price, final_price, photo_id FROM products WHERE id = ANY($1::int[])",
+            "SELECT id, name, figure_number, price, final_price, photo_id, purchase_usd, planned_shipping_rub, product_kind FROM products WHERE id = ANY($1::int[])",
             wanted_ids,
         )
     try:
@@ -1079,16 +1162,19 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                     raise HTTPException(status_code=409, detail=msg)
 
         status_text = AWAITING_PAYMENT
+        snap = await order_snapshot(db, aggregate_cart_qty(checkout.items), {r["id"]: dict(r) for r in rows})
         checkout_note = f"📦 Доставка: {checkout.delivery_method or 'Не указан'}"
         if checkout.comment:
             checkout_note += f"\n💬 Комментарий: {checkout.comment}"
         try:
           order_id = await db.fetchval(
             """INSERT INTO orders
-               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items, checkout_note)
-               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13) RETURNING id""",
+               (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items, checkout_note,
+                planned_purchase_cost, planned_shipping, purchase_usd, fx_rate, product_kind)
+               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13, $14, $15, $16, $17, $18) RETURNING id""",
             client_id, items_text, total_price, paid_amount, status_text, first_photo, order_date,
-            name, phone, telegram, checkout.payment_type, dump_stock_items(reserved) if reserved else "", checkout_note
+            name, phone, telegram, checkout.payment_type, dump_stock_items(reserved) if reserved else "", checkout_note,
+            snap["planned_purchase_cost"], snap["planned_shipping"], snap["purchase_usd"], snap["fx_rate"], snap["product_kind"]
           )
         except Exception:
             await restore_stock(db, reserved)
@@ -1189,6 +1275,7 @@ async def tbank_notification(req: Request):
                 email = await db.fetchval("SELECT email FROM clients WHERE id = $1", order["client_id"])
                 await notify_admins(paid_alert_text(order, order["client_id"], email, order["checkout_note"]))
                 await send_order_email(email, order, order["checkout_note"])
+                await reconcile_order(db, oid, note="оплата Т-Банк")
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
             await db.execute(
                 "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
@@ -1294,6 +1381,224 @@ async def delete_promocode(item_id: int, admin: dict = Depends(require_admin)):
         if await db.execute("DELETE FROM promo_codes WHERE id = $1", item_id) == "DELETE 0":
             raise HTTPException(status_code=404, detail="Не найдено")
         return {"success": True}
+
+
+# ======================= Accounting (see finance.py for the rules) =======================
+FINAL_STATUS = "Выдано"
+ORDER_FIN_COLS = ("id, items, status, total_price, paid_amount, cost_price, delivery_cost, planned_purchase_cost, "
+                  "planned_shipping, product_kind, completed_at, archived")
+
+
+async def fin_get(db, key, default=None):
+    raw = await db.fetchval("SELECT value FROM finance_settings WHERE key = $1", key)
+    return json.loads(raw) if raw else default
+
+
+async def fin_set(db, key, value):
+    await db.execute("INSERT INTO finance_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2",
+                     key, json.dumps(value, ensure_ascii=False))
+
+
+async def fin_settings(db):
+    return F.merged_settings(await fin_get(db, "settings", {}))
+
+
+async def usd_rate(db, settings, force=False):
+    """(rate with markup, CBR rate, day) — the CBR rate is fetched once a day and kept in the settings table."""
+    cached = await fin_get(db, "fx", {}) or {}
+    today = datetime.now(timezone(timedelta(hours=3))).date().isoformat()
+    if force or cached.get("day") != today or not cached.get("cbr"):
+        for url in ("https://www.cbr-xml-daily.ru/daily_json.js", "https://www.cbr.ru/scripts/XML_daily.asp"):
+            try:
+                async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+                    r = await client.get(url)
+                cbr = F.parse_cbr_usd(r.content) if r.status_code == 200 else None
+            except Exception as e:
+                print(f"CBR rate from {url} failed: {e}")
+                cbr = None
+            if cbr:
+                cached = {"cbr": cbr, "day": today}
+                await fin_set(db, "fx", cached)
+                break
+    cbr = cached.get("cbr")
+    return F.rate_with_markup(cbr, settings["fx_markup_pct"]), cbr, cached.get("day")
+
+
+async def order_snapshot(db, qty_by_product, products):
+    settings = await fin_settings(db)
+    needs_rate = any((products.get(pid) or {}).get("purchase_usd") for pid in qty_by_product)
+    rate = (await usd_rate(db, settings))[0] if needs_rate else None
+    return F.planned_snapshot(qty_by_product, products, rate, settings)
+
+
+async def recorded_flows(db, order_id):
+    rows = await db.fetch("SELECT kind, SUM(amount)::int AS total FROM finance_events WHERE order_id = $1 GROUP BY kind", order_id)
+    return {r["kind"]: r["total"] for r in rows}
+
+
+async def reconcile_order(db, order_id, deleted=False, note=""):
+    """Bring the order's money history in line with its current state (best effort: never breaks the order flow)."""
+    try:
+        o = await db.fetchrow(f"SELECT {ORDER_FIN_COLS} FROM orders WHERE id = $1", order_id)
+        if not o:
+            return
+        settings = await fin_settings(db)
+        events = F.reconcile(F.expected_flows(dict(o), settings, deleted), await recorded_flows(db, order_id), settings["tax_pct"])
+        if events:
+            await db.executemany("INSERT INTO finance_events (order_id, kind, amount, note) VALUES ($1, $2, $3, $4)",
+                                 [(order_id, k, a, note) for k, a in events])
+    except Exception as e:
+        print(f"accounting reconcile of order {order_id} failed: {e}")
+
+
+async def reconcile_all(db, note):
+    settings = await fin_settings(db)
+    orders = await db.fetch(f"SELECT {ORDER_FIN_COLS} FROM orders")
+    sums = await db.fetch("SELECT order_id, kind, SUM(amount)::int AS total FROM finance_events WHERE order_id IS NOT NULL GROUP BY order_id, kind")
+    recorded = {}
+    for r in sums:
+        recorded.setdefault(r["order_id"], {})[r["kind"]] = r["total"]
+    rows = []
+    for o in orders:
+        for k, a in F.reconcile(F.expected_flows(dict(o), settings), recorded.get(o["id"], {}), settings["tax_pct"]):
+            rows.append((o["id"], k, a, note))
+    if rows:
+        await db.executemany("INSERT INTO finance_events (order_id, kind, amount, note) VALUES ($1, $2, $3, $4)", rows)
+    return len(rows)
+
+
+async def finance_baseline():
+    """Once: record the current state of every existing order, dated today. Those events are older than the start of
+    the accounting, so they are never counted; they only make later changes show up as differences."""
+    try:
+        async with pool.acquire() as db:
+            if await fin_get(db, "baseline_at"):
+                return
+            n = await reconcile_all(db, "начальный снимок")
+            await fin_set(db, "baseline_at", datetime.now(timezone.utc).date().isoformat())
+            print(f"accounting baseline recorded: {n} events")
+    except Exception as e:
+        print(f"accounting baseline failed: {e}")
+
+
+class FinanceSettingsIn(BaseModel):
+    start_date: str
+    start_balance: int = 0
+    fx_markup_pct: float = 0
+    tax_pct: float = 9.5
+    status_stages: dict = {}
+    shipping_norms: dict = {}
+
+
+class WithdrawalIn(BaseModel):
+    wd_date: str
+    amount: int
+    comment: str = ""
+
+
+class OrderCostsIn(BaseModel):
+    planned_purchase_cost: Optional[int] = None
+    planned_shipping: Optional[int] = None
+    cost_price: Optional[int] = None
+    delivery_cost: Optional[int] = None
+
+
+@app.get("/api/finance")
+async def finance_overview(month: str = "", show_all_ops: bool = False, admin: dict = Depends(require_admin)):
+    if not re.match(r"^\d{4}-\d{2}$", month or ""):
+        month = datetime.now().strftime("%Y-%m")
+    async with pool.acquire() as db:
+        settings = await fin_settings(db)
+        start = settings["start_date"]
+        orders = [dict(o) for o in await db.fetch(f"SELECT {ORDER_FIN_COLS} FROM orders")]
+        events = [dict(e) for e in await db.fetch(
+            "SELECT e.id, e.created_at, e.order_id, e.kind, e.amount, e.note, COALESCE(o.items, '') AS items "
+            "FROM finance_events e LEFT JOIN orders o ON o.id = e.order_id ORDER BY e.id DESC")]
+        ledger = [dict(l) for l in await db.fetch("SELECT id, entry_date, description, amount, entry_type FROM ledger_entries")]
+        withdrawals = [dict(w) for w in await db.fetch("SELECT id, wd_date, amount, comment FROM owner_withdrawals ORDER BY wd_date DESC, id DESC")]
+        rate, cbr, day = await usd_rate(db, settings)
+        no_price = await db.fetchval("SELECT count(*) FROM products WHERE (purchase_usd IS NULL OR purchase_usd <= 0)")
+        baseline_at = await fin_get(db, "baseline_at")
+    out = F.summary(orders, events, ledger, withdrawals, settings, month)
+    if no_price:
+        out["attention"].append({"count": no_price, "text": "товаров каталога без закупочной цены в $ (новые заказы на них будут без плана)"})
+    start_day = F.parse_day(start)
+    ops = [e for e in events if show_all_ops or (F.parse_day(e["created_at"]) or start_day) >= start_day]
+    out.update({
+        "settings": settings, "fx": {"rate": rate, "cbr": cbr, "day": day}, "baseline_at": baseline_at,
+        "withdrawals": withdrawals,
+        "operations": [{**e, "created_at": e["created_at"].isoformat()} for e in ops[:500]],
+    })
+    return out
+
+
+@app.put("/api/finance/settings")
+async def finance_save_settings(body: FinanceSettingsIn, admin: dict = Depends(require_admin)):
+    start = F.parse_day(body.start_date)
+    if not start:
+        raise HTTPException(status_code=400, detail="Неверная дата начала учёта")
+    if not (0 <= body.tax_pct < 50) or not (-50 < body.fx_markup_pct < 100):
+        raise HTTPException(status_code=400, detail="Неверный процент")
+    stages = {str(k): int(v) for k, v in body.status_stages.items() if int(v) in range(0, 5)}
+    norms = {str(k).strip(): int(v) for k, v in body.shipping_norms.items() if str(k).strip() and str(v).strip() and int(v) > 0}
+    async with pool.acquire() as db:
+        baseline = F.parse_day(await fin_get(db, "baseline_at"))
+        if baseline and start < baseline:
+            raise HTTPException(status_code=400, detail=f"Начало учёта не может быть раньше {baseline.strftime('%d.%m.%Y')} — до этой даты у сайта нет истории операций")
+        old = await fin_get(db, "settings", {})
+        await fin_set(db, "settings", {"start_date": start.isoformat(), "start_balance": body.start_balance,
+                                       "fx_markup_pct": body.fx_markup_pct, "tax_pct": body.tax_pct,
+                                       "status_stages": stages, "shipping_norms": norms})
+        corrected = 0
+        if (old or {}).get("status_stages", {}) != stages or (old or {}).get("shipping_norms", {}) != norms:
+            corrected = await reconcile_all(db, "пересчёт после изменения настроек")
+    return {"success": True, "corrected": corrected}
+
+
+@app.post("/api/finance/fx/refresh")
+async def finance_refresh_fx(admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        rate, cbr, day = await usd_rate(db, await fin_settings(db), force=True)
+    if not cbr:
+        raise HTTPException(status_code=502, detail="Не удалось получить курс ЦБ")
+    return {"rate": rate, "cbr": cbr, "day": day}
+
+
+@app.post("/api/finance/withdrawals")
+async def finance_add_withdrawal(body: WithdrawalIn, admin: dict = Depends(require_admin)):
+    day = F.parse_day(body.wd_date)
+    if not day or body.amount <= 0:
+        raise HTTPException(status_code=400, detail="Укажите дату и сумму")
+    async with pool.acquire() as db:
+        new_id = await db.fetchval("INSERT INTO owner_withdrawals (wd_date, amount, comment) VALUES ($1, $2, $3) RETURNING id",
+                                   day.isoformat(), body.amount, body.comment.strip()[:500])
+    return {"success": True, "id": new_id}
+
+
+@app.delete("/api/finance/withdrawals/{wd_id}")
+async def finance_delete_withdrawal(wd_id: int, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        if await db.execute("DELETE FROM owner_withdrawals WHERE id = $1", wd_id) == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Не найдено")
+    return {"success": True}
+
+
+@app.patch("/api/orders/{order_id}/costs")
+async def update_order_costs(order_id: int, body: OrderCostsIn, admin: dict = Depends(require_admin)):
+    """Planned and actual costs of one order, edited from the accounting table. Only the sent fields change."""
+    vals = {k: (max(0, int(v)) if v is not None else None) for k, v in body.model_dump(exclude_unset=True).items()}
+    for k in ("cost_price", "delivery_cost"):
+        if k in vals and vals[k] is None:
+            vals[k] = 0
+    if not vals:
+        return {"success": True}
+    sets = ", ".join(f"{k} = ${i}" for i, k in enumerate(vals, start=1))
+    async with pool.acquire() as db:
+        res = await db.execute(f"UPDATE orders SET {sets} WHERE id = ${len(vals) + 1}", *vals.values(), order_id)
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Order not found")
+        await reconcile_order(db, order_id, note="изменение себестоимости/доставки")
+    return {"success": True}
 
 
 @app.get("/api/ledger")
