@@ -148,6 +148,34 @@ async def startup():
             )
         """)
 
+        # Admin registers: purchases bought for clients in other shops, and promo codes for those shops
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS purchases (
+                id SERIAL PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                amount INTEGER DEFAULT 0,
+                purchase_date TEXT DEFAULT '',
+                track TEXT DEFAULT '',
+                kind TEXT DEFAULT 'stock',
+                expected_date TEXT DEFAULT '',
+                shop TEXT DEFAULT '',
+                delivered BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS promo_codes (
+                id SERIAL PRIMARY KEY,
+                code TEXT NOT NULL,
+                value INTEGER DEFAULT 0,
+                value_kind TEXT DEFAULT 'percent',
+                site TEXT DEFAULT '',
+                conditions TEXT DEFAULT '',
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        """)
+
         # Catalog tables
         await db.execute("""
             CREATE TABLE IF NOT EXISTS categories (
@@ -295,6 +323,61 @@ class ProductUpdate(BaseModel):
     description: str = ""
     stock_qty: Optional[int] = None
     hidden: bool = False
+
+ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+class PurchaseIn(BaseModel):
+    title: str
+    description: str = ""
+    amount: int = 0
+    purchase_date: str = ""
+    track: str = ""
+    kind: str = "stock"          # 'stock' or 'preorder'
+    expected_date: str = ""      # preorders only: when the shop is expected to ship
+    shop: str = ""
+    delivered: bool = False
+
+
+class PromoCodeIn(BaseModel):
+    code: str
+    value: int = 0
+    value_kind: str = "percent"  # 'percent' or 'rub'
+    site: str = ""
+    conditions: str = ""
+
+
+def clean_purchase(p: PurchaseIn) -> dict:
+    """Validated purchase fields, in column order. Raises ValueError with a message for the admin."""
+    title = p.title.strip()
+    if not title:
+        raise ValueError("Укажите название")
+    if p.kind not in ("stock", "preorder"):
+        raise ValueError("Неверный тип")
+    if p.amount < 0:
+        raise ValueError("Сумма не может быть отрицательной")
+    for d in (p.purchase_date, p.expected_date):
+        if d and not ISO_DATE_RE.match(d):
+            raise ValueError("Неверная дата")
+    return {
+        "title": title[:300], "description": p.description.strip()[:5000], "amount": p.amount,
+        "purchase_date": p.purchase_date, "track": p.track.strip()[:200], "kind": p.kind,
+        "expected_date": p.expected_date if p.kind == "preorder" else "",
+        "shop": p.shop.strip()[:200], "delivered": p.delivered,
+    }
+
+
+def clean_promo(p: PromoCodeIn) -> dict:
+    code = p.code.strip()
+    if not code:
+        raise ValueError("Укажите промокод")
+    if p.value_kind not in ("percent", "rub"):
+        raise ValueError("Неверный тип скидки")
+    if p.value < 0 or (p.value_kind == "percent" and p.value > 100):
+        raise ValueError("Неверный размер скидки")
+    return {"code": code[:100], "value": p.value, "value_kind": p.value_kind,
+            "site": p.site.strip()[:300], "conditions": p.conditions.strip()[:5000]}
+
 
 class LedgerEntryCreate(BaseModel):
     entry_date: str
@@ -1117,6 +1200,93 @@ async def get_payment_status(order_id: int):
             raise HTTPException(status_code=404, detail="Order not found")
         return {"status": row["payment_status"]}
 
+PURCHASE_COLS = ("title", "description", "amount", "purchase_date", "track", "kind", "expected_date", "shop", "delivered")
+PROMO_COLS = ("code", "value", "value_kind", "site", "conditions")
+
+
+def _valid(fn, payload):
+    try:
+        return fn(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/purchases")
+async def list_purchases(admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        rows = await db.fetch("SELECT id, " + ", ".join(PURCHASE_COLS) + " FROM purchases ORDER BY id DESC")
+        return {"items": [dict(r) for r in rows]}
+
+
+@app.post("/api/purchases")
+async def create_purchase(p: PurchaseIn, admin: dict = Depends(require_admin)):
+    v = _valid(clean_purchase, p)
+    async with pool.acquire() as db:
+        new_id = await db.fetchval(
+            "INSERT INTO purchases (title, description, amount, purchase_date, track, kind, expected_date, shop, delivered) "
+            "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+            *[v[c] for c in PURCHASE_COLS])
+        return {"success": True, "id": new_id}
+
+
+@app.put("/api/purchases/{item_id}")
+async def update_purchase(item_id: int, p: PurchaseIn, admin: dict = Depends(require_admin)):
+    v = _valid(clean_purchase, p)
+    async with pool.acquire() as db:
+        res = await db.execute(
+            "UPDATE purchases SET title = $1, description = $2, amount = $3, purchase_date = $4, track = $5, kind = $6, "
+            "expected_date = $7, shop = $8, delivered = $9 WHERE id = $10",
+            *[v[c] for c in PURCHASE_COLS], item_id)
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Не найдено")
+        return {"success": True}
+
+
+@app.delete("/api/purchases/{item_id}")
+async def delete_purchase(item_id: int, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        if await db.execute("DELETE FROM purchases WHERE id = $1", item_id) == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Не найдено")
+        return {"success": True}
+
+
+@app.get("/api/promocodes")
+async def list_promocodes(admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        rows = await db.fetch("SELECT id, " + ", ".join(PROMO_COLS) + " FROM promo_codes ORDER BY id DESC")
+        return {"items": [dict(r) for r in rows]}
+
+
+@app.post("/api/promocodes")
+async def create_promocode(p: PromoCodeIn, admin: dict = Depends(require_admin)):
+    v = _valid(clean_promo, p)
+    async with pool.acquire() as db:
+        new_id = await db.fetchval(
+            "INSERT INTO promo_codes (code, value, value_kind, site, conditions) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+            *[v[c] for c in PROMO_COLS])
+        return {"success": True, "id": new_id}
+
+
+@app.put("/api/promocodes/{item_id}")
+async def update_promocode(item_id: int, p: PromoCodeIn, admin: dict = Depends(require_admin)):
+    v = _valid(clean_promo, p)
+    async with pool.acquire() as db:
+        res = await db.execute(
+            "UPDATE promo_codes SET code = $1, value = $2, value_kind = $3, site = $4, conditions = $5 WHERE id = $6",
+            *[v[c] for c in PROMO_COLS], item_id)
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Не найдено")
+        return {"success": True}
+
+
+@app.delete("/api/promocodes/{item_id}")
+async def delete_promocode(item_id: int, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        if await db.execute("DELETE FROM promo_codes WHERE id = $1", item_id) == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Не найдено")
+        return {"success": True}
+
+
 @app.get("/api/ledger")
 async def get_ledger(admin: dict = Depends(require_admin)):
     async with pool.acquire() as db:
@@ -1494,6 +1664,12 @@ async def spa_accounting():
 
 @app.get("/products")
 async def spa_products():
+    return FileResponse("static/index.html")
+
+
+@app.get("/purchases")
+@app.get("/promocodes")
+async def spa_admin_registers():
     return FileResponse("static/index.html")
 
 @app.get("/clients")

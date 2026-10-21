@@ -399,7 +399,9 @@ const TAB_ROUTES = {
     archived: '/archive',
     accounting: '/accounting',
     clients: '/clients',
-    products: '/products'
+    products: '/products',
+    purchases: '/purchases',
+    promocodes: '/promocodes'
 };
 const ROUTE_TO_TAB = {};
 Object.entries(TAB_ROUTES).forEach(([tab, path]) => { ROUTE_TO_TAB[path] = tab; });
@@ -452,6 +454,9 @@ window.switchTab = function(tabName, pushState = true) {
     if (tabName === 'products' && currentRole === 'admin') {
         loadCatalog();
         renderProductsAdmin();
+    }
+    if ((tabName === 'purchases' || tabName === 'promocodes') && currentRole === 'admin') {
+        loadRegister(tabName);
     }
     if (tabName === 'accounting' && currentRole === 'admin') {
         // the first visit opens the current month; the period stays as the admin leaves it afterwards
@@ -3564,6 +3569,201 @@ window.deleteLedgerEntry = async function(id, btn) {
         alert('Ошибка: ' + err.message);
     }
 };
+
+// --- Admin registers: purchases (выкупы) and promo codes. One small engine, two configurations. ---
+function isoToRu(iso) {
+    const p = String(iso || '').split('-');
+    return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : '';
+}
+
+const REGISTERS = {
+    purchases: {
+        api: '/purchases',
+        modal: 'purchase-modal',
+        newTitle: 'Новый выкуп',
+        editTitle: it => `Выкуп: ${it.title}`,
+        empty: { title: '', description: '', amount: '', purchase_date: '', track: '', kind: 'stock', expected_date: '', shop: '', delivered: false },
+        view: 'active',
+        visible(it, view) { return view === 'archive' ? it.delivered : !it.delivered; },
+        haystack: it => [it.title, it.shop, it.track, it.description].join(' '),
+        row(it) {
+            const kind = it.kind === 'preorder'
+                ? `<span class="reg-pill pre">Предзаказ</span>${it.expected_date ? `<div class="reg-sub">рассылка ${isoToRu(it.expected_date)}</div>` : ''}`
+                : '<span class="reg-pill">Обычный</span>';
+            const action = it.delivered
+                ? `<button type="button" class="btn secondary outline reg-act" data-act="undeliver">Вернуть в работу</button>`
+                : `<button type="button" class="btn secondary outline reg-act" data-act="deliver">Доставлен</button>`;
+            return `
+                <td style="white-space:nowrap;">${isoToRu(it.purchase_date) || '—'}</td>
+                <td><b>${escapeHtml(it.title)}</b></td>
+                <td>${escapeHtml(it.shop) || '—'}</td>
+                <td style="white-space:nowrap;">${(it.amount || 0).toLocaleString('ru')} ₽</td>
+                <td class="reg-mono">${escapeHtml(it.track) || '—'}</td>
+                <td>${kind}</td>
+                <td style="text-align:right;">${action}</td>`;
+        },
+        count(list, all) {
+            const sum = list.reduce((s, it) => s + (it.amount || 0), 0);
+            return `${list.length} из ${all.length} · на сумму ${sum.toLocaleString('ru')} ₽`;
+        },
+        async act(it, act) {
+            await fetchAPI(`/purchases/${it.id}`, { method: 'PUT', body: JSON.stringify({ ...it, delivered: act === 'deliver' }) });
+        }
+    },
+    promocodes: {
+        api: '/promocodes',
+        modal: 'promocode-modal',
+        newTitle: 'Новый промокод',
+        editTitle: it => `Промокод ${it.code}`,
+        empty: { code: '', value: '', value_kind: 'percent', site: '', conditions: '' },
+        visible: () => true,
+        haystack: it => [it.code, it.site, it.conditions].join(' '),
+        row(it) {
+            const value = it.value_kind === 'rub' ? `${(it.value || 0).toLocaleString('ru')} ₽` : `${it.value || 0}%`;
+            return `
+                <td><span class="reg-code">${escapeHtml(it.code)}</span></td>
+                <td style="white-space:nowrap;"><b>−${value}</b></td>
+                <td>${escapeHtml(it.site) || '—'}</td>
+                <td style="text-align:right;"><button type="button" class="btn secondary outline reg-act" data-act="copy">Копировать</button></td>`;
+        },
+        count: (list, all) => `${list.length} из ${all.length}`,
+        async act(it, act) {
+            if (act === 'copy') {
+                try { await navigator.clipboard.writeText(it.code); } catch (e) {}
+                return 'copied';
+            }
+        }
+    }
+};
+const registerData = { purchases: [], promocodes: [] };
+let registerEditing = { name: null, item: null };
+
+async function loadRegister(name) {
+    try {
+        const data = await fetchAPI(REGISTERS[name].api);
+        registerData[name] = data.items || [];
+    } catch (e) {
+        console.error('register load failed', name, e);
+    }
+    renderRegister(name);
+}
+
+function renderRegister(name) {
+    const cfg = REGISTERS[name];
+    const tbody = document.querySelector(`[data-reg-table="${name}"] tbody`);
+    if (!tbody) return;
+    const q = (document.querySelector(`[data-reg-search="${name}"]`)?.value || '').toLowerCase().trim();
+    const all = registerData[name].filter(it => cfg.visible(it, cfg.view));
+    const list = q ? all.filter(it => cfg.haystack(it).toLowerCase().includes(q)) : all;
+    tbody.replaceChildren(...list.map(it => {
+        const tr = document.createElement('tr');
+        tr.className = 'reg-row';
+        tr.title = 'Двойной клик — открыть целиком';
+        tr.innerHTML = cfg.row(it);
+        tr.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) openRegisterModal(name, it); });
+        // phones have no double click: a tap opens the record
+        if (window.matchMedia('(hover: none)').matches) tr.addEventListener('click', (e) => { if (!e.target.closest('button')) openRegisterModal(name, it); });
+        tr.querySelectorAll('.reg-act').forEach(btn => btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            try {
+                const res = await cfg.act(it, btn.dataset.act);
+                if (res === 'copied') { btn.textContent = 'Скопирован ✓'; setTimeout(() => { btn.textContent = 'Копировать'; btn.disabled = false; }, 1400); return; }
+                await loadRegister(name);
+            } catch (err) { alert('Ошибка: ' + err.message); btn.disabled = false; }
+        }));
+        return tr;
+    }));
+    document.querySelector(`[data-reg-empty="${name}"]`)?.classList.toggle('hidden', list.length > 0);
+    const cnt = document.querySelector(`[data-reg-count="${name}"]`);
+    if (cnt) cnt.textContent = cfg.count(list, all);
+}
+
+function registerForm(name) { return document.querySelector(`[data-reg-form="${name}"]`); }
+
+function syncRegisterConditional(form) {
+    const kind = form.elements.kind?.value;
+    form.querySelectorAll('[data-show-if]').forEach(el => el.classList.toggle('hidden', el.dataset.showIf !== kind));
+}
+
+function openRegisterModal(name, item) {
+    const cfg = REGISTERS[name];
+    const form = registerForm(name);
+    registerEditing = { name, item: item || null };
+    const values = item || cfg.empty;
+    Object.entries(cfg.empty).forEach(([k]) => {
+        const el = form.elements[k];
+        if (!el) return;
+        if (el.type === 'checkbox') el.checked = !!values[k];
+        else el.value = values[k] ?? '';
+    });
+    if (!item && form.elements.purchase_date) form.elements.purchase_date.value = new Date().toISOString().slice(0, 10);
+    document.querySelector(`[data-reg-title="${name}"]`).textContent = item ? cfg.editTitle(item) : cfg.newTitle;
+    form.querySelector('.reg-delete').classList.toggle('hidden', !item);
+    form.querySelector('.reg-error').classList.add('hidden');
+    syncRegisterConditional(form);
+    openModal(document.getElementById(cfg.modal));
+    setTimeout(() => form.querySelector('input:not([type=hidden])')?.focus(), 30);
+}
+
+function readRegisterForm(name) {
+    const form = registerForm(name);
+    const out = {};
+    Object.keys(REGISTERS[name].empty).forEach(k => {
+        const el = form.elements[k];
+        if (!el) return;
+        if (el.type === 'checkbox') out[k] = el.checked;
+        else if (el.type === 'number') out[k] = parseInt(el.value, 10) || 0;
+        else out[k] = el.value.trim();
+    });
+    return out;
+}
+
+Object.keys(REGISTERS).forEach(name => {
+    const form = registerForm(name);
+    if (!form) return;
+    document.querySelector(`[data-reg-add="${name}"]`)?.addEventListener('click', () => openRegisterModal(name, null));
+    document.querySelector(`[data-reg-search="${name}"]`)?.addEventListener('input', () => renderRegister(name));
+    document.querySelectorAll(`[data-reg-view="${name}"]`).forEach(btn => btn.addEventListener('click', () => {
+        REGISTERS[name].view = btn.dataset.view;
+        document.querySelectorAll(`[data-reg-view="${name}"]`).forEach(b => b.classList.toggle('active', b === btn));
+        renderRegister(name);
+    }));
+    form.elements.kind?.addEventListener('change', () => syncRegisterConditional(form));
+    form.querySelector('.reg-cancel').addEventListener('click', closeModals);
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = form.querySelector('.reg-error');
+        const body = readRegisterForm(name);
+        const required = form.querySelector('[required]');
+        if (required && !required.value.trim()) { required.focus(); err.textContent = 'Заполните поле «' + required.labels[0].textContent + '»'; err.classList.remove('hidden'); return; }
+        const btn = form.querySelector('button[type=submit]');
+        btn.disabled = true;
+        try {
+            const { item } = registerEditing;
+            await fetchAPI(item ? `${REGISTERS[name].api}/${item.id}` : REGISTERS[name].api, { method: item ? 'PUT' : 'POST', body: JSON.stringify(body) });
+            closeModals();
+            await loadRegister(name);
+        } catch (ex) {
+            err.textContent = ex.message; err.classList.remove('hidden');
+        } finally { btn.disabled = false; }
+    });
+    const del = form.querySelector('.reg-delete');
+    del.addEventListener('click', async () => {
+        const { item } = registerEditing;
+        if (!item) return;
+        if (!del.dataset.confirm) {
+            del.dataset.confirm = '1'; del.textContent = 'Точно удалить?';
+            setTimeout(() => { delete del.dataset.confirm; del.textContent = 'Удалить'; }, 2500);
+            return;
+        }
+        delete del.dataset.confirm; del.textContent = 'Удалить';
+        try {
+            await fetchAPI(`${REGISTERS[name].api}/${item.id}`, { method: 'DELETE' });
+            closeModals();
+            await loadRegister(name);
+        } catch (ex) { alert('Ошибка: ' + ex.message); }
+    });
+});
 
 // Inline editing for cost_price and delivery_cost in accounting table
 window.startInlineEdit = function(orderId, field, currentVal, cellEl) {

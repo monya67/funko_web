@@ -4468,3 +4468,25 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .ledger-add-form #ledger-date { width: 150px; }
 .ledger-add-form #ledger-amount { width: 120px; }
 @media (max-width: 640px) { .ledger-add-form > * { flex: 1 1 100%; width: 100%; } .ledger-add-form #ledger-date, .ledger-add-form #ledger-amount { width: 100%; } }
+
+/* admin registers: purchases and promo codes */
+.reg-switch { display: inline-flex; border: 1px solid rgba(var(--ink-rgb), 0.16); border-radius: 10px; overflow: hidden; flex: 0 0 auto; }
+.reg-switch-btn { padding: 9px 14px; background: transparent; border: 0; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.reg-switch-btn.active { background: var(--ink); color: var(--paper); }
+.reg-count { margin: 4px 2px 10px; font-size: 13px; color: var(--muted); }
+.reg-row { cursor: default; }
+.reg-row:hover td { background: rgba(var(--ink-rgb), 0.03); }
+.reg-mono, .reg-code { font-family: ui-monospace, Consolas, monospace; font-size: 0.86rem; }
+.reg-code { display: inline-block; padding: 3px 8px; border: 1px dashed rgba(var(--ink-rgb), 0.35); border-radius: 6px; font-weight: 700; letter-spacing: 0.5px; }
+.reg-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: rgba(var(--ink-rgb), 0.08); color: var(--ink); }
+.reg-pill.pre { background: rgba(229, 9, 20, 0.12); color: var(--pre); }
+.reg-sub { margin-top: 3px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.reg-act { padding: 6px 12px; min-height: 0; font-size: 13px; white-space: nowrap; }
+.reg-modal { max-width: 560px; width: calc(100% - 32px); max-height: calc(100dvh - 40px); overflow-y: auto; }
+.reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.reg-modal textarea { width: 100%; resize: vertical; min-height: 90px; font: inherit; }
+.reg-check { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; font-size: 14px; cursor: pointer; }
+.reg-check input { width: auto; }
+.reg-error { color: var(--pre); font-size: 13px; margin: 6px 0; }
+.reg-modal .reg-delete { margin-right: auto; color: var(--pre); }
+@media (max-width: 560px) { .reg-grid { grid-template-columns: 1fr; } }

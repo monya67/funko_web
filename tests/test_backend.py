@@ -264,3 +264,43 @@ def test_login_error_does_not_reveal_the_limit():
     import inspect
     src = inspect.getsource(main.login)
     assert "попыт" not in src.lower() and "заблок" not in src.lower()
+
+
+def test_purchase_validation_keeps_the_expected_date_only_for_preorders():
+    ok = main.clean_purchase(main.PurchaseIn(title=" Vox ", amount=100, purchase_date="2026-10-21", kind="stock", expected_date="2026-12-01"))
+    assert ok["title"] == "Vox" and ok["expected_date"] == ""
+    pre = main.clean_purchase(main.PurchaseIn(title="Vox", kind="preorder", expected_date="2026-12-01"))
+    assert pre["expected_date"] == "2026-12-01"
+    for bad in (dict(title=""), dict(title="x", kind="other"), dict(title="x", amount=-1), dict(title="x", purchase_date="21.10.2026")):
+        try:
+            main.clean_purchase(main.PurchaseIn(**bad))
+        except ValueError:
+            continue
+        raise AssertionError(bad)
+
+
+def test_promo_validation():
+    assert main.clean_promo(main.PromoCodeIn(code=" SPOOKY ", value=20))["code"] == "SPOOKY"
+    for bad in (dict(code=""), dict(code="X", value=101), dict(code="X", value_kind="usd"), dict(code="X", value=-5)):
+        try:
+            main.clean_promo(main.PromoCodeIn(**bad))
+        except ValueError:
+            continue
+        raise AssertionError(bad)
+
+
+def test_register_columns_match_the_sql():
+    import inspect, re
+    for fn, cols in ((main.create_purchase, main.PURCHASE_COLS), (main.update_purchase, main.PURCHASE_COLS),
+                     (main.create_promocode, main.PROMO_COLS), (main.update_promocode, main.PROMO_COLS)):
+        src = inspect.getsource(fn)
+        top = max(int(n) for n in re.findall(r"\$(\d+)", src))
+        extra = 1 if fn.__name__.startswith("update") else 0
+        assert top == len(cols) + extra, fn.__name__
+
+
+def test_admin_register_pages_are_served():
+    from fastapi.testclient import TestClient
+    client = TestClient(main.app)
+    for path in ("/purchases", "/promocodes"):
+        assert client.get(path).status_code == 200

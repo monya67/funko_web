@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1795100000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1795200000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -233,6 +233,8 @@
                         <a href="/archive" class="nav-item profile-menu-item auth-only hidden" data-tab="archived">Архив</a>
                         <a href="/accounting" class="nav-item profile-menu-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
                         <a href="/clients" class="nav-item profile-menu-item admin-only hidden" data-tab="clients">Клиенты</a>
+                        <a href="/purchases" class="nav-item profile-menu-item admin-only hidden" data-tab="purchases">Выкупы</a>
+                        <a href="/promocodes" class="nav-item profile-menu-item admin-only hidden" data-tab="promocodes">Промокоды</a>
                         <button id="sidebar-login-btn" type="button" class="btn primary profile-menu-login">Войти</button>
                         <button id="logout-btn" type="button" class="profile-menu-item profile-menu-logout hidden">Выйти</button>
                     </div>
@@ -251,6 +253,8 @@
             <a href="/accounting" class="nav-item" data-tab="accounting">Бухгалтерия</a>
             <a href="/clients" class="nav-item" data-tab="clients">Клиенты</a>
             <a href="/products" class="nav-item" data-tab="products">Товары</a>
+            <a href="/purchases" class="nav-item" data-tab="purchases">Выкупы</a>
+            <a href="/promocodes" class="nav-item" data-tab="promocodes">Промокоды</a>
         </div>
     </nav>
 
@@ -1062,6 +1066,54 @@
                 </div>
             </section>
 
+            <!-- PURCHASES TAB (admin): what we bought for clients in other shops -->
+            <section id="purchases-tab" class="tab-content">
+                <div class="header-flex">
+                    <h2>Выкупы</h2>
+                    <button type="button" class="btn primary" data-reg-add="purchases">+ Добавить выкуп</button>
+                </div>
+                <div class="products-toolbar">
+                    <input type="search" data-reg-search="purchases" placeholder="Поиск: название, магазин, трек…" aria-label="Поиск по выкупам">
+                    <div class="reg-switch" role="tablist" aria-label="Какие выкупы показать">
+                        <button type="button" class="reg-switch-btn active" data-reg-view="purchases" data-view="active">В работе</button>
+                        <button type="button" class="reg-switch-btn" data-reg-view="purchases" data-view="archive">Архив (доставлены)</button>
+                    </div>
+                </div>
+                <div class="reg-count" data-reg-count="purchases"></div>
+                <div class="glass-panel table-container">
+                    <table class="reg-table" data-reg-table="purchases">
+                        <thead><tr>
+                            <th>Дата</th><th>Название</th><th>Магазин</th><th>Сумма</th><th>Трек-номер</th><th>Тип</th><th style="width:150px;"></th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <p class="empty-msg hidden" data-reg-empty="purchases">Выкупов нет</p>
+                </div>
+                <p class="ledger-hint">Двойной клик по строке — открыть целиком с описанием</p>
+            </section>
+
+            <!-- PROMO CODES TAB (admin): codes for the shops we buy from -->
+            <section id="promocodes-tab" class="tab-content">
+                <div class="header-flex">
+                    <h2>Промокоды</h2>
+                    <button type="button" class="btn primary" data-reg-add="promocodes">+ Добавить промокод</button>
+                </div>
+                <div class="products-toolbar">
+                    <input type="search" data-reg-search="promocodes" placeholder="Поиск: промокод, сайт…" aria-label="Поиск по промокодам">
+                </div>
+                <div class="reg-count" data-reg-count="promocodes"></div>
+                <div class="glass-panel table-container">
+                    <table class="reg-table" data-reg-table="promocodes">
+                        <thead><tr>
+                            <th>Промокод</th><th>Скидка</th><th>Сайт</th><th style="width:110px;"></th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <p class="empty-msg hidden" data-reg-empty="promocodes">Промокодов нет</p>
+                </div>
+                <p class="ledger-hint">Двойной клик по строке — открыть целиком с условием</p>
+            </section>
+
             <!-- PRODUCTS TAB (admin) -->
             <section id="products-tab" class="tab-content">
                 <div class="header-flex">
@@ -1393,6 +1445,56 @@
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline close-modal">Отмена</button>
                     <button type="submit" class="btn primary">Создать</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="purchase-modal" class="glass-panel modal hidden reg-modal">
+            <h3 data-reg-title="purchases">Выкуп</h3>
+            <form data-reg-form="purchases" novalidate>
+                <div class="input-group"><label for="pur-title">Название</label><input type="text" id="pur-title" name="title" required placeholder="Например: 1975 - Damon"></div>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="pur-amount">Сумма, ₽</label><input type="number" id="pur-amount" name="amount" min="0" step="1" placeholder="0"></div>
+                    <div class="input-group"><label for="pur-date">Дата</label><input type="date" id="pur-date" name="purchase_date"></div>
+                </div>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="pur-shop">Магазин</label><input type="text" id="pur-shop" name="shop" placeholder="Hot Topic, Amazon, BoxLunch…"></div>
+                    <div class="input-group"><label for="pur-track">Трек-номер</label><input type="text" id="pur-track" name="track" placeholder="—"></div>
+                </div>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="pur-kind">Тип</label>
+                        <select id="pur-kind" name="kind"><option value="stock">Обычный</option><option value="preorder">Предзаказ</option></select>
+                    </div>
+                    <div class="input-group" data-show-if="preorder"><label for="pur-expected">Ожидаемая дата рассылки</label><input type="date" id="pur-expected" name="expected_date"></div>
+                </div>
+                <div class="input-group"><label for="pur-desc">Описание</label><textarea id="pur-desc" name="description" rows="4" placeholder="Для кого, детали, ссылки…"></textarea></div>
+                <label class="reg-check"><input type="checkbox" name="delivered"> Доставлен (уходит в архив)</label>
+                <p class="reg-error hidden" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline reg-delete hidden">Удалить</button>
+                    <button type="button" class="btn secondary outline reg-cancel">Отмена</button>
+                    <button type="submit" class="btn primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="promocode-modal" class="glass-panel modal hidden reg-modal">
+            <h3 data-reg-title="promocodes">Промокод</h3>
+            <form data-reg-form="promocodes" novalidate>
+                <div class="input-group"><label for="promo-code">Промокод</label><input type="text" id="promo-code" name="code" required placeholder="SPOOKY20"></div>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="promo-value">Скидка</label><input type="number" id="promo-value" name="value" min="0" step="1" placeholder="0"></div>
+                    <div class="input-group"><label for="promo-kind">В чём</label>
+                        <select id="promo-kind" name="value_kind"><option value="percent">%</option><option value="rub">₽</option></select>
+                    </div>
+                </div>
+                <div class="input-group"><label for="promo-site">Сайт</label><input type="text" id="promo-site" name="site" placeholder="hottopic.com"></div>
+                <div class="input-group"><label for="promo-cond">Условие</label><textarea id="promo-cond" name="conditions" rows="4" placeholder="Минимальная сумма, срок действия, на что работает…"></textarea></div>
+                <p class="reg-error hidden" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline reg-delete hidden">Удалить</button>
+                    <button type="button" class="btn secondary outline reg-cancel">Отмена</button>
+                    <button type="submit" class="btn primary">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -2063,6 +2165,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1795100000000"></script>
+    <script src="/static/app.js?v=1795200000000"></script>
 </body>
 </html>
