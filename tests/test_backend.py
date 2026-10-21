@@ -323,3 +323,15 @@ def test_order_email_is_skipped_without_smtp_settings(monkeypatch):
     import asyncio
     monkeypatch.setattr(main, "SMTP_USER", "")
     assert asyncio.run(main.send_order_email("a@b.ru", {"id": 1})) is False
+
+
+def test_clients_never_receive_cost_numbers():
+    import inspect
+    src = inspect.getsource(main.get_dashboard)
+    client_part = src[src.index("client_id = user[\"id\"]"):]
+    assert "cost_price" not in client_part and "delivery_cost" not in client_part
+    row = {"id": 1, "name": "Vox", "link_key": "k", "purchase_usd": 14.99, "planned_shipping_rub": 700, "purchase_source": "Funko.com", "product_kind": "Standard Pop"}
+    public = main.product_payload(row, is_admin=False)
+    assert not set(main.PRODUCT_PRIVATE_FIELDS) & set(public)
+    assert main.product_payload(row, is_admin=True)["purchase_usd"] == 14.99
+

@@ -606,11 +606,11 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             client_id = user["id"]
             client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name, COALESCE(phone, '') as phone, COALESCE(tg_username, '') as tg_username, COALESCE(email, '') as email FROM clients WHERE id = $1", client_id)
             orders = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = FALSE AND status <> 'Ожидает оплаты' ORDER BY id DESC",
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date FROM orders WHERE client_id = $1 AND archived = FALSE AND status <> 'Ожидает оплаты' ORDER BY id DESC",
                 client_id
             )
             archived = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE client_id = $1 AND archived = TRUE AND status <> 'Ожидает оплаты' ORDER BY id DESC",
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date FROM orders WHERE client_id = $1 AND archived = TRUE AND status <> 'Ожидает оплаты' ORDER BY id DESC",
                 client_id
             )
             return {
@@ -1375,10 +1375,15 @@ def product_visible(row, is_admin, key):
     return bool(stored) and bool(key) and hmac.compare_digest(str(stored), str(key))
 
 
+# Purchase prices and shipping plans of a product are the shop's private numbers: only admins ever receive them
+PRODUCT_PRIVATE_FIELDS = ("link_key", "purchase_usd", "planned_shipping_rub", "purchase_source", "product_kind")
+
+
 def product_payload(row, is_admin):
     item = dict(row)
     if not is_admin:
-        item.pop("link_key", None)
+        for f in PRODUCT_PRIVATE_FIELDS:
+            item.pop(f, None)
     return item
 
 
