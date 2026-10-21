@@ -304,3 +304,22 @@ def test_admin_register_pages_are_served():
     client = TestClient(main.app)
     for path in ("/purchases", "/promocodes"):
         assert client.get(path).status_code == 200
+
+
+def test_order_email_puts_the_order_first_and_escapes_client_text():
+    order = {"id": 482, "items": "2536 - Vox\n1975 - Damon x2", "total_price": 6000, "paid_amount": 3000,
+             "customer_name": "<b>Ален</b>", "customer_phone": "+77054540001", "photo_id": "abc,def"}
+    subject, html, text = main.order_email(order, "📦 Доставка: СДЭК\n💬 Комментарий: x")
+    assert "482" in subject
+    assert html.index("2536 - Vox") < html.index("Ваши данные")
+    assert "Осталось доплатить" in html and "3 000 ₽" in html
+    assert "&lt;b&gt;Ален&lt;/b&gt;" in html and "<b>Ален</b>" not in html
+    assert "/api/photos/abc" in html and "def" not in html.split("/api/photos/")[1][:10]
+    assert "СДЭК" in html
+    assert "Осталось доплатить" not in main.order_email({**order, "paid_amount": 6000})[1]
+
+
+def test_order_email_is_skipped_without_smtp_settings(monkeypatch):
+    import asyncio
+    monkeypatch.setattr(main, "SMTP_USER", "")
+    assert asyncio.run(main.send_order_email("a@b.ru", {"id": 1})) is False

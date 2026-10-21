@@ -36,6 +36,14 @@ ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.
 TBANK_TERMINAL_KEY = os.getenv("TBANK_TERMINAL_KEY", "")
 TBANK_PASSWORD = os.getenv("TBANK_PASSWORD", "")
 
+# Order e-mails to clients (transactional, sent without marketing consent). Set on Render; empty = e-mails off.
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "Funko Stop")
+SITE_URL = os.getenv("SITE_URL", "https://funkostop.org").rstrip("/")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365  # 1 year (persistent login)
 
@@ -1163,7 +1171,7 @@ async def tbank_notification(req: Request):
         return Response(content="OK")
 
     async with pool.acquire() as db:
-        order = await db.fetchrow("SELECT id, status, client_id, items, total_price, paid_amount, customer_name, customer_phone, customer_tg, payment_type, checkout_note FROM orders WHERE id = $1", oid)
+        order = await db.fetchrow("SELECT id, status, client_id, items, total_price, paid_amount, customer_name, customer_phone, customer_tg, payment_type, checkout_note, photo_id FROM orders WHERE id = $1", oid)
         if not order:
             if tbank_status == "CONFIRMED":
                 await notify_admins(f"⚠️ **Пришла оплата по заказу #{oid}, но заказа нет** (удалён как неоплаченный или вручную). "
@@ -1180,6 +1188,7 @@ async def tbank_notification(req: Request):
             if first:
                 email = await db.fetchval("SELECT email FROM clients WHERE id = $1", order["client_id"])
                 await notify_admins(paid_alert_text(order, order["client_id"], email, order["checkout_note"]))
+                await send_order_email(email, order, order["checkout_note"])
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
             await db.execute(
                 "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
@@ -1414,6 +1423,113 @@ def order_line_text(product, qty):
 
 
 AWAITING_PAYMENT = "Ожидает оплаты"
+
+
+def _h(text):
+    import html as _html
+    return _html.escape(str(text if text is not None else ""))
+
+
+def order_email(order, note=""):
+    """(subject, html, plain text) of the 'order placed' e-mail. Order facts first, the client's details at the end."""
+    oid = order["id"]
+    total = int(order["total_price"] or 0)
+    paid = int(order["paid_amount"] or 0)
+    left = max(0, total - paid)
+    lines = [l.strip() for l in str(order["items"] or "").split("\n") if l.strip()]
+    photo = first_photo_id(order.get("photo_id") if hasattr(order, "get") else order["photo_id"])
+    delivery = ""
+    for part in str(note or "").split("\n"):
+        if part.startswith("📦 Доставка:"):
+            delivery = part.split(":", 1)[1].strip()
+    red, ink, muted, line = "#B3121B", "#141414", "#6B6B6B", "#E8E4DE"
+    rows = "".join(
+        f'<tr><td style="padding:8px 0;border-bottom:1px solid {line};font:15px/1.4 Arial,sans-serif;color:{ink};">{_h(l)}</td></tr>'
+        for l in lines)
+    img = (f'<td width="96" valign="top" style="padding-right:16px;"><img src="{SITE_URL}/api/photos/{_h(photo)}" width="96" height="96" alt="" '
+           f'style="display:block;width:96px;height:96px;object-fit:cover;border-radius:10px;background:#F2EFEA;"></td>') if photo else ""
+    money = [("Сумма заказа", f"{total:,} ₽".replace(",", " "), ink), ("Оплачено", f"{paid:,} ₽".replace(",", " "), "#1E8E3E")]
+    if left:
+        money.append(("Осталось доплатить", f"{left:,} ₽".replace(",", " "), red))
+    money_rows = "".join(
+        f'<tr><td style="padding:4px 0;font:14px Arial,sans-serif;color:{muted};">{k}</td>'
+        f'<td align="right" style="padding:4px 0;font:bold 15px Arial,sans-serif;color:{c};">{v}</td></tr>' for k, v, c in money)
+    details = [("Получатель", order["customer_name"]), ("Телефон", order["customer_phone"])]
+    if delivery:
+        details.append(("Доставка", delivery))
+    details_rows = "".join(
+        f'<tr><td style="padding:3px 0;font:13px Arial,sans-serif;color:{muted};width:110px;">{k}</td>'
+        f'<td style="padding:3px 0;font:13px Arial,sans-serif;color:{ink};">{_h(v) or "—"}</td></tr>' for k, v in details)
+    html = f"""<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Заказ #{oid}</title></head>
+<body style="margin:0;padding:0;background:#EFEBE5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EFEBE5;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;">
+  <tr><td style="background:{red};padding:28px 28px 26px;">
+    <div style="font:normal 24px/1 Impact,'Arial Narrow',Arial,sans-serif;letter-spacing:1px;color:#FFFFFF;">FUNKO STOP</div>
+    <div style="margin-top:22px;font:normal 32px/1.05 Impact,'Arial Narrow',Arial,sans-serif;text-transform:uppercase;color:#FFFFFF;">Заказ #{oid} оформлен</div>
+    <div style="margin-top:10px;font:15px/1.5 Arial,sans-serif;color:#FFE3E3;">Спасибо! Оплата получена, заказ ушёл в работу. Статус — в личном кабинете и в боте @funkostop_bot.</div>
+  </td></tr>
+  <tr><td style="padding:24px 28px 8px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>{img}
+      <td valign="top"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">{rows}</table></td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="padding:8px 28px 4px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-top:2px solid {ink};padding-top:8px;">{money_rows}</table></td></tr>
+  <tr><td align="center" style="padding:22px 28px 6px;">
+    <a href="{SITE_URL}/orders" style="display:inline-block;padding:14px 30px;background:{ink};color:#FFFFFF;border-radius:999px;font:bold 15px Arial,sans-serif;text-decoration:none;">Открыть личный кабинет</a>
+  </td></tr>
+  <tr><td style="padding:22px 28px 6px;"><div style="font:bold 12px Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;color:{muted};margin-bottom:6px;">Ваши данные</div>
+    <table role="presentation" cellpadding="0" cellspacing="0">{details_rows}</table></td></tr>
+  <tr><td style="padding:20px 28px 26px;font:12px/1.5 Arial,sans-serif;color:{muted};border-top:1px solid {line};">
+    Вопросы по заказу — менеджеру в Telegram <a href="https://t.me/Funko_Stop" style="color:{red};">@Funko_Stop</a>.<br>
+    Письмо отправлено, потому что вы оформили заказ на <a href="{SITE_URL}" style="color:{muted};">funkostop.org</a>.
+  </td></tr>
+</table></td></tr></table></body></html>"""
+    text = "\n".join([
+        f"Заказ #{oid} оформлен. Спасибо! Оплата получена, заказ ушёл в работу.", "",
+        *lines, "",
+        f"Сумма заказа: {total} ₽", f"Оплачено: {paid} ₽", *([f"Осталось доплатить: {left} ₽"] if left else []), "",
+        f"Личный кабинет: {SITE_URL}/orders", "Вопросы: Telegram @Funko_Stop",
+    ])
+    return f"Заказ #{oid} оформлен — Funko Stop", html, text
+
+
+def _smtp_send(to_addr, subject, html, text):
+    import smtplib
+    from email.message import EmailMessage
+    from email.utils import formataddr, make_msgid
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = formataddr((MAIL_FROM_NAME, SMTP_USER))
+    msg["To"] = to_addr
+    msg["Message-ID"] = make_msgid(domain=SMTP_USER.split("@")[-1] or None)
+    msg.set_content(text)
+    msg.add_alternative(html, subtype="html")
+    if SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20) as s:
+            s.login(SMTP_USER, SMTP_PASSWORD)
+            s.send_message(msg)
+    else:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as s:
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASSWORD)
+            s.send_message(msg)
+
+
+async def send_order_email(to_addr, order, note=""):
+    """Best effort: a failed e-mail is logged and never breaks the payment flow."""
+    if not (SMTP_USER and SMTP_PASSWORD):
+        print("order e-mail skipped: SMTP_USER / SMTP_PASSWORD not set")
+        return False
+    if not to_addr or not valid_email(to_addr):
+        return False
+    subject, html, text = order_email(order, note)
+    try:
+        await asyncio.to_thread(_smtp_send, to_addr, subject, html, text)
+        return True
+    except Exception as e:
+        print(f"order e-mail to client failed: {e}")
+        return False
 
 
 def paid_alert_text(order, client_id, email, note):
