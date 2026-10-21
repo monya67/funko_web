@@ -4573,3 +4573,24 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .fin-norm-row { display: grid; grid-template-columns: 1fr 110px auto; gap: 8px; align-items: center; }
 @media (max-width: 900px) { .fin-cards { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .fin-stage-row { grid-template-columns: 1fr; } .fin-head-actions { margin-left: 0; } }
+
+/* accounting chart: profit (violet) and withdrawals (orange); palette validated for both themes */
+.fin-chart { --c-profit: #6250d6; --c-wd: #eb6834; position: relative; margin: 0 0 14px; padding: 14px 16px 8px; }
+:root[data-theme="dark"] .fin-chart { --c-profit: #9085e9; --c-wd: #d95926; }
+.fin-chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; align-items: baseline; margin-bottom: 6px; }
+.fin-chart-title { font-weight: 700; font-size: 14px; color: var(--ink); }
+.fin-legend { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.fin-legend .sw + .sw, .fin-legend .sw:not(:first-child) { margin-left: 10px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+.sw.profit { background: var(--c-profit); } .sw.wd { background: var(--c-wd); }
+.fin-chart svg { display: block; width: 100%; height: auto; }
+.fin-chart .grid { stroke: rgba(var(--ink-rgb), 0.08); stroke-width: 1; }
+.fin-chart .base { stroke: rgba(var(--ink-rgb), 0.35); stroke-width: 1; }
+.fin-chart .ax { fill: var(--muted); font-size: 11px; }
+.fin-chart .b.profit { fill: var(--c-profit); } .fin-chart .b.wd { fill: var(--c-wd); }
+.fin-chart .hit { fill: transparent; }
+.fin-chart .hit.on { fill: rgba(var(--ink-rgb), 0.05); }
+.fin-chart-empty { margin: 30px 0; text-align: center; color: var(--muted); font-size: 13px; }
+.fin-tip { position: absolute; top: 40px; z-index: 2; display: grid; gap: 3px; padding: 8px 10px; border-radius: 10px; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.16); box-shadow: 0 8px 22px rgba(var(--shadow-rgb), 0.18); font-size: 12px; pointer-events: none; white-space: nowrap; color: var(--ink); }
+.fin-tip .muted { color: var(--muted); }
+.fin-chart .b { pointer-events: none; }

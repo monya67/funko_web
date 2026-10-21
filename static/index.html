@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1795500000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1795600000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -1296,6 +1296,7 @@
                     </div>
                     <div class="fin-head-actions">
                         <button type="button" class="btn primary" id="fin-withdraw-btn">+ Вывод владельцу</button>
+                        <button type="button" class="btn secondary outline" id="fin-export-btn" title="Скачать открытую вкладку в CSV для Excel">Экспорт</button>
                         <button type="button" class="btn secondary outline" id="fin-settings-btn">Настройки</button>
                     </div>
                 </div>
@@ -1365,6 +1366,14 @@
                 </div>
 
                 <div class="fin-panel hidden" data-fin-panel="months">
+                    <figure class="glass-panel fin-chart" id="fin-chart">
+                        <figcaption class="fin-chart-head">
+                            <span class="fin-chart-title">Прибыль и выводы за 12 месяцев</span>
+                            <span class="fin-legend"><i class="sw profit"></i>Прибыль<i class="sw wd"></i>Выведено владельцем</span>
+                        </figcaption>
+                        <div class="fin-chart-body"></div>
+                        <div class="fin-tip hidden" role="status"></div>
+                    </figure>
                     <div class="glass-panel table-container">
                         <table class="fin-table" id="fin-months-table">
                             <thead><tr><th>Месяц</th><th class="num">Завершено</th><th class="num">Прибыль заказов</th><th class="num">Прочие</th><th class="num">Итого</th><th class="num">Выведено</th></tr></thead>
@@ -2274,6 +2283,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1795500000000"></script>
+    <script src="/static/app.js?v=1795600000000"></script>
 </body>
 </html>

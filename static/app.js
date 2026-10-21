@@ -3835,6 +3835,7 @@ function renderFinance() {
     }
     renderFinOrders();
     renderFinMonths();
+    renderFinChart();
     renderFinWithdrawals();
     renderFinOps();
 }
@@ -3906,6 +3907,103 @@ function openFinCostEditor(td, o) {
             await loadFinance();
         } catch (err) { alert('Ошибка: ' + err.message); }
     });
+}
+
+// Grouped bars: profit (can go below zero) and owner withdrawals per month, last 12 months up to the chosen one
+function renderFinChart() {
+    const box = document.querySelector('#fin-chart .fin-chart-body');
+    const tip = document.querySelector('#fin-chart .fin-tip');
+    if (!box || !finData) return;
+    const byMonth = Object.fromEntries(finData.months.map(mm => [mm.month, mm]));
+    const [y0, m0] = window.finMonth.split('-').map(Number);
+    const months = [];
+    for (let i = 11; i >= 0; i--) {
+        const d = new Date(y0, m0 - 1 - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const mm = byMonth[key] || { total: 0, withdrawn: 0, done: 0, approx: false };
+        months.push({ key, profit: mm.total, withdrawn: mm.withdrawn, done: mm.done, approx: mm.approx });
+    }
+    const W = 760, H = 240, padL = 56, padR = 8, padT = 12, padB = 26;
+    const hi = Math.max(0, ...months.map(x => Math.max(x.profit, x.withdrawn)));
+    const lo = Math.min(0, ...months.map(x => x.profit));
+    if (hi === 0 && lo === 0) {
+        box.innerHTML = '<p class="fin-chart-empty">Данные появятся, когда с начала учёта будут завершены заказы или сделаны выводы.</p>';
+        return;
+    }
+    const step = (() => { const raw = (hi - lo) / 4; const p = 10 ** Math.floor(Math.log10(raw || 1)); return [1, 2, 2.5, 5, 10].map(k => k * p).find(k => k >= raw); })();
+    const top = Math.ceil(hi / step) * step, bottom = Math.floor(lo / step) * step;
+    const yOf = v => padT + (top - v) / (top - bottom || 1) * (H - padT - padB);
+    const slot = (W - padL - padR) / months.length;
+    const bw = Math.min(18, (slot - 10) / 2);
+    const fmt = v => Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v));
+    let svg = '';
+    for (let v = bottom; v <= top + 1e-9; v += step) {
+        const yy = yOf(v).toFixed(1);
+        svg += `<line class="${v === 0 ? 'base' : 'grid'}" x1="${padL}" x2="${W - padR}" y1="${yy}" y2="${yy}"/><text class="ax" x="${padL - 8}" y="${yy}" dy="0.32em" text-anchor="end">${fmt(v)}</text>`;
+    }
+    const bar = (x, v, cls) => {
+        if (!v) return '';
+        const y1 = yOf(Math.max(v, 0)), y2 = yOf(Math.min(v, 0));
+        const hgt = Math.max(1, y2 - y1), r = Math.min(4, hgt / 2, bw / 2);
+        // rounded data end, square at the baseline
+        const d = v > 0
+            ? `M${x},${y2}V${y1 + r}Q${x},${y1} ${x + r},${y1}H${x + bw - r}Q${x + bw},${y1} ${x + bw},${y1 + r}V${y2}Z`
+            : `M${x},${y1}V${y2 - r}Q${x},${y2} ${x + r},${y2}H${x + bw - r}Q${x + bw},${y2} ${x + bw},${y2 - r}V${y1}Z`;
+        return `<path class="${cls}" d="${d}"/>`;
+    };
+    months.forEach((mm, i) => {
+        const cx = padL + slot * i + slot / 2;
+        // the hover band sits under the bars so it never tints them
+        svg += `<rect class="hit" x="${padL + slot * i}" y="${padT}" width="${slot}" height="${H - padT - padB}" data-i="${i}"/>`;
+        svg += bar(cx - bw - 1, mm.profit, 'b profit') + bar(cx + 1, mm.withdrawn, 'b wd');
+        const [yy, mo] = mm.key.split('-').map(Number);
+        svg += `<text class="ax" x="${cx}" y="${H - 8}" text-anchor="middle">${MONTHS_RU[mo - 1].slice(0, 3).toLowerCase()}${mo === 1 ? ` ${String(yy).slice(2)}` : ''}</text>`;
+    });
+    box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Прибыль и выводы по месяцам; точные цифры — в таблице ниже">${svg}</svg>`;
+    const svgEl = box.querySelector('svg');
+    svgEl.querySelectorAll('.hit').forEach(r => {
+        r.addEventListener('pointerenter', () => {
+            const mm = months[+r.dataset.i];
+            svgEl.querySelectorAll('.hit').forEach(o => o.classList.toggle('on', o === r));
+            tip.innerHTML = `<b>${finMonthTitle(mm.key)}</b><span><i class="sw profit"></i>Прибыль ${mm.approx ? '~' : ''}${signedRub(mm.profit)}</span><span><i class="sw wd"></i>Выведено ${rub(mm.withdrawn)}</span><span class="muted">Завершено заказов: ${mm.done}</span>`;
+            tip.classList.remove('hidden');
+            const fig = box.closest('.fin-chart').getBoundingClientRect();
+            const rr = r.getBoundingClientRect();
+            const left = Math.min(fig.width - tip.offsetWidth - 8, Math.max(8, rr.left - fig.left + rr.width / 2 - tip.offsetWidth / 2));
+            tip.style.left = `${left}px`;
+        });
+    });
+    svgEl.addEventListener('pointerleave', () => { tip.classList.add('hidden'); svgEl.querySelectorAll('.hit').forEach(o => o.classList.remove('on')); });
+}
+
+// CSV of the open accounting tab, for Excel (semicolons, BOM, whole numbers)
+function exportFinance() {
+    if (!finData) return;
+    const tab = document.querySelector('.fin-tab.active')?.dataset.finTab || 'orders';
+    const v = n => (n === null || n === undefined) ? '' : Math.round(n);
+    let head = [], rows = [];
+    if (tab === 'orders') {
+        head = ['Заказ', 'Товар', 'Статус', 'Этап', 'Цена', 'Оплачено', 'Закупка', 'Закупка факт', 'Доставка РФ', 'Доставка факт', 'Налоги', 'Ещё потребуется', 'Ожид. прибыль'];
+        rows = finData.orders.map(o => [o.id, o.items, o.status, FIN_STAGES[o.stage], v(o.price), v(o.received), v(o.purchase), o.purchase_is_fact ? 'да' : 'план',
+            v(o.shipping), o.shipping_is_fact ? 'да' : 'план', v(o.tax), v(o.need), (o.missing_purchase || o.missing_shipping) ? '' : v(o.profit)]);
+    } else if (tab === 'months') {
+        head = ['Месяц', 'Завершено', 'Прибыль заказов', 'Прочие', 'Итого', 'Выведено', 'Приблизительно'];
+        rows = finData.months.map(mm => [finMonthTitle(mm.month), mm.done, v(mm.profit), v(mm.other), v(mm.total), v(mm.withdrawn), mm.approx ? 'да' : '']);
+    } else if (tab === 'withdrawals') {
+        head = ['Дата', 'Сумма', 'Комментарий'];
+        rows = finData.withdrawals.map(w => [isoRu(w.wd_date), v(w.amount), w.comment || '']);
+    } else {
+        const table = document.querySelector(`[data-fin-panel="${tab}"] table`);
+        head = [...table.querySelectorAll('thead th')].map(th => th.textContent.trim()).filter(Boolean);
+        rows = [...table.querySelectorAll('tbody tr')].map(tr => [...tr.querySelectorAll('td')].slice(0, head.length).map(td => td.textContent.replace(/\s+/g, ' ').trim()));
+    }
+    const cell = x => { const s = String(x ?? ''); return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const csv = '\ufeff' + [head, ...rows].map(r => r.map(cell).join(';')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `buhgalteriya-${tab}-${window.finMonth}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function renderFinMonths() {
@@ -4013,6 +4111,7 @@ function addNormRow(kind = '', value = '') {
     document.getElementById('fin-orders-filter')?.addEventListener('change', () => { finOrdersShown = 100; renderFinOrders(); });
     document.getElementById('fin-orders-more')?.addEventListener('click', () => { finOrdersShown += 100; renderFinOrders(); });
     document.getElementById('fin-ops-all')?.addEventListener('change', loadFinance);
+    document.getElementById('fin-export-btn')?.addEventListener('click', exportFinance);
 
     const wdForm = document.getElementById('fin-withdraw-form');
     document.getElementById('fin-withdraw-btn')?.addEventListener('click', () => {
