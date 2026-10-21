@@ -4490,3 +4490,18 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .reg-error { color: var(--pre); font-size: 13px; margin: 6px 0; }
 .reg-modal .reg-delete { margin-right: auto; color: var(--pre); }
 @media (max-width: 560px) { .reg-grid { grid-template-columns: 1fr; } }
+
+/* wide monitors (2K and up): the page grows with the screen instead of sitting in a 1360px column */
+@media (min-width: 1600px) {
+    .hero, .content, .site-header-inner, .benefits-inner, .home-new, .admin-subnav-inner, .home-container { max-width: min(88vw, 2000px); }
+    .hero { padding-top: 64px; padding-bottom: 56px; }
+    .hero-title { font-size: clamp(148px, 8.6vw, 240px); }
+    .hero-sub { font-size: clamp(28px, 1.7vw, 42px); max-width: 680px; }
+    .hero-collage { max-width: min(44vw, 920px); }
+    .hero-cta { min-height: 58px; padding: 0 30px; font-size: 16px; }
+    .marquee-track { font-size: 24px; padding: 14px 0; }
+}
+@media (min-width: 2200px) {
+    .hero-cta { min-height: 64px; font-size: 18px; }
+    .benefit-title { font-size: 1.05rem; }
+}
