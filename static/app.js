@@ -459,18 +459,7 @@ window.switchTab = function(tabName, pushState = true) {
         loadRegister(tabName);
     }
     if (tabName === 'accounting' && currentRole === 'admin') {
-        // the first visit opens the current month; the period stays as the admin leaves it afterwards
-        if (!window.accountingPeriodSet) {
-            window.accountingPeriodSet = true;
-            const now = new Date();
-            const ys = document.getElementById('accounting-year-filter');
-            const ms = document.getElementById('accounting-month-filter');
-            const y = String(now.getFullYear());
-            if (ys && ![...ys.options].some(o => o.value === y)) ys.add(new Option(y, y));
-            if (ys) ys.value = y;
-            if (ms) ms.value = String(now.getMonth() + 1).padStart(2, '0');
-            renderAccounting();
-        }
+        loadFinance();
         loadLedger();
     }
 
@@ -3403,19 +3392,14 @@ function ledgerDateParts(d) {
 }
 
 function ledgerInPeriod(e) {
-    const year = document.getElementById('accounting-year-filter')?.value;
-    const month = document.getElementById('accounting-month-filter')?.value;
-    if (!year && !month) return true;
+    const month = window.finMonth;
+    if (!month) return true;
     const p = ledgerDateParts(e.entry_date);
-    return !!p && (!year || p.year === year) && (!month || p.month === month);
+    return !!p && `${p.year}-${p.month}` === month;
 }
 
 function ledgerPeriodLabel() {
-    const year = document.getElementById('accounting-year-filter')?.value;
-    const monthSel = document.getElementById('accounting-month-filter');
-    const month = monthSel?.value ? monthSel.options[monthSel.selectedIndex].text : '';
-    if (!year && !month) return '· за всё время';
-    return '· ' + [month, year].filter(Boolean).join(' ');
+    return window.finMonth ? '· ' + finMonthTitle(window.finMonth) : '· за всё время';
 }
 
 function renderLedger() {
@@ -3432,9 +3416,7 @@ function renderLedger() {
         if (e.entry_type === 'income') totalIncome += e.amount;
         else totalExpense += e.amount;
     });
-    const counted = accountingPeriodOrders().filter(orderMarginCounts);
-    const marginTotal = Math.round(counted.reduce((s, o) => s + orderFinance(o).margin, 0));
-    updateLedgerSummary(totalIncome, totalExpense, marginTotal, counted.length);
+    updateLedgerSummary(totalIncome, totalExpense);
 
     if (noMsg) noMsg.classList.toggle('hidden', entries.length > 0);
     entries.forEach(e => {
@@ -3788,6 +3770,298 @@ Object.keys(REGISTERS).forEach(name => {
         } catch (ex) { alert('Ошибка: ' + ex.message); }
     });
 });
+
+// ======================= Accounting screen (numbers come from /api/finance; rules live in finance.py) =======================
+const FIN_STAGES = { 0: 'Не учитывать', 1: 'Ожидает выкупа', 2: 'Выкуплен', 3: 'Доставка до РФ оплачена', 4: 'Завершён' };
+const MONTHS_RU = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+window.finMonth = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; })();
+let finData = null;
+let finOrdersShown = 100;
+
+function finMonthTitle(key) {
+    const [y, m] = key.split('-').map(Number);
+    return `${MONTHS_RU[m - 1]} ${y}`;
+}
+function rub(n) { return `${Math.round(n || 0).toLocaleString('ru')} ₽`; }
+function signedRub(n) { return `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(Math.round(n || 0)).toLocaleString('ru')} ₽`; }
+function isoRu(iso) { const d = String(iso || '').slice(0, 10).split('-'); return d.length === 3 ? `${d[2]}.${d[1]}.${d[0]}` : ''; }
+
+async function loadFinance() {
+    const all = document.getElementById('fin-ops-all')?.checked ? '&show_all_ops=true' : '';
+    try {
+        finData = await fetchAPI(`/finance?month=${window.finMonth}${all}`);
+        renderFinance();
+    } catch (e) {
+        console.error('finance load failed', e);
+    }
+}
+
+function renderFinance() {
+    const d = finData;
+    if (!d) return;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const approx = d.need.approx ? '~ ' : '';
+    set('fin-month-label', finMonthTitle(window.finMonth));
+    set('fin-need', approx + rub(d.need.total));
+    set('fin-need-purchase', approx + rub(d.need.purchase));
+    set('fin-need-shipping', approx + rub(d.need.shipping));
+
+    const short = d.available.value < 0;
+    set('fin-avail-label', short ? 'Не хватает резерва' : 'Доступно к выводу');
+    set('fin-avail', approx + rub(Math.abs(d.available.value)));
+    document.querySelector('.fin-card.avail')?.classList.toggle('short', short);
+    set('fin-cash', rub(d.available.cash));
+    set('fin-withdrawn-total', rub(d.available.withdrawn_total));
+
+    const [y, m] = window.finMonth.split('-').map(Number);
+    set('fin-profit-label', `Прибыль за ${MONTHS_RU[m - 1].toLowerCase()}` + (y !== new Date().getFullYear() ? ` ${y}` : ''));
+    set('fin-profit', (d.month.approx ? '~ ' : '') + signedRub(d.month.total));
+    set('fin-done', String(d.month.done));
+    set('fin-month-withdrawn', rub(d.month.withdrawn));
+
+    const note = document.getElementById('fin-start-note');
+    const today = new Date().toISOString().slice(0, 10);
+    if (note) {
+        const future = d.start_date > today;
+        note.classList.toggle('hidden', !future);
+        note.textContent = future ? `Учёт денег начнётся ${isoRu(d.start_date)}: до этой даты «Доступно к выводу» считает только стартовый баланс из настроек минус резерв на текущие заказы. Резерв и таблица заказов работают уже сейчас.` : '';
+    }
+
+    const att = document.getElementById('fin-attention');
+    if (att) {
+        att.innerHTML = d.attention.length
+            ? '<h3>Требует внимания</h3><ul>' + d.attention.map(a => `<li><b>${a.count}</b> — ${escapeHtml(a.text)}</li>`).join('') + '</ul>'
+            : '<h3 class="ok">✓ Всё учтено</h3>';
+    }
+    renderFinOrders();
+    renderFinMonths();
+    renderFinWithdrawals();
+    renderFinOps();
+}
+
+function finCostCell(o, kind) {
+    const value = kind === 'purchase' ? o.purchase : o.shipping;
+    const fact = kind === 'purchase' ? o.purchase_is_fact : o.shipping_is_fact;
+    const text = value == null ? '<span class="fin-missing">не указано</span>' : `${fact ? '' : '~'}${rub(value)}${fact ? ' <span class="fin-ok">✓</span>' : ''}`;
+    return `<td class="num fin-edit" data-kind="${kind}" title="Нажмите, чтобы указать план или факт">${text}</td>`;
+}
+
+function renderFinOrders() {
+    const tbody = document.querySelector('#fin-orders-table tbody');
+    if (!tbody || !finData) return;
+    const q = (document.getElementById('fin-orders-search')?.value || '').toLowerCase().trim();
+    const f = document.getElementById('fin-orders-filter')?.value || 'all';
+    let rows = finData.orders.filter(o => {
+        if (f === 'missing') { if (!(o.missing_purchase || o.missing_shipping)) return false; }
+        else if (f !== 'all' && String(o.stage) !== f) return false;
+        return !q || String(o.id).includes(q) || (o.items || '').toLowerCase().includes(q);
+    });
+    const total = rows.length;
+    rows = rows.slice(0, finOrdersShown);
+    tbody.replaceChildren(...rows.map(o => {
+        const tr = document.createElement('tr');
+        const profitApprox = (o.exact ? '' : '~');
+        const profit = (o.missing_purchase || o.missing_shipping) ? '<span class="fin-missing">?</span>' : `${profitApprox}${signedRub(o.profit)}`;
+        tr.innerHTML = `
+            <td>#${o.id}</td>
+            <td class="fin-item">${escapeHtml(o.items || '')}</td>
+            <td><span class="fin-stage s${o.stage}" title="${escapeHtml(o.status)}">${FIN_STAGES[o.stage]}</span></td>
+            <td class="num">${rub(o.received)} / ${rub(o.price)}</td>
+            ${finCostCell(o, 'purchase')}
+            ${finCostCell(o, 'shipping')}
+            <td class="num">~${rub(o.tax)}</td>
+            <td class="num"><b>${o.need ? rub(o.need) : '0 ₽'}</b></td>
+            <td class="num ${o.profit < 0 ? 'neg' : 'pos'}">${profit}</td>`;
+        tr.querySelectorAll('.fin-edit').forEach(td => td.addEventListener('click', () => openFinCostEditor(td, o)));
+        return tr;
+    }));
+    document.getElementById('fin-orders-empty')?.classList.toggle('hidden', total > 0);
+    const more = document.getElementById('fin-orders-more');
+    if (more) { more.classList.toggle('hidden', total <= finOrdersShown); more.textContent = `Показать ещё (${total - finOrdersShown})`; }
+}
+
+function openFinCostEditor(td, o) {
+    if (td.querySelector('form')) return;
+    const kind = td.dataset.kind;
+    const order = (allOrders || []).find(x => x.id === o.id) || {};
+    const planKey = kind === 'purchase' ? 'planned_purchase_cost' : 'planned_shipping';
+    const factKey = kind === 'purchase' ? 'cost_price' : 'delivery_cost';
+    const planNow = kind === 'purchase' ? (o.purchase_is_fact ? '' : (o.purchase ?? '')) : (o.shipping_is_fact ? '' : (o.shipping ?? ''));
+    const factNow = (kind === 'purchase' ? (o.purchase_is_fact ? o.purchase : '') : (o.shipping_is_fact ? o.shipping : '')) || order[factKey] || '';
+    td.innerHTML = `<form class="fin-cost-form">
+        <label>План <input type="number" min="0" step="1" name="plan" value="${planNow}"></label>
+        <label>Факт <input type="number" min="0" step="1" name="fact" value="${factNow || ''}"></label>
+        <button type="submit" class="btn primary">✓</button></form>`;
+    const form = td.querySelector('form');
+    form.addEventListener('click', e => e.stopPropagation());
+    form.elements.fact.focus();
+    form.addEventListener('keydown', e => { if (e.key === 'Escape') renderFinOrders(); });
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const plan = form.elements.plan.value.trim();
+        const fact = form.elements.fact.value.trim();
+        const body = { [planKey]: plan === '' ? null : parseInt(plan, 10), [factKey]: fact === '' ? 0 : parseInt(fact, 10) };
+        try {
+            await fetchAPI(`/orders/${o.id}/costs`, { method: 'PATCH', body: JSON.stringify(body) });
+            await loadFinance();
+        } catch (err) { alert('Ошибка: ' + err.message); }
+    });
+}
+
+function renderFinMonths() {
+    const tbody = document.querySelector('#fin-months-table tbody');
+    if (!tbody || !finData) return;
+    tbody.innerHTML = finData.months.map(mm => `
+        <tr><td>${finMonthTitle(mm.month)}</td><td class="num">${mm.done}</td>
+        <td class="num">${mm.approx ? '~' : ''}${signedRub(mm.profit)}</td><td class="num">${signedRub(mm.other)}</td>
+        <td class="num"><b>${mm.approx ? '~' : ''}${signedRub(mm.total)}</b></td><td class="num">${rub(mm.withdrawn)}</td></tr>`).join('');
+    document.getElementById('fin-months-empty')?.classList.toggle('hidden', finData.months.length > 0);
+}
+
+function renderFinWithdrawals() {
+    const tbody = document.querySelector('#fin-wd-table tbody');
+    if (!tbody || !finData) return;
+    tbody.replaceChildren(...finData.withdrawals.map(w => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${isoRu(w.wd_date)}</td><td class="num"><b>${rub(w.amount)}</b></td><td>${escapeHtml(w.comment || '')}</td>
+            <td style="text-align:right;"><button type="button" class="delete-btn" title="Удалить">✕</button></td>`;
+        const btn = tr.querySelector('button');
+        btn.addEventListener('click', async () => {
+            if (!btn.dataset.confirm) { btn.dataset.confirm = '1'; btn.textContent = '✓?'; setTimeout(() => { delete btn.dataset.confirm; btn.textContent = '✕'; }, 2000); return; }
+            try { await fetchAPI(`/finance/withdrawals/${w.id}`, { method: 'DELETE' }); await loadFinance(); } catch (e) { alert('Ошибка: ' + e.message); }
+        });
+        return tr;
+    }));
+    document.getElementById('fin-wd-empty')?.classList.toggle('hidden', finData.withdrawals.length > 0);
+}
+
+const FIN_OP_LABELS = { payment: 'Оплата клиента', tax: 'Налоги и комиссии', purchase: 'Закупка', shipping: 'Доставка до РФ' };
+
+function renderFinOps() {
+    const tbody = document.querySelector('#fin-ops-table tbody');
+    if (!tbody || !finData) return;
+    const showAll = document.getElementById('fin-ops-all')?.checked;
+    const start = finData.start_date;
+    const rows = finData.operations.map(e => ({
+        day: e.created_at.slice(0, 10), amount: e.amount,
+        text: `${FIN_OP_LABELS[e.kind] || e.kind}${e.order_id ? ` · заказ #${e.order_id}` : ''}${e.items ? ` — ${e.items}` : ''}`, note: e.note
+    }));
+    finData.withdrawals.forEach(w => { if (showAll || w.wd_date >= start) rows.push({ day: w.wd_date, amount: -w.amount, text: 'Вывод владельцу' + (w.comment ? ` — ${w.comment}` : ''), note: '' }); });
+    (rawLedgerEntries || []).forEach(l => {
+        const p = ledgerDateParts(l.entry_date);
+        if (!p) return;
+        const day = `${p.year}-${p.month}-${p.day}`;
+        if (showAll || day >= start) rows.push({ day, amount: l.entry_type === 'income' ? l.amount : -l.amount, text: (l.entry_type === 'income' ? 'Прочий доход' : 'Прочий расход') + (l.description ? ` — ${l.description}` : ''), note: '' });
+    });
+    rows.sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+    tbody.innerHTML = rows.slice(0, 500).map(r => `
+        <tr><td style="white-space:nowrap;">${isoRu(r.day)}</td>
+        <td>${escapeHtml(r.text)}${r.note ? ` <span class="fin-note-inline">${escapeHtml(r.note)}</span>` : ''}</td>
+        <td class="num ${r.amount < 0 ? 'neg' : 'pos'}">${signedRub(r.amount)}</td></tr>`).join('');
+    document.getElementById('fin-ops-empty')?.classList.toggle('hidden', rows.length > 0);
+}
+
+function shiftFinMonth(delta) {
+    const [y, m] = window.finMonth.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    window.finMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    loadFinance();
+    renderLedger();
+}
+
+function openFinSettings() {
+    if (!finData) return;
+    const s = finData.settings;
+    const form = document.getElementById('fin-settings-form');
+    form.querySelector('.reg-error').classList.add('hidden');
+    document.getElementById('fin-set-start').value = s.start_date;
+    if (finData.baseline_at) document.getElementById('fin-set-start').min = finData.baseline_at;
+    document.getElementById('fin-set-balance').value = s.start_balance;
+    document.getElementById('fin-set-markup').value = s.fx_markup_pct;
+    document.getElementById('fin-set-tax').value = s.tax_pct;
+    const fx = finData.fx || {};
+    document.getElementById('fin-set-fx').innerHTML = fx.cbr
+        ? `Курс ЦБ на ${isoRu(fx.day)}: <b>${Number(fx.cbr).toFixed(2)} ₽</b>, для закупок с наценкой: <b>${Number(fx.rate).toFixed(2)} ₽</b>`
+        : 'Курс ЦБ сейчас недоступен — заказы будут без плановой закупки, пока он не загрузится.';
+    const statuses = [...new Set([...ALL_STATUSES_LIST, ...Object.keys(s.status_stages)])];
+    document.getElementById('fin-set-stages').innerHTML = statuses.map(st => `
+        <label class="fin-stage-row"><span>${escapeHtml(st)}</span>
+        <select data-status="${escapeHtml(st)}">${Object.entries(FIN_STAGES).map(([v, t]) => `<option value="${v}"${Number(s.status_stages[st] ?? 1) === Number(v) ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`).join('');
+    const norms = document.getElementById('fin-set-norms');
+    norms.innerHTML = '';
+    Object.entries(s.shipping_norms || {}).forEach(([k, v]) => addNormRow(k, v));
+    if (!Object.keys(s.shipping_norms || {}).length) ['Standard Pop', 'Deluxe', 'Jumbo'].forEach(k => addNormRow(k, ''));
+    openModal(document.getElementById('fin-settings-modal'));
+}
+
+function addNormRow(kind = '', value = '') {
+    const row = document.createElement('div');
+    row.className = 'fin-norm-row';
+    row.innerHTML = `<input type="text" list="product-kind-list" placeholder="Тип товара" value="${escapeHtml(kind)}"><input type="number" min="0" step="1" placeholder="₽" value="${value}"><button type="button" class="delete-btn" title="Убрать">✕</button>`;
+    row.querySelector('button').addEventListener('click', () => row.remove());
+    document.getElementById('fin-set-norms').appendChild(row);
+}
+
+(function initFinance() {
+    document.getElementById('fin-prev')?.addEventListener('click', () => shiftFinMonth(-1));
+    document.getElementById('fin-next')?.addEventListener('click', () => shiftFinMonth(1));
+    document.querySelectorAll('.fin-tab').forEach(btn => btn.addEventListener('click', () => {
+        document.querySelectorAll('.fin-tab').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.fin-panel').forEach(p => p.classList.toggle('hidden', p.dataset.finPanel !== btn.dataset.finTab));
+    }));
+    document.getElementById('fin-orders-search')?.addEventListener('input', () => { finOrdersShown = 100; renderFinOrders(); });
+    document.getElementById('fin-orders-filter')?.addEventListener('change', () => { finOrdersShown = 100; renderFinOrders(); });
+    document.getElementById('fin-orders-more')?.addEventListener('click', () => { finOrdersShown += 100; renderFinOrders(); });
+    document.getElementById('fin-ops-all')?.addEventListener('change', loadFinance);
+
+    const wdForm = document.getElementById('fin-withdraw-form');
+    document.getElementById('fin-withdraw-btn')?.addEventListener('click', () => {
+        wdForm.reset();
+        wdForm.querySelector('.reg-error').classList.add('hidden');
+        document.getElementById('fin-wd-date').value = new Date().toISOString().slice(0, 10);
+        openModal(document.getElementById('fin-withdraw-modal'));
+        setTimeout(() => document.getElementById('fin-wd-amount').focus(), 30);
+    });
+    wdForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = wdForm.querySelector('.reg-error');
+        const amount = parseInt(document.getElementById('fin-wd-amount').value, 10);
+        const wd_date = document.getElementById('fin-wd-date').value;
+        if (!wd_date || !(amount > 0)) { err.textContent = 'Укажите дату и сумму'; err.classList.remove('hidden'); return; }
+        try {
+            await fetchAPI('/finance/withdrawals', { method: 'POST', body: JSON.stringify({ wd_date, amount, comment: document.getElementById('fin-wd-comment').value }) });
+            closeModals();
+            await loadFinance();
+        } catch (ex) { err.textContent = ex.message; err.classList.remove('hidden'); }
+    });
+
+    const setForm = document.getElementById('fin-settings-form');
+    document.getElementById('fin-settings-btn')?.addEventListener('click', openFinSettings);
+    document.getElementById('fin-set-norm-add')?.addEventListener('click', () => addNormRow());
+    setForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const err = setForm.querySelector('.reg-error');
+        const status_stages = {};
+        setForm.querySelectorAll('[data-status]').forEach(sel => { status_stages[sel.dataset.status] = parseInt(sel.value, 10); });
+        const shipping_norms = {};
+        setForm.querySelectorAll('.fin-norm-row').forEach(r => {
+            const [k, v] = r.querySelectorAll('input');
+            if (k.value.trim() && parseInt(v.value, 10) > 0) shipping_norms[k.value.trim()] = parseInt(v.value, 10);
+        });
+        const body = {
+            start_date: document.getElementById('fin-set-start').value,
+            start_balance: parseInt(document.getElementById('fin-set-balance').value, 10) || 0,
+            fx_markup_pct: parseFloat(document.getElementById('fin-set-markup').value) || 0,
+            tax_pct: parseFloat(document.getElementById('fin-set-tax').value) || 0,
+            status_stages, shipping_norms
+        };
+        try {
+            await fetchAPI('/finance/settings', { method: 'PUT', body: JSON.stringify(body) });
+            closeModals();
+            await loadFinance();
+        } catch (ex) { err.textContent = ex.message; err.classList.remove('hidden'); }
+    });
+})();
 
 // Inline editing for cost_price and delivery_cost in accounting table
 window.startInlineEdit = function(orderId, field, currentVal, cellEl) {

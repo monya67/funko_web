@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1795400000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1795500000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -1285,27 +1285,123 @@
                 </div>
             </section>
 
-            <!-- ACCOUNTING TAB -->
+            <!-- ACCOUNTING TAB: management accounting built on the orders (rules in finance.py) -->
             <section id="accounting-tab" class="tab-content">
-                <div class="header-flex"><h2>Бухгалтерия</h2></div>
-                <div class="accounting-filters" style="margin-bottom:14px;">
-                    <select id="accounting-year-filter" class="filter-input xnarrow"><option value="">Год</option></select>
-                    <select id="accounting-month-filter" class="filter-input narrow">
-                        <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
-                    </select>
-                    <input type="text" id="accounting-search" class="filter-input wide" placeholder="Поиск по ID или товару...">
-                    <button onclick="window.toggleMarginMode()" class="filter-dropdown-btn" style="min-width:auto;" title="Переключить ₽ / %">
-                        Маржа: <span id="margin-mode-indicator">&#8381;</span>
-                    </button>
+                <div class="header-flex fin-head">
+                    <h2>Бухгалтерия</h2>
+                    <div class="fin-month" role="group" aria-label="Месяц">
+                        <button type="button" class="icon-btn" id="fin-prev" aria-label="Предыдущий месяц">‹</button>
+                        <span id="fin-month-label">—</span>
+                        <button type="button" class="icon-btn" id="fin-next" aria-label="Следующий месяц">›</button>
+                    </div>
+                    <div class="fin-head-actions">
+                        <button type="button" class="btn primary" id="fin-withdraw-btn">+ Вывод владельцу</button>
+                        <button type="button" class="btn secondary outline" id="fin-settings-btn">Настройки</button>
+                    </div>
+                </div>
+                <p class="fin-start-note hidden" id="fin-start-note"></p>
+
+                <div class="fin-cards">
+                    <article class="fin-card need">
+                        <div class="fin-card-label">Ещё потребуется на текущие заказы</div>
+                        <div class="fin-card-value" id="fin-need">—</div>
+                        <dl class="fin-card-rows">
+                            <div><dt>Выкупы (ещё не куплены)</dt><dd id="fin-need-purchase">—</dd></div>
+                            <div><dt>Доставка до РФ</dt><dd id="fin-need-shipping">—</dd></div>
+                        </dl>
+                    </article>
+                    <article class="fin-card avail">
+                        <div class="fin-card-label" id="fin-avail-label">Доступно к выводу</div>
+                        <div class="fin-card-value" id="fin-avail">—</div>
+                        <dl class="fin-card-rows">
+                            <div><dt>Деньги магазина по расчёту</dt><dd id="fin-cash">—</dd></div>
+                            <div><dt>Выведено с начала учёта</dt><dd id="fin-withdrawn-total">—</dd></div>
+                        </dl>
+                    </article>
+                    <article class="fin-card profit">
+                        <div class="fin-card-label" id="fin-profit-label">Прибыль месяца</div>
+                        <div class="fin-card-value" id="fin-profit">—</div>
+                        <dl class="fin-card-rows">
+                            <div><dt>Завершено заказов</dt><dd id="fin-done">—</dd></div>
+                            <div><dt>Выведено владельцем</dt><dd id="fin-month-withdrawn">—</dd></div>
+                        </dl>
+                    </article>
                 </div>
 
-                <!-- Ledger: manual income/expense -->
-                <div class="glass-panel" style="margin-bottom:20px;padding:16px 20px;">
+                <div class="fin-attention glass-panel" id="fin-attention"></div>
+
+                <div class="fin-tabs" role="tablist">
+                    <button type="button" class="fin-tab active" data-fin-tab="orders">Текущие заказы</button>
+                    <button type="button" class="fin-tab" data-fin-tab="months">Прибыль по месяцам</button>
+                    <button type="button" class="fin-tab" data-fin-tab="withdrawals">Выводы владельцу</button>
+                    <button type="button" class="fin-tab" data-fin-tab="ops">Операции</button>
+                    <button type="button" class="fin-tab" data-fin-tab="ledger">Прочие доходы и расходы</button>
+                </div>
+
+                <div class="fin-panel" data-fin-panel="orders">
+                    <div class="products-toolbar">
+                        <input type="search" id="fin-orders-search" placeholder="Поиск: номер заказа или товар…" aria-label="Поиск по заказам">
+                        <select id="fin-orders-filter" aria-label="Какие заказы показать">
+                            <option value="all">Все текущие</option>
+                            <option value="1">Ожидают выкупа</option>
+                            <option value="2">Выкуплены</option>
+                            <option value="3">Доставка до РФ оплачена</option>
+                            <option value="missing">Без стоимости закупки или доставки</option>
+                        </select>
+                    </div>
+                    <div class="glass-panel table-container">
+                        <table class="fin-table" id="fin-orders-table">
+                            <thead><tr>
+                                <th>Заказ</th><th>Товар</th><th>Этап</th><th class="num">Оплачено клиентом</th>
+                                <th class="num">Закупка</th><th class="num">Доставка РФ</th><th class="num">Налоги</th>
+                                <th class="num">Ещё потребуется</th><th class="num">Ожид. прибыль</th>
+                            </tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <p class="empty-msg hidden" id="fin-orders-empty">Нет заказов</p>
+                    </div>
+                    <div class="fin-more"><button type="button" class="btn secondary outline hidden" id="fin-orders-more">Показать ещё</button></div>
+                    <p class="ledger-hint">✓ — фактическая сумма, ~ — план из карточки товара. Нажмите на закупку или доставку, чтобы указать план или факт.</p>
+                </div>
+
+                <div class="fin-panel hidden" data-fin-panel="months">
+                    <div class="glass-panel table-container">
+                        <table class="fin-table" id="fin-months-table">
+                            <thead><tr><th>Месяц</th><th class="num">Завершено</th><th class="num">Прибыль заказов</th><th class="num">Прочие</th><th class="num">Итого</th><th class="num">Выведено</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <p class="empty-msg hidden" id="fin-months-empty">Завершённых заказов с начала учёта пока нет</p>
+                    </div>
+                    <p class="ledger-hint">Заказ попадает в прибыль месяца, когда он «Выдано» и оплачен на 100%. Выводы владельцу прибыль не уменьшают.</p>
+                </div>
+
+                <div class="fin-panel hidden" data-fin-panel="withdrawals">
+                    <div class="glass-panel table-container">
+                        <table class="fin-table" id="fin-wd-table">
+                            <thead><tr><th>Дата</th><th class="num">Сумма</th><th>Комментарий</th><th></th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <p class="empty-msg hidden" id="fin-wd-empty">Выводов пока не было</p>
+                    </div>
+                </div>
+
+                <div class="fin-panel hidden" data-fin-panel="ops">
+                    <label class="reg-check"><input type="checkbox" id="fin-ops-all"> Показать и то, что было до начала учёта (начальный снимок)</label>
+                    <div class="glass-panel table-container">
+                        <table class="fin-table" id="fin-ops-table">
+                            <thead><tr><th>Дата</th><th>Операция</th><th class="num">Сумма</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                        <p class="empty-msg hidden" id="fin-ops-empty">Операций с начала учёта пока нет</p>
+                    </div>
+                </div>
+
+                <div class="fin-panel hidden" data-fin-panel="ledger">
+                <div class="glass-panel" style="padding:16px 20px;">
                     <h3 style="margin:0 0 14px;font-size:1rem;color:var(--gray-light);">Прочие доходы и расходы <span id="ledger-period" style="font-weight:500;"></span></h3>
                     <div class="ledger-summary" id="ledger-summary">
                         <div class="ledger-summary-card income"><div class="label">Доходы</div><div class="value" id="ledger-income-total">0 ₽</div></div>
                         <div class="ledger-summary-card expense"><div class="label">Расходы</div><div class="value" id="ledger-expense-total">0 ₽</div></div>
-                        <div class="ledger-summary-card margin" title="Маржа заказов, у которых заполнены себестоимость и доставка"><div class="label">Маржа заказов</div><div class="value" id="ledger-margin-total">0 ₽</div><div class="sub" id="ledger-margin-count"></div></div>
                         <div class="ledger-summary-card net"><div class="label">Итог</div><div class="value" id="ledger-net-total">0 ₽</div></div>
                     </div>
                     <div class="ledger-add-form">
@@ -1333,49 +1429,6 @@
                         <p class="ledger-hint">Двойной клик по записи — изменить</p>
                     </div>
                 </div>
-                <div class="glass-panel table-container">
-                    <table id="accounting-table">
-                        <thead><tr>
-                            <th style="width:36px; text-align:center; color:var(--gray-light);">№</th>
-                            <th data-sort="id" style="cursor:pointer;white-space:nowrap;">ID &#8597;</th>
-                            <th data-sort="date" style="cursor:pointer;white-space:nowrap;">ДАТА &#8597;</th>
-                            <th>ТОВАРЫ</th>
-                            <th data-sort="price" style="cursor:pointer;white-space:nowrap;">СУММА &#8597;</th>
-                            <th data-sort="cost" style="cursor:pointer;white-space:nowrap;">СЕБЕСТ. &#8597;</th>
-                            <th data-sort="delivery" style="cursor:pointer;white-space:nowrap;">ДОСТАВКА &#8597;</th>
-                            <th data-sort="paid" style="cursor:pointer;white-space:nowrap;">ВНЕСЕНО &#8597;</th>
-                            <th onclick="window.toggleTaxes(event)" style="cursor:pointer;color: var(--pre);white-space:nowrap;" title="Нажмите для деталей">
-                                НАЛОГИ <span id="taxes-toggle-icon">[+]</span>
-                            </th>
-                            <th class="tax-column hidden tax-sub-col">УСН 6%</th>
-                            <th class="tax-column hidden tax-sub-col">ЧЕК 1.5%</th>
-                            <th class="tax-column hidden tax-sub-col">ЭКВ. 2%</th>
-                            <th data-sort="margin" style="cursor:pointer;color:var(--warn);white-space:nowrap;">МАРЖА &#8597;</th>
-                        </tr></thead>
-                        <tbody></tbody>
-                    </table>
-                    <p id="no-accounting" class="empty-msg hidden">Нет данных</p>
-                </div>
-                <!-- Accounting Pagination -->
-                <div class="pagination-bar" id="accounting-pagination">
-                    <div class="pagination-info">
-                        <span>Показано <b id="accounting-page-range">0–0</b> из <b id="accounting-total-count">0</b></span>
-                    </div>
-                    <div class="pagination-controls">
-                        <button type="button" class="btn-page" id="accounting-prev-btn" onclick="changePage('accounting', -1)">← Назад</button>
-                        <span class="page-indicator" id="accounting-page-indicator">Стр. 1 из 1</span>
-                        <button type="button" class="btn-page" id="accounting-next-btn" onclick="changePage('accounting', 1)">Вперёд →</button>
-                    </div>
-                    <div class="pagination-size">
-                        <span>Показывать по:</span>
-                        <div class="page-size-buttons" id="accounting-page-sizes">
-                            <button type="button" class="btn-size" data-size="10" onclick="setPageSize('accounting', 10)">10</button>
-                            <button type="button" class="btn-size active" data-size="20" onclick="setPageSize('accounting', 20)">20</button>
-                            <button type="button" class="btn-size" data-size="50" onclick="setPageSize('accounting', 50)">50</button>
-                            <button type="button" class="btn-size" data-size="100" onclick="setPageSize('accounting', 100)">100</button>
-                        </div>
-                        <input type="number" min="1" max="500" id="accounting-custom-size" class="custom-size-input" placeholder="Своё" title="Введите количество строк" onchange="setCustomPageSize('accounting', this.value)">
-                    </div>
                 </div>
             </section>
 
@@ -1445,6 +1498,49 @@
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline close-modal">Отмена</button>
                     <button type="submit" class="btn primary">Создать</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="fin-withdraw-modal" class="glass-panel modal hidden reg-modal">
+            <h3>Вывод владельцу</h3>
+            <form id="fin-withdraw-form" novalidate>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="fin-wd-date">Дата</label><input type="date" id="fin-wd-date" required></div>
+                    <div class="input-group"><label for="fin-wd-amount">Сумма, ₽</label><input type="number" id="fin-wd-amount" min="1" step="1" required></div>
+                </div>
+                <div class="input-group"><label for="fin-wd-comment">Комментарий</label><input type="text" id="fin-wd-comment" placeholder="необязательно"></div>
+                <p class="fin-note">Вывод уменьшает «Доступно к выводу», но не считается расходом магазина и не уменьшает прибыль.</p>
+                <p class="reg-error hidden" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                    <button type="submit" class="btn primary">Записать вывод</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="fin-settings-modal" class="glass-panel modal hidden reg-modal fin-settings">
+            <h3>Настройки бухгалтерии</h3>
+            <form id="fin-settings-form" novalidate>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="fin-set-start">Начало учёта</label><input type="date" id="fin-set-start" required></div>
+                    <div class="input-group"><label for="fin-set-balance">Деньги магазина на эту дату, ₽</label><input type="number" id="fin-set-balance" step="1"></div>
+                </div>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="fin-set-markup">Наценка к курсу ЦБ, %</label><input type="number" id="fin-set-markup" step="0.1"></div>
+                    <div class="input-group"><label for="fin-set-tax">Налоги и комиссии, % от оплаты</label><input type="number" id="fin-set-tax" step="0.1" min="0"></div>
+                </div>
+                <p class="fin-note" id="fin-set-fx">Курс ЦБ: —</p>
+                <h4 class="fin-set-h">Что означает каждый статус</h4>
+                <div id="fin-set-stages" class="fin-stages"></div>
+                <h4 class="fin-set-h">Норматив доставки до РФ по типу товара, ₽</h4>
+                <p class="fin-note">Используется, если в карточке товара доставка не указана.</p>
+                <div id="fin-set-norms" class="fin-norms"></div>
+                <button type="button" class="btn secondary outline" id="fin-set-norm-add">+ Тип товара</button>
+                <p class="reg-error hidden" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline close-modal">Отмена</button>
+                    <button type="submit" class="btn primary">Сохранить</button>
                 </div>
             </form>
         </div>
@@ -2178,6 +2274,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1795400000000"></script>
+    <script src="/static/app.js?v=1795500000000"></script>
 </body>
 </html>
