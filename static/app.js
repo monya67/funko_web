@@ -2040,9 +2040,68 @@ async function loadCatalog() {
         renderFranchiseChips();
         renderCatalog();
         renderHomeNew();
+        shuffleHeroFigures();
     } catch (err) {
         console.error('Error loading catalog:', err);
     }
+}
+
+// --- Hero collage: on every page load three random catalog figures take the place of the default boxes ---
+let heroShuffled = false;
+function shuffleHeroFigures() {
+    if (heroShuffled) return;
+    const slots = [...document.querySelectorAll('.hero-collage .hero-fig')];
+    const pool = rawCatalogProducts.filter(p => !p.hidden && (p.photo_id || '').trim());
+    if (!slots.length || !pool.length) return;
+    heroShuffled = true;
+    for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+    const picks = pool.slice(0, slots.length);
+    // product photos usually sit on a white backdrop: flood-fill it away from the edges so the box floats like
+    // the default cut-outs; returns null when the edge is not a plain light background
+    const cutOut = (img) => {
+        try {
+            const scale = Math.min(1, 700 / Math.max(img.naturalWidth, img.naturalHeight));
+            const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+            const c = document.createElement('canvas'); c.width = w; c.height = h;
+            const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
+            const d = ctx.getImageData(0, 0, w, h); const px = d.data;
+            const light = (i) => px[i + 3] < 30 || (px[i] > 232 && px[i + 1] > 232 && px[i + 2] > 232);
+            const seen = new Uint8Array(w * h); const stack = [];
+            let lightEdge = 0, edge = 0;
+            for (let x = 0; x < w; x++) { stack.push(x, (h - 1) * w + x); }
+            for (let y = 0; y < h; y++) { stack.push(y * w, y * w + w - 1); }
+            stack.forEach(k => { edge++; if (light(k * 4)) lightEdge++; });
+            if (lightEdge / edge < 0.85) return null;
+            while (stack.length) {
+                const k = stack.pop();
+                if (seen[k]) continue; seen[k] = 1;
+                if (!light(k * 4)) continue;
+                px[k * 4 + 3] = 0;
+                const x = k % w;
+                if (x > 0) stack.push(k - 1); if (x < w - 1) stack.push(k + 1);
+                if (k >= w) stack.push(k - w); if (k < w * (h - 1)) stack.push(k + w);
+            }
+            ctx.putImageData(d, 0, 0);
+            return c.toDataURL('image/png');
+        } catch (e) { return null; }
+    };
+    picks.forEach((p, i) => {
+        const slot = slots[i];
+        const img = new Image();
+        img.onload = () => {
+            const cut = cutOut(img);
+            slot.classList.add('hero-fig-swap');
+            setTimeout(() => {
+                slot.src = cut || img.src;
+                slot.classList.toggle('hero-fig-card', !cut);
+                slot.alt = p.name || '';
+                const call = document.querySelector(`.hero-callout-${i + 1}`);
+                if (call) call.textContent = p.name || '';
+                slot.classList.remove('hero-fig-swap');
+            }, 220);
+        };
+        img.src = `/api/photos/${encodeURIComponent(p.photo_id.split(',')[0].trim())}`;
+    });
 }
 
 // Helper to determine badge CSS class

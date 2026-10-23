@@ -4606,3 +4606,9 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .desc-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
 .desc-label-row label { margin: 0; }
 #product-description.ai-busy { opacity: 0.55; }
+
+/* hero figures swapped in from the catalog */
+.hero-fig { transition: opacity 0.22s ease; }
+.hero-fig.hero-fig-swap { opacity: 0; }
+.hero-fig.hero-fig-card { background: #fff; border-radius: 14px; padding: 4%; box-sizing: border-box; object-fit: contain; aspect-ratio: 1 / 1; }
+.hero-callout { max-width: 24%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
