@@ -2065,7 +2065,8 @@ function shuffleHeroFigures() {
             const c = document.createElement('canvas'); c.width = w; c.height = h;
             const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0, w, h);
             const d = ctx.getImageData(0, 0, w, h); const px = d.data;
-            const light = (i) => px[i + 3] < 30 || (px[i] > 232 && px[i + 1] > 232 && px[i + 2] > 232);
+            // only the near-pure white of the studio backdrop: light-grey box panels and the window must stay
+            const light = (i) => px[i + 3] < 30 || (Math.min(px[i], px[i + 1], px[i + 2]) > 246 && Math.max(px[i], px[i + 1], px[i + 2]) - Math.min(px[i], px[i + 1], px[i + 2]) < 8);
             const seen = new Uint8Array(w * h); const stack = [];
             let lightEdge = 0, edge = 0;
             for (let x = 0; x < w; x++) { stack.push(x, (h - 1) * w + x); }
@@ -2080,6 +2081,15 @@ function shuffleHeroFigures() {
                 const x = k % w;
                 if (x > 0) stack.push(k - 1); if (x < w - 1) stack.push(k + 1);
                 if (k >= w) stack.push(k - w); if (k < w * (h - 1)) stack.push(k + w);
+            }
+            // soften the cut: a pixel next to the removed backdrop keeps half its opacity, so edges do not look torn
+            const alpha = new Uint8ClampedArray(w * h);
+            for (let k = 0; k < w * h; k++) alpha[k] = px[k * 4 + 3];
+            for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+                const k = y * w + x;
+                if (!alpha[k]) continue;
+                const n = (alpha[k - 1] === 0) + (alpha[k + 1] === 0) + (alpha[k - w] === 0) + (alpha[k + w] === 0);
+                if (n) px[k * 4 + 3] = Math.round(alpha[k] * (1 - n * 0.2));
             }
             ctx.putImageData(d, 0, 0);
             return c.toDataURL('image/png');
