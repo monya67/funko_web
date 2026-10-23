@@ -56,6 +56,10 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "Funko Stop")
+# With a sending service (Brevo, Unisender) the login is not an address: the letters come from MAIL_FROM
+# (e.g. noreply@funkostop.org, the domain verified there), and replies go to MAIL_REPLY_TO.
+MAIL_FROM = os.getenv("MAIL_FROM", "").strip() or SMTP_USER
+MAIL_REPLY_TO = os.getenv("MAIL_REPLY_TO", "").strip()
 SITE_URL = os.getenv("SITE_URL", "https://funkostop.org").rstrip("/")
 
 ALGORITHM = "HS256"
@@ -1887,9 +1891,11 @@ def _smtp_send(to_addr, subject, html, text):
     from email.utils import formataddr, make_msgid
     msg = EmailMessage()
     msg["Subject"] = subject
-    msg["From"] = formataddr((MAIL_FROM_NAME, SMTP_USER))
+    msg["From"] = formataddr((MAIL_FROM_NAME, MAIL_FROM))
+    if MAIL_REPLY_TO:
+        msg["Reply-To"] = MAIL_REPLY_TO
     msg["To"] = to_addr
-    msg["Message-ID"] = make_msgid(domain=SMTP_USER.split("@")[-1] or None)
+    msg["Message-ID"] = make_msgid(domain=MAIL_FROM.split("@")[-1] or None)
     msg.set_content(text)
     msg.add_alternative(html, subtype="html")
     if SMTP_PORT == 465:
