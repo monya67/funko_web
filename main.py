@@ -45,7 +45,8 @@ PHOTO_STORAGE_CHAT_ID = os.getenv("PHOTO_STORAGE_CHAT_ID", "").strip()
 
 # Product descriptions written by an LLM (Groq, OpenAI-compatible API). Empty key = the button says it is off.
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b").strip()
+# Qwen knew the characters best in our tests but has a small per-minute limit; GPT-OSS takes over when it is busy
+GROQ_MODELS = [m.strip() for m in os.getenv("GROQ_MODELS", "qwen/qwen3.8-27b,openai/gpt-oss-120b").split(",") if m.strip()]
 
 TBANK_TERMINAL_KEY = os.getenv("TBANK_TERMINAL_KEY", "")
 TBANK_PASSWORD = os.getenv("TBANK_PASSWORD", "")
@@ -1632,15 +1633,25 @@ class DescribeIn(BaseModel):
     badge: str = ""
 
 
+# Style taken from descriptions the shop wrote itself: search-friendly, gift angle, names in both languages.
+# Their false bits (an "exclusive" series, "bobblehead") are left out of the examples on purpose.
 DESCRIBE_SYSTEM_PROMPT = (
-    "Ты пишешь описания товаров для магазина коллекционных фигурок. Пиши по-русски, 3–4 предложения, живо, но без рекламных штампов. "
-    "Не упоминай магазин.\n"
-    "Сначала 2–3 предложения о персонаже: кто он, чем известен в своём произведении, его характер и узнаваемые черты. "
-    "Позу, аксессуары и детали самой фигурки не описывай: ты её не видишь. Пиши только то, в чём уверен; если персонажа знаешь плохо, напиши меньше, но не выдумывай.\n"
-    "Последнее предложение о самой фигурке: линейка, номер и стикер, если они даны во входных данных. "
-    "Не выдумывай даты выхода, эксклюзивность, тираж, размер, комплектацию.\n"
-    "Не используй длинное тире (—) и короткое тире (–) вообще: строй предложения через запятые и точки. "
-    "Без эмодзи, без кавычек вокруг текста, без призывов купить."
+    "Ты пишешь описания товаров для интернет-магазина коллекционных фигурок, чтобы их находили в поиске. Пиши по-русски, 3–4 предложения.\n"
+    "Естественно вплетай ключевые слова: название бренда и линейки (например Funko Pop), «коллекционная виниловая фигурка», "
+    "имя персонажа по-английски и по-русски, название фильма, сериала или игры по-английски и по-русски, номер фигурки, "
+    "«оригинальная», «фирменная коробка», «подарок для фанатов». Одно предложение о персонаже: кто он и чем известен.\n"
+    "Строго: не выдумывай эксклюзивность, тираж, даты выхода, размер, комплектацию, позу и аксессуары фигурки; "
+    "эксклюзив или стикер называй только если он есть во входных данных. Бренд называй только если он дан или очевиден из линейки.\n"
+    "Не используй тире (— и –), строй предложения через запятые и точки. Без эмодзи, без кавычек вокруг текста, без восклицаний.\n\n"
+    "Пример 1. Вход: Название: Paul Atreides; Номер: 2152; Бренд: Funko; Серия: Dune.\n"
+    "Ответ: Оригинальная коллекционная виниловая фигурка Funko Pop Paul Atreides (Пол Атрейдес) из вселенной Dune (Дюна). "
+    "Пол, наследник дома Атрейдес, которому предстоит стать лидером фрименов на Арракисе. Фигурка под номером 2152 поставляется "
+    "в фирменной коробке и станет отличным подарком для фанатов фильма и книг Фрэнка Герберта.\n\n"
+    "Пример 2. Вход: Название: Saul Goodman; Номер: 1938; Бренд: Funko; Серия: Better Call Saul.\n"
+    "Ответ: Коллекционная виниловая фигурка Funko Pop Saul Goodman (Сол Гудман) из сериалов Better Call Saul (Лучше звоните Солу) "
+    "и Breaking Bad (Во все тяжкие). Сол, изворотливый адвокат из Альбукерке, которого невозможно забыть благодаря кричащим костюмам "
+    "и умению выкрутиться из любой ситуации. Оригинальная фигурка под номером 1938 в фирменной коробке станет украшением полки "
+    "и отличным подарком для фанатов сериала."
 )
 
 
@@ -1664,26 +1675,27 @@ async def ai_describe(body: DescribeIn, admin: dict = Depends(require_admin)):
         raise HTTPException(status_code=503, detail="Генерация описаний выключена: на сервере не задан GROQ_API_KEY")
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Сначала укажите название товара")
-    try:
-        async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(45.0, connect=10.0)) as client:
-            r = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json={"model": GROQ_MODEL, "temperature": 0.2, "max_tokens": 700,
-                      "messages": [{"role": "system", "content": DESCRIBE_SYSTEM_PROMPT},
-                                   {"role": "user", "content": describe_user_prompt(body)}]})
-        data = r.json()
-        if r.status_code != 200:
-            print(f"Groq error {r.status_code}: {data}")
-            raise HTTPException(status_code=502, detail="Сервис генерации не ответил, попробуйте ещё раз")
-        text = clean_description(data["choices"][0]["message"]["content"])
-    except HTTPException:
-        raise
-    except Exception as exc:
-        print(f"Groq request failed: {exc!r}")
-        raise HTTPException(status_code=502, detail="Сервис генерации не ответил, попробуйте ещё раз")
+    text = ""
+    async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(45.0, connect=10.0)) as client:
+        for model in GROQ_MODELS:
+            try:
+                r = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    json={"model": model, "temperature": 0.2, "max_tokens": 2500, "reasoning_effort": "medium",
+                          "messages": [{"role": "system", "content": DESCRIBE_SYSTEM_PROMPT},
+                                       {"role": "user", "content": describe_user_prompt(body)}]})
+                data = r.json()
+                if r.status_code == 200:
+                    text = clean_description(data["choices"][0]["message"]["content"])
+                    if text:
+                        break
+                else:
+                    print(f"Groq {model} error {r.status_code}: {str(data)[:300]}")
+            except Exception as exc:
+                print(f"Groq {model} request failed: {exc!r}")
     if not text:
-        raise HTTPException(status_code=502, detail="Пустой ответ, попробуйте ещё раз")
+        raise HTTPException(status_code=502, detail="Сервис генерации не ответил, попробуйте ещё раз через минуту")
     return {"description": text}
 
 
