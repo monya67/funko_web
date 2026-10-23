@@ -780,7 +780,7 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
     async with pool.acquire() as db:
         # Grab old status and TG ID to check if it changed
         old_data = await db.fetchrow(
-            "SELECT o.status, c.user_tg_id FROM orders o JOIN clients c ON o.client_id = c.id WHERE o.id = $1", 
+            "SELECT o.status, c.user_tg_id, COALESCE(c.email, '') AS email FROM orders o JOIN clients c ON o.client_id = c.id WHERE o.id = $1",
             order_id
         )
         
@@ -799,6 +799,12 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
         elif order.status != FINAL_STATUS and old_data and old_data["status"] == FINAL_STATUS:
             await db.execute("UPDATE orders SET completed_at = NULL WHERE id = $1", order_id)
         await reconcile_order(db, order_id)
+
+        # A status change reaches the client by e-mail too (when we know the address)
+        if old_data and old_data["email"] and old_data["status"] != order.status and order.status != AWAITING_PAYMENT:
+            subject, html, text = status_email(
+                {"id": order_id, "items": order.items, "total_price": order.total_price, "paid_amount": order.paid_amount}, order.status)
+            asyncio.create_task(send_client_email(old_data["email"], subject, html, text))
 
         # If status changed, send notification to client
         if old_data and old_data["user_tg_id"] and BOT_TOKEN and old_data["status"] != order.status:
@@ -1830,6 +1836,78 @@ def _smtp_send(to_addr, subject, html, text):
             s.starttls()
             s.login(SMTP_USER, SMTP_PASSWORD)
             s.send_message(msg)
+
+
+# What the client reads under the new status: one plain sentence per stage of the order
+STATUS_MAIL_HINTS = {
+    "Заказ принят в обработку": "Мы получили заказ и готовим выкуп.",
+    "Заказ ожидает отправки из магазина": "Фигурка выкуплена, ждём, когда магазин её отправит.",
+    "Заказ едет на склад США": "Посылка едет на наш склад в США.",
+    "Заказ начал сортировку на складе США": "Посылка на складе в США, её готовят к отправке в Россию.",
+    "Ожидает рассылки из США": "Ждём отправки со склада в США.",
+    "Ожидает выхода в продажу": "Это предзаказ: ждём официального выхода фигурки.",
+    "Заказ отправлен из США на наш склад в Россию": "Посылка летит в Россию.",
+    "Заказ проходит таможенное оформление": "Посылка проходит таможню.",
+    "Заказ прибыл в магазин и готов к выдаче": "Заказ в Москве и готов к выдаче или отправке. Напишите менеджеру, как удобнее получить.",
+    "Выдано": "Заказ выдан. Спасибо, что выбрали Funko Stop!",
+}
+
+
+def status_email(order, status):
+    """(subject, html, text) of the 'your order changed status' e-mail."""
+    oid = order["id"]
+    total = int(order["total_price"] or 0)
+    paid = int(order["paid_amount"] or 0)
+    left = max(0, total - paid)
+    hint = STATUS_MAIL_HINTS.get(status, "")
+    red, ink, muted, line = "#B3121B", "#141414", "#6B6B6B", "#E8E4DE"
+    items = "".join(
+        f'<tr><td style="padding:6px 0;border-bottom:1px solid {line};font:15px/1.4 Arial,sans-serif;color:{ink};">{_h(l.strip())}</td></tr>'
+        for l in str(order["items"] or "").split("\n") if l.strip())
+    rub = lambda v: f"{v:,} ₽".replace(",", " ")
+    left_row = (f'<tr><td style="padding:4px 0;font:14px Arial,sans-serif;color:{muted};">Осталось доплатить</td>'
+                f'<td align="right" style="padding:4px 0;font:bold 15px Arial,sans-serif;color:{red};">{rub(left)}</td></tr>') if left else ""
+    html = f"""<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Заказ #{oid}</title></head>
+<body style="margin:0;padding:0;background:#EFEBE5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EFEBE5;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;">
+  <tr><td style="background:{ink};padding:24px 28px;">
+    <div style="font:normal 22px/1 Impact,'Arial Narrow',Arial,sans-serif;letter-spacing:1px;color:#FFFFFF;">FUNKO <span style="color:#E5484D;">STOP</span></div>
+    <div style="margin-top:18px;font:14px Arial,sans-serif;color:#BDBDBD;">Заказ #{oid}: новый статус</div>
+    <div style="margin-top:6px;font:normal 26px/1.1 Impact,'Arial Narrow',Arial,sans-serif;text-transform:uppercase;color:#FFFFFF;">{_h(status)}</div>
+    {f'<div style="margin-top:10px;font:15px/1.5 Arial,sans-serif;color:#E8E8E8;">{_h(hint)}</div>' if hint else ''}
+  </td></tr>
+  <tr><td style="padding:20px 28px 4px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">{items}</table></td></tr>
+  <tr><td style="padding:6px 28px 4px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr><td style="padding:4px 0;font:14px Arial,sans-serif;color:{muted};">Оплачено</td><td align="right" style="padding:4px 0;font:bold 15px Arial,sans-serif;color:{ink};">{rub(paid)} из {rub(total)}</td></tr>{left_row}
+  </table></td></tr>
+  <tr><td align="center" style="padding:20px 28px 8px;">
+    <a href="{SITE_URL}/orders" style="display:inline-block;padding:13px 28px;background:{red};color:#FFFFFF;border-radius:999px;font:bold 15px Arial,sans-serif;text-decoration:none;">Открыть личный кабинет</a>
+  </td></tr>
+  <tr><td style="padding:18px 28px 24px;font:12px/1.5 Arial,sans-serif;color:{muted};border-top:1px solid {line};">
+    Вопросы по заказу — менеджеру в Telegram <a href="https://t.me/Funko_Stop" style="color:{red};">@Funko_Stop</a>.<br>
+    Письмо отправлено, потому что у вас есть заказ на <a href="{SITE_URL}" style="color:{muted};">funkostop.org</a>.
+  </td></tr>
+</table></td></tr></table></body></html>"""
+    text = "\n".join([f"Заказ #{oid}: новый статус — {status}.", *([hint] if hint else []), "",
+                      str(order["items"] or ""), "", f"Оплачено: {paid} из {total} ₽",
+                      *([f"Осталось доплатить: {left} ₽"] if left else []), "", f"Личный кабинет: {SITE_URL}/orders"])
+    return f"Заказ #{oid}: {status} — Funko Stop", html, text
+
+
+async def send_client_email(to_addr, subject, html, text):
+    """Best effort: a failed e-mail is logged and never breaks the order flow."""
+    if not (SMTP_USER and SMTP_PASSWORD):
+        print("client e-mail skipped: SMTP_USER / SMTP_PASSWORD not set")
+        return False
+    if not to_addr or not valid_email(to_addr):
+        return False
+    try:
+        await asyncio.to_thread(_smtp_send, to_addr, subject, html, text)
+        return True
+    except Exception as e:
+        print(f"client e-mail failed: {e}")
+        return False
 
 
 async def send_order_email(to_addr, order, note=""):

@@ -364,3 +364,12 @@ def test_upload_rejects_files_that_are_not_images():
         assert "JPG" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_status_email_names_the_status_and_what_is_left_to_pay():
+    order = {"id": 480, "items": "2536 - Vox\n1975 - Damon x2", "total_price": 6000, "paid_amount": 3000}
+    subject, html, text = main.status_email(order, "Заказ прибыл в магазин и готов к выдаче")
+    assert "480" in subject and "готов к выдаче" in subject
+    assert "Напишите менеджеру" in html and "Осталось доплатить" in html and "1975 - Damon x2" in html
+    _, html2, _ = main.status_email({**order, "paid_amount": 6000, "items": "<b>x</b>"}, "Выдано")
+    assert "Осталось доплатить" not in html2 and "&lt;b&gt;" in html2
