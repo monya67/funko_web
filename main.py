@@ -207,6 +207,10 @@ async def startup():
         """)
         await db.execute("CREATE TABLE IF NOT EXISTS finance_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
 
+        # Photos live in Telegram; a copy of every converted image is kept here, so a restart of the server
+        # does not send every visitor's photo request to Telegram again
+        await db.execute("CREATE TABLE IF NOT EXISTS photo_cache (key TEXT PRIMARY KEY, data BYTEA NOT NULL, created_at TIMESTAMPTZ DEFAULT now())")
+
         # Promo codes from the Telegram bot's game (table series_codes belongs to the bot and is only read here)
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_discount INTEGER DEFAULT 0")
@@ -2336,8 +2340,11 @@ HERO_CACHE = {}
 async def hero_image_bytes(photo_id):
     photo_id = first_photo_id(photo_id)
     if photo_id not in HERO_CACHE:
-        src = await get_telegram_photo(photo_id)
-        HERO_CACHE[photo_id] = await asyncio.to_thread(hero_cutout, src.body)
+        data = await photo_cache_get("h:" + photo_id)
+        if data is None:
+            data = await asyncio.to_thread(hero_cutout, await telegram_photo_bytes(photo_id))
+            await photo_cache_put("h:" + photo_id, data)
+        HERO_CACHE[photo_id] = data
     return HERO_CACHE[photo_id]
 
 
@@ -2350,7 +2357,7 @@ async def get_hero_photo(photo_id: str):
     except Exception as exc:
         print(f"hero cutout failed for {photo_id[:12]}: {exc!r}")
         raise HTTPException(status_code=404, detail="Photo not available")
-    return Response(content=data, media_type="image/webp", headers={"Cache-Control": "public, max-age=2592000"})
+    return Response(content=data, media_type="image/webp", headers=PHOTO_HEADERS)
 
 
 HERO_PRODUCTS = {"at": 0.0, "items": []}
@@ -2380,6 +2387,7 @@ async def warm_hero_cutouts():
 
 
 INDEX_HTML = {"mtime": 0.0, "text": ""}
+HERO_DEFAULTS = ("dexter-box.webp", "doom-box.webp", "coraline-box.webp")
 HERO_IMG_RE = re.compile(r'<img class="hero-fig hero-fig-(\d)"[^>]*>')
 HERO_CALLOUT_RE = re.compile(r'<span class="hero-callout hero-callout-(\d)">[^<]*</span>')
 
@@ -2396,8 +2404,10 @@ def render_index(picks):
         return page
     def img(mt):
         name, photo = picks[int(mt.group(1)) - 1]
+        fallback = HERO_DEFAULTS[int(mt.group(1)) - 1]
         return (f'<img class="hero-fig hero-fig-{mt.group(1)}" src="/api/photos/{html_lib.escape(photo, quote=True)}/hero.webp" '
-                f'alt="{html_lib.escape(name, quote=True)}" width="{HERO_W}" height="{HERO_H}" fetchpriority="high">')
+                f'alt="" width="{HERO_W}" height="{HERO_H}" fetchpriority="high" '
+                f'onerror="this.onerror=null;this.src=\'/static/images/hero/{fallback}\'">')
     def callout(mt):
         return f'<span class="hero-callout hero-callout-{mt.group(1)}">{html_lib.escape(picks[int(mt.group(1)) - 1][0])}</span>'
     page = HERO_IMG_RE.sub(img, page)
@@ -2413,46 +2423,73 @@ async def spa_index():
 
 @app.get("/api/photos/{photo_id}/mail.jpg")
 async def get_mail_photo(photo_id: str):
-    res = await get_telegram_photo(photo_id)
+    data = await telegram_photo_bytes(photo_id)
     try:
-        jpeg = await asyncio.to_thread(webp_to_mail_jpeg, res.body)
+        jpeg = await asyncio.to_thread(webp_to_mail_jpeg, data)
     except Exception:
-        return res
+        return Response(content=data, media_type="image/webp", headers=PHOTO_HEADERS)
     return Response(content=jpeg, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=604800"})
+
+
+PHOTO_HEADERS = {"Cache-Control": "public, max-age=31536000, immutable"}  # a Telegram file id never changes content
+
+
+async def photo_cache_get(key):
+    try:
+        async with pool.acquire() as db:
+            return await db.fetchval("SELECT data FROM photo_cache WHERE key = $1", key)
+    except Exception as exc:
+        print(f"photo cache read failed: {exc!r}")
+        return None
+
+
+async def photo_cache_put(key, data):
+    try:
+        async with pool.acquire() as db:
+            await db.execute("INSERT INTO photo_cache (key, data) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING", key, data)
+    except Exception as exc:
+        print(f"photo cache write failed: {exc!r}")
+
+
+async def telegram_photo_bytes(photo_id):
+    """Converted WebP of a stored photo: memory, then the database, then Telegram (once)."""
+    photo_id = first_photo_id(photo_id)
+    if photo_id in IMAGE_CACHE:
+        return IMAGE_CACHE[photo_id]
+    data = await photo_cache_get("p:" + photo_id)
+    if data is None:
+        if not BOT_TOKEN:
+            raise HTTPException(status_code=500, detail="BOT_TOKEN not configured")
+        try:
+            async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(20.0, connect=8.0)) as client:
+                res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getFile", params={"file_id": photo_id})
+                info = res.json()
+                if not info.get("ok"):
+                    raise HTTPException(status_code=404, detail="Photo not found in Telegram")
+                photo_res = await client.get(f"https://api.telegram.org/file/bot{BOT_TOKEN}/{info['result']['file_path']}")
+        except HTTPException:
+            raise
+        except Exception as exc:
+            print(f"Telegram photo fetch failed for {photo_id[:12]}: {exc!r}")
+            raise HTTPException(status_code=504, detail="Photo storage did not answer")
+        if photo_res.status_code != 200:
+            raise HTTPException(status_code=404, detail="Failed to download photo")
+        try:
+            data = await asyncio.to_thread(convert_to_webp, photo_res.content)
+        except Exception:
+            data = photo_res.content
+        await photo_cache_put("p:" + photo_id, data)
+    if len(IMAGE_CACHE) >= CACHE_LIMIT:
+        IMAGE_CACHE.clear()
+    IMAGE_CACHE[photo_id] = data
+    return data
 
 
 @app.get("/api/photos/{photo_id}")
 async def get_telegram_photo(photo_id: str):
-    photo_id = first_photo_id(photo_id)
-    if photo_id in IMAGE_CACHE:
-        return Response(content=IMAGE_CACHE[photo_id], media_type="image/webp", headers={"Content-Disposition": f'inline; filename="{photo_id}.webp"'})
-
-    if not BOT_TOKEN:
-        raise HTTPException(status_code=500, detail="BOT_TOKEN not configured")
-        
-    async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
-        res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getFile?file_id={photo_id}")
-        data = res.json()
-        if not data.get("ok"):
-            raise HTTPException(status_code=404, detail="Photo not found in Telegram")
-            
-        file_path = data["result"]["file_path"]
-        
-        photo_res = await client.get(f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_path}")
-        if photo_res.status_code != 200:
-            raise HTTPException(status_code=404, detail="Failed to download photo")
-            
-        try:
-            import asyncio
-            webp_bytes = await asyncio.to_thread(convert_to_webp, photo_res.content)
-            
-            if len(IMAGE_CACHE) >= CACHE_LIMIT:
-                IMAGE_CACHE.clear()
-            IMAGE_CACHE[photo_id] = webp_bytes
-            
-            return Response(content=webp_bytes, media_type="image/webp", headers={"Content-Disposition": f'inline; filename="{photo_id}.webp"'})
-        except Exception as e:
-            return Response(content=photo_res.content, media_type="image/jpeg", headers={"Content-Disposition": f'inline; filename="{photo_id}.jpg"'})
+    data = await telegram_photo_bytes(photo_id)
+    kind = "image/webp" if data[:4] == b"RIFF" else "image/jpeg"
+    return Response(content=data, media_type=kind, headers=PHOTO_HEADERS)
 
 MAX_UPLOAD_BYTES = 30 * 1024 * 1024
 

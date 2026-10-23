@@ -426,7 +426,7 @@ def test_index_gets_three_catalog_figures():
     page = main.render_index([("Vox", "AAA"), ("Saul <Goodman>", "BBB"), ("Paul", "CCC")])
     assert '/api/photos/AAA/hero.webp' in page and '/api/photos/CCC/hero.webp' in page
     assert "Saul &lt;Goodman&gt;" in page and 'hero-collage from-catalog' in page
-    assert "dexter-box" not in page
+    assert 'src="/static/images/hero/dexter-box' not in page  # the default stays only as the onerror fallback
     assert "dexter-box" in main.render_index([])
 
 
