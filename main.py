@@ -138,7 +138,6 @@ async def startup():
     pool = await asyncpg.create_pool(DATABASE_URL)
     app.state.cleanup_task = asyncio.create_task(unpaid_orders_loop())
     app.state.finance_baseline = asyncio.create_task(finance_baseline())
-    app.state.hero_warmup = asyncio.create_task(warm_hero_cutouts())
     # Add archived column if it doesn't exist yet
     async with pool.acquire() as db:
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE")
@@ -2276,7 +2275,7 @@ def hero_cutout(content):
     its outline and scaled to the same height, bottom-centred. Every box comes out the same size whatever the photo's
     margins. A photo whose edges are not a plain white backdrop is put on a rounded white card instead."""
     img = ImageOps.exif_transpose(Image.open(io.BytesIO(content))).convert("RGBA")
-    img.thumbnail((900, 900), Image.LANCZOS)
+    img.thumbnail((520, 520), Image.LANCZOS)  # small enough to process in a few tens of ms on a weak CPU
     w, h = img.size
     rgb = img.convert("RGB")
     r, g, b = rgb.split()
@@ -2301,10 +2300,9 @@ def hero_cutout(content):
         card.save(out, format="WEBP", quality=90)
         return out.getvalue()
 
-    for p in edge:  # flood the backdrop from every white edge pixel (128 = reached from outside)
-        if wp[p] == 255:
-            ImageDraw.floodfill(white, p, 128, thresh=0)
-    alpha = white.point(lambda v: 0 if v == 128 else 255)
+    # no flood fill at all (a per-pixel Python loop froze the site on Render's small CPU): everything that is not
+    # backdrop white belongs to the box, and the convex hull below fills the white lid and window inside it
+    alpha = ImageChops.invert(white)
     # a box is convex: its white lid and window touch the backdrop and were flooded too. The convex hull of what is
     # left restores them with straight, clean edges (no staircase on the lid corners). Specks are dropped first.
     solid = alpha.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.MaxFilter(5))
