@@ -39,6 +39,9 @@ if not DATABASE_URL:
 SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key-change-me")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
+# Product and order photos live in Telegram. A private channel set here keeps them out of the admins' chats;
+# without it the photo goes to the first admin and is deleted right away (the file stays reachable).
+PHOTO_STORAGE_CHAT_ID = os.getenv("PHOTO_STORAGE_CHAT_ID", "").strip()
 
 TBANK_TERMINAL_KEY = os.getenv("TBANK_TERMINAL_KEY", "")
 TBANK_PASSWORD = os.getenv("TBANK_PASSWORD", "")
@@ -2086,7 +2089,7 @@ def prepare_upload_image(content):
 
 @app.post("/api/upload_photo")
 async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(require_admin)):
-    missing = [n for n, v in (("BOT_TOKEN", BOT_TOKEN), ("ADMIN_IDS", ADMIN_IDS)) if not v]
+    missing = [n for n, v in (("BOT_TOKEN", BOT_TOKEN), ("ADMIN_IDS", PHOTO_STORAGE_CHAT_ID or ADMIN_IDS)) if not v]
     if missing:
         raise HTTPException(status_code=500, detail=f"Загрузка фото не настроена на сервере: не задана переменная {', '.join(missing)}")
 
@@ -2104,18 +2107,20 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
             # Sent as an opaque .bin on purpose: sendPhoto recompresses to 1280px JPEG, and a
             # .webp via sendDocument comes back as a sticker (no "document" key, may be shrunk).
             files = {"document": ("photo.bin", content, "application/octet-stream")}
-            data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
+            storage_chat = PHOTO_STORAGE_CHAT_ID or ADMIN_IDS[0]
+            data = {"chat_id": storage_chat, "disable_notification": "true"}
             res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
             res_data = res.json()
             if not res_data.get("ok"):
                 raise HTTPException(status_code=502, detail=f"Telegram не принял фото: {res_data.get('description', 'неизвестная ошибка')}")
             message = res_data["result"]
 
-            # Delete before anything else can fail, so the storage message never lingers in the admin's chat
-            try:
-                await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": ADMIN_IDS[0], "message_id": message["message_id"]})
-            except Exception:
-                pass
+            # In an admin's personal chat the storage message is deleted at once; a storage channel keeps it
+            if not PHOTO_STORAGE_CHAT_ID:
+                try:
+                    await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": storage_chat, "message_id": message["message_id"]})
+                except Exception:
+                    pass
     except HTTPException:
         raise
     except Exception as exc:
