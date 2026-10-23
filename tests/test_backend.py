@@ -403,3 +403,28 @@ def test_ai_description_is_off_without_a_key(monkeypatch):
 
 def test_ai_description_has_no_dashes():
     assert main.clean_description("Вокс — демон-телеведущий. Фигурка – номер 2536.") == "Вокс, демон-телеведущий. Фигурка, номер 2536."
+
+
+def test_hero_cutout_gives_equal_frames_and_removes_the_white_backdrop():
+    import io
+    from PIL import Image, ImageDraw
+    for size, box in (((800, 800), (250, 150, 550, 700)), ((1200, 900), (100, 100, 400, 500))):
+        im = Image.new("RGB", size, (255, 255, 255))
+        d = ImageDraw.Draw(im)
+        d.rectangle(box, fill=(200, 40, 40))
+        d.rectangle((box[0] + 20, box[1] + 20, box[2] - 20, box[1] + 60), fill=(255, 255, 255))  # a white lid inside the box
+        buf = io.BytesIO(); im.save(buf, format="PNG")
+        out = Image.open(io.BytesIO(main.hero_cutout(buf.getvalue())))
+        assert out.size == (main.HERO_W, main.HERO_H)
+        assert out.getpixel((5, 5))[3] == 0                       # backdrop gone
+        bb = out.getchannel("A").getbbox()
+        assert bb[3] >= main.HERO_H - 12                          # every box stands on the same baseline
+        assert out.getpixel(((bb[0] + bb[2]) // 2, bb[1] + 12))[3] > 200   # the white lid stays
+
+
+def test_index_gets_three_catalog_figures():
+    page = main.render_index([("Vox", "AAA"), ("Saul <Goodman>", "BBB"), ("Paul", "CCC")])
+    assert '/api/photos/AAA/hero.webp' in page and '/api/photos/CCC/hero.webp' in page
+    assert "Saul &lt;Goodman&gt;" in page and 'hero-collage from-catalog' in page
+    assert "dexter-box" not in page
+    assert "dexter-box" in main.render_index([])

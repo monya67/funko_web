@@ -21,7 +21,9 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import io
 import random
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageChops, ImageDraw, ImageFilter
+import html as html_lib
+import random as _random
 try:
     # Photos from a Mac or an iPhone are HEIC; without this Pillow cannot open them
     import pillow_heif
@@ -136,6 +138,7 @@ async def startup():
     pool = await asyncpg.create_pool(DATABASE_URL)
     app.state.cleanup_task = asyncio.create_task(unpaid_orders_loop())
     app.state.finance_baseline = asyncio.create_task(finance_baseline())
+    app.state.hero_warmup = asyncio.create_task(warm_hero_cutouts())
     # Add archived column if it doesn't exist yet
     async with pool.acquire() as db:
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE")
@@ -2129,6 +2132,152 @@ def webp_to_mail_jpeg(webp_bytes, size=240):
     return out.getvalue()
 
 
+HERO_W, HERO_H = 640, 800
+
+
+def hero_cutout(content):
+    """A catalog packshot -> a 640x800 WebP for the home collage: the white studio backdrop removed, the box cropped to
+    its outline and scaled to the same height, bottom-centred. Every box comes out the same size whatever the photo's
+    margins. A photo whose edges are not a plain white backdrop is put on a rounded white card instead."""
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(content))).convert("RGBA")
+    img.thumbnail((900, 900), Image.LANCZOS)
+    w, h = img.size
+    rgb = img.convert("RGB")
+    r, g, b = rgb.split()
+    lo = ImageChops.darker(ImageChops.darker(r, g), b)
+    hi = ImageChops.lighter(ImageChops.lighter(r, g), b)
+    # near-pure white with no colour cast; light-grey box panels stay
+    white = ImageChops.multiply(lo.point(lambda v: 255 if v > 246 else 0), ImageChops.subtract(hi, lo).point(lambda v: 255 if v < 8 else 0))
+    transparent = img.getchannel("A").point(lambda v: 255 if v < 30 else 0)
+    white = ImageChops.lighter(white, transparent)
+
+    edge = [(x, 0) for x in range(w)] + [(x, h - 1) for x in range(w)] + [(0, y) for y in range(h)] + [(w - 1, y) for y in range(h)]
+    wp = white.load()
+    if sum(1 for p in edge if wp[p] == 255) / len(edge) < 0.85:
+        card = Image.new("RGBA", (HERO_W, HERO_H), (0, 0, 0, 0))
+        mask = Image.new("L", (HERO_W, HERO_H), 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 40, HERO_W - 1, HERO_H - 1), radius=36, fill=255)
+        card.paste(Image.new("RGBA", (HERO_W, HERO_H), (255, 255, 255, 255)), (0, 0), mask)
+        inner = img.copy()
+        inner.thumbnail((HERO_W - 60, HERO_H - 100), Image.LANCZOS)
+        card.alpha_composite(inner, ((HERO_W - inner.width) // 2, 40 + (HERO_H - 40 - inner.height) // 2))
+        out = io.BytesIO()
+        card.save(out, format="WEBP", quality=90)
+        return out.getvalue()
+
+    for p in edge:  # flood the backdrop from every white edge pixel (128 = reached from outside)
+        if wp[p] == 255:
+            ImageDraw.floodfill(white, p, 128, thresh=0)
+    alpha = white.point(lambda v: 0 if v == 128 else 255)
+    # a box is convex: white lids and windows inside its outline touch the backdrop and were flooded too.
+    # Keep every pixel inside the object's span on both its row and its column.
+    rows = Image.new("L", (w, h), 0)
+    cols = Image.new("L", (w, h), 0)
+    dr, dc = ImageDraw.Draw(rows), ImageDraw.Draw(cols)
+    for y in range(h):
+        bb = alpha.crop((0, y, w, y + 1)).getbbox()
+        if bb:
+            dr.line((bb[0], y, bb[2] - 1, y), fill=255)
+    for x in range(w):
+        bb = alpha.crop((x, 0, x + 1, h)).getbbox()
+        if bb:
+            dc.line((x, bb[1], x, bb[3] - 1), fill=255)
+    alpha = ImageChops.multiply(rows, cols).filter(ImageFilter.GaussianBlur(0.8))
+    img.putalpha(alpha)
+    box = alpha.point(lambda v: 255 if v > 40 else 0).getbbox()
+    if box:
+        img = img.crop(box)
+    # scale up as well as down: every box fills the same frame whatever the source photo's size
+    k = min((HERO_W - 20) / img.width, (HERO_H - 20) / img.height)
+    img = img.resize((max(1, round(img.width * k)), max(1, round(img.height * k))), Image.LANCZOS)
+    canvas = Image.new("RGBA", (HERO_W, HERO_H), (0, 0, 0, 0))
+    canvas.alpha_composite(img, ((HERO_W - img.width) // 2, HERO_H - img.height - 10))
+    out = io.BytesIO()
+    canvas.save(out, format="WEBP", quality=90)
+    return out.getvalue()
+
+
+HERO_CACHE = {}
+
+
+async def hero_image_bytes(photo_id):
+    photo_id = first_photo_id(photo_id)
+    if photo_id not in HERO_CACHE:
+        src = await get_telegram_photo(photo_id)
+        HERO_CACHE[photo_id] = await asyncio.to_thread(hero_cutout, src.body)
+    return HERO_CACHE[photo_id]
+
+
+@app.get("/api/photos/{photo_id}/hero.webp")
+async def get_hero_photo(photo_id: str):
+    try:
+        data = await hero_image_bytes(photo_id)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(f"hero cutout failed for {photo_id[:12]}: {exc!r}")
+        raise HTTPException(status_code=404, detail="Photo not available")
+    return Response(content=data, media_type="image/webp", headers={"Cache-Control": "public, max-age=2592000"})
+
+
+HERO_PRODUCTS = {"at": 0.0, "items": []}
+
+
+async def hero_products():
+    """Visible products with a photo, re-read at most once a minute."""
+    if time.time() - HERO_PRODUCTS["at"] > 60:
+        try:
+            async with pool.acquire() as db:
+                rows = await db.fetch("SELECT name, photo_id FROM products WHERE NOT COALESCE(hidden, FALSE) AND COALESCE(photo_id, '') <> ''")
+            HERO_PRODUCTS["items"] = [(r["name"], first_photo_id(r["photo_id"])) for r in rows if first_photo_id(r["photo_id"])]
+            HERO_PRODUCTS["at"] = time.time()
+        except Exception as exc:
+            print(f"hero products query failed: {exc!r}")
+    return HERO_PRODUCTS["items"]
+
+
+async def warm_hero_cutouts():
+    """Cut out every catalog figure once after start, so the first visitors do not wait for it."""
+    await asyncio.sleep(5)
+    for _, photo in await hero_products():
+        try:
+            await hero_image_bytes(photo)
+        except Exception as exc:
+            print(f"hero warm-up skipped {photo[:12]}: {exc!r}")
+
+
+INDEX_HTML = {"mtime": 0.0, "text": ""}
+HERO_IMG_RE = re.compile(r'<img class="hero-fig hero-fig-(\d)"[^>]*>')
+HERO_CALLOUT_RE = re.compile(r'<span class="hero-callout hero-callout-(\d)">[^<]*</span>')
+
+
+def render_index(picks):
+    """index.html with three catalog figures already in the hero, so they show up with the page, not after it."""
+    path = "static/index.html"
+    mtime = os.path.getmtime(path)
+    if mtime != INDEX_HTML["mtime"]:
+        INDEX_HTML["text"] = open(path, encoding="utf-8").read()
+        INDEX_HTML["mtime"] = mtime
+    page = INDEX_HTML["text"]
+    if len(picks) < 3:
+        return page
+    def img(mt):
+        name, photo = picks[int(mt.group(1)) - 1]
+        return (f'<img class="hero-fig hero-fig-{mt.group(1)}" src="/api/photos/{html_lib.escape(photo, quote=True)}/hero.webp" '
+                f'alt="{html_lib.escape(name, quote=True)}" width="{HERO_W}" height="{HERO_H}" fetchpriority="high">')
+    def callout(mt):
+        return f'<span class="hero-callout hero-callout-{mt.group(1)}">{html_lib.escape(picks[int(mt.group(1)) - 1][0])}</span>'
+    page = HERO_IMG_RE.sub(img, page)
+    page = HERO_CALLOUT_RE.sub(callout, page)
+    return page.replace('<div class="hero-collage" aria-hidden="true">', '<div class="hero-collage from-catalog" aria-hidden="true">', 1)
+
+
+async def spa_index():
+    items = await hero_products()
+    picks = _random.sample(items, 3) if len(items) >= 3 else []
+    return Response(content=render_index(picks), media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/api/photos/{photo_id}/mail.jpg")
 async def get_mail_photo(photo_id: str):
     res = await get_telegram_photo(photo_id)
@@ -2275,36 +2424,36 @@ async def get_returns():
 
 @app.get("/")
 async def root():
-    return FileResponse("static/index.html")
+    return await spa_index()
 
 # SPA client-side routes — serve index.html for frontend navigation
 @app.get("/catalog")
 async def spa_catalog():
-    return FileResponse("static/index.html")
+    return await spa_index()
 
 @app.get("/orders")
 async def spa_orders():
-    return FileResponse("static/index.html")
+    return await spa_index()
 
 @app.get("/archive")
 async def spa_archive():
-    return FileResponse("static/index.html")
+    return await spa_index()
 
 @app.get("/accounting")
 async def spa_accounting():
-    return FileResponse("static/index.html")
+    return await spa_index()
 
 @app.get("/products")
 async def spa_products():
-    return FileResponse("static/index.html")
+    return await spa_index()
 
 
 @app.get("/purchases")
 @app.get("/promocodes")
 async def spa_admin_registers():
-    return FileResponse("static/index.html")
+    return await spa_index()
 
 @app.get("/clients")
 async def spa_clients():
-    return FileResponse("static/index.html")
+    return await spa_index()
 
