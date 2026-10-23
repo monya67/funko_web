@@ -399,3 +399,7 @@ def test_ai_description_is_off_without_a_key(monkeypatch):
         assert exc.status_code == 503
     else:
         raise AssertionError("expected 503")
+
+
+def test_ai_description_has_no_dashes():
+    assert main.clean_description("Вокс — демон-телеведущий. Фигурка – номер 2536.") == "Вокс, демон-телеведущий. Фигурка, номер 2536."
