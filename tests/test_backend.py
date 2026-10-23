@@ -314,7 +314,7 @@ def test_order_email_puts_the_order_first_and_escapes_client_text():
     assert html.index("2536 - Vox") < html.index("Ваши данные")
     assert "Осталось доплатить" in html and "3 000 ₽" in html
     assert "&lt;b&gt;Ален&lt;/b&gt;" in html and "<b>Ален</b>" not in html
-    assert "/api/photos/abc" in html and "def" not in html.split("/api/photos/")[1][:10]
+    assert "/api/photos/abc/mail.jpg" in html and "def" not in html.split("/api/photos/")[1][:10]
     assert "СДЭК" in html
     assert "Осталось доплатить" not in main.order_email({**order, "paid_amount": 6000})[1]
 
@@ -373,3 +373,12 @@ def test_status_email_names_the_status_and_what_is_left_to_pay():
     assert "Напишите менеджеру" in html and "Осталось доплатить" in html and "1975 - Damon x2" in html
     _, html2, _ = main.status_email({**order, "paid_amount": 6000, "items": "<b>x</b>"}, "Выдано")
     assert "Осталось доплатить" not in html2 and "&lt;b&gt;" in html2
+
+
+def test_mail_photo_is_a_small_jpeg_on_white():
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGBA", (800, 600), (0, 0, 0, 0)).save(buf, format="WEBP")
+    out = Image.open(io.BytesIO(main.webp_to_mail_jpeg(buf.getvalue())))
+    assert out.format == "JPEG" and max(out.size) == 240 and out.getpixel((5, 5)) == (255, 255, 255)

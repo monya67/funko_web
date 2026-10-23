@@ -1771,7 +1771,7 @@ def order_email(order, note=""):
     rows = "".join(
         f'<tr><td style="padding:8px 0;border-bottom:1px solid {line};font:15px/1.4 Arial,sans-serif;color:{ink};">{_h(l)}</td></tr>'
         for l in lines)
-    img = (f'<td width="96" valign="top" style="padding-right:16px;"><img src="{SITE_URL}/api/photos/{_h(photo)}" width="96" height="96" alt="" '
+    img = (f'<td width="96" valign="top" style="padding-right:16px;"><img src="{SITE_URL}/api/photos/{_h(photo)}/mail.jpg" width="96" height="96" alt="" '
            f'style="display:block;width:96px;height:96px;object-fit:cover;border-radius:10px;background:#F2EFEA;"></td>') if photo else ""
     money = [("Сумма заказа", f"{total:,} ₽".replace(",", " "), ink), ("Оплачено", f"{paid:,} ₽".replace(",", " "), "#1E8E3E")]
     if left:
@@ -2033,6 +2033,27 @@ def convert_to_webp(content):
     return out_io.getvalue()
 
 # --- Telegram Photo Proxy ---
+def webp_to_mail_jpeg(webp_bytes, size=240):
+    """Many mail clients (Outlook, Mail.ru, older Apple Mail) show no WebP: e-mails get a small JPEG on white."""
+    img = Image.open(io.BytesIO(webp_bytes))
+    img.thumbnail((size, size), Image.LANCZOS)
+    canvas = Image.new("RGB", img.size, (255, 255, 255))
+    canvas.paste(img.convert("RGBA"), mask=img.convert("RGBA").split()[-1])
+    out = io.BytesIO()
+    canvas.save(out, format="JPEG", quality=88)
+    return out.getvalue()
+
+
+@app.get("/api/photos/{photo_id}/mail.jpg")
+async def get_mail_photo(photo_id: str):
+    res = await get_telegram_photo(photo_id)
+    try:
+        jpeg = await asyncio.to_thread(webp_to_mail_jpeg, res.body)
+    except Exception:
+        return res
+    return Response(content=jpeg, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=604800"})
+
+
 @app.get("/api/photos/{photo_id}")
 async def get_telegram_photo(photo_id: str):
     photo_id = first_photo_id(photo_id)
