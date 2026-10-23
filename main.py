@@ -1892,7 +1892,8 @@ def status_email(order, status):
     text = "\n".join([f"Заказ #{oid}: новый статус — {status}.", *([hint] if hint else []), "",
                       str(order["items"] or ""), "", f"Оплачено: {paid} из {total} ₽",
                       *([f"Осталось доплатить: {left} ₽"] if left else []), "", f"Личный кабинет: {SITE_URL}/orders"])
-    return f"Заказ #{oid}: {status} — Funko Stop", html, text
+    short = status[len("Заказ "):] if status.startswith("Заказ ") else status
+    return f"Заказ #{oid}: {short[:1].lower()}{short[1:]} — Funko Stop", html, text
 
 
 async def send_client_email(to_addr, subject, html, text):
