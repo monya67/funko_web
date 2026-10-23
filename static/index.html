@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1796100000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1796200000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -1772,6 +1772,15 @@
                 <!-- Populated dynamically -->
             </div>
 
+            <!-- Promo code from the Telegram game -->
+            <div class="promo-box" id="checkout-promo-box">
+                <div class="promo-row">
+                    <input type="text" id="checkout-promo" placeholder="Промокод из игры в боте" autocomplete="off" maxlength="32" aria-label="Промокод">
+                    <button type="button" class="btn secondary outline" id="checkout-promo-apply">Применить</button>
+                </div>
+                <div class="promo-status hidden" id="checkout-promo-status" role="status"></div>
+            </div>
+
             <!-- Prepayment selector (50% vs 100%) -->
             <div style="margin-bottom:18px;">
                 <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--muted); margin-bottom:8px;">ВЫБЕРИТЕ ФОРМАТ ОПЛАТЫ:</label>
@@ -2286,6 +2295,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1796100000000"></script>
+    <script src="/static/app.js?v=1796200000000"></script>
 </body>
 </html>

@@ -4613,3 +4613,11 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .hero-collage.from-catalog .hero-fig-1 { left: -2%; top: 26%; width: 37%; }
 .hero-collage.from-catalog .hero-fig-2 { left: 30%; top: 2%; width: 39%; }
 .hero-collage.from-catalog .hero-fig-3 { left: 61%; top: 28%; width: 37%; }
+
+/* checkout: game promo code */
+.promo-box { margin: -4px 0 16px; }
+.promo-row { display: flex; gap: 8px; }
+.promo-row input { flex: 1 1 auto; min-width: 0; padding: 10px 14px; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+.promo-row .btn { flex: 0 0 auto; width: auto; padding: 10px 16px; }
+.promo-status { margin-top: 6px; font-size: 0.82rem; color: var(--pre); }
+.promo-status.ok { color: var(--ok); font-weight: 600; }

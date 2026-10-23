@@ -208,6 +208,20 @@ async def startup():
         """)
         await db.execute("CREATE TABLE IF NOT EXISTS finance_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
 
+        # Promo codes from the Telegram bot's game (table series_codes belongs to the bot and is only read here)
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_discount INTEGER DEFAULT 0")
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS promo_redemptions (
+                code TEXT PRIMARY KEY,
+                amount INTEGER NOT NULL,
+                order_id INTEGER,
+                client_id INTEGER,
+                used BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        """)
+
         # Admin registers: purchases bought for clients in other shops, and promo codes for those shops
         await db.execute("""
             CREATE TABLE IF NOT EXISTS purchases (
@@ -478,6 +492,7 @@ class CheckoutRequest(BaseModel):
     payment_type: str = "50%"
     delivery_method: str = ""
     comment: str = ""
+    promo_code: str = ""
 
 # --- T-Bank Payment Helpers ---
 def tbank_generate_token(params: dict) -> str:
@@ -528,6 +543,7 @@ async def expire_unpaid_orders(db, minutes=UNPAID_ORDER_MINUTES + 15):
         removed += 1
         if stock["stock_items"]:
             await restore_stock(db, parse_stock_items(stock["stock_items"]))
+        await release_promo(db, row["id"])
     return removed
 
 
@@ -868,6 +884,7 @@ async def unarchive_order(order_id: int, admin: dict = Depends(require_admin)):
 async def delete_order(order_id: int, admin: dict = Depends(require_admin)):
     async with pool.acquire() as db:
         await reconcile_order(db, order_id, deleted=True, note="заказ удалён")
+        await release_promo(db, order_id)
         res = await db.execute("DELETE FROM orders WHERE id = $1", order_id)
         if res == "DELETE 0":
             raise HTTPException(status_code=404, detail="Order not found")
@@ -1119,6 +1136,18 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
         raise HTTPException(status_code=409, detail=str(exc))
 
     items_text = "\n".join(item_lines)
+    promo_code = normalize_promo(checkout.promo_code)
+    promo_discount = 0
+    if promo_code:
+        async with pool.acquire() as promo_db:
+            amount, message = await lookup_promo(promo_db, promo_code)
+        if amount is None:
+            raise HTTPException(status_code=409, detail=message)
+        try:
+            total_price = apply_promo(total_price, amount)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc))
+        promo_discount = amount
     paid_amount = round(total_price * 0.5) if checkout.payment_type == "50%" else total_price
     order_date = datetime.now().strftime("%d.%m.%Y")
 
@@ -1188,24 +1217,40 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                     msg = f"«{row['name']}» распродан" if left <= 0 else f"«{row['name']}»: осталось только {left} шт."
                     raise HTTPException(status_code=409, detail=msg)
 
+        # the code is taken before the order exists: the primary key makes two checkouts with one code impossible
+        if promo_code:
+            took = await db.fetchval(
+                "INSERT INTO promo_redemptions (code, amount, client_id) VALUES ($1, $2, $3) ON CONFLICT (code) DO NOTHING RETURNING code",
+                promo_code, promo_discount, client_id)
+            if not took:
+                await restore_stock(db, reserved)
+                raise HTTPException(status_code=409, detail="Промокод уже использован")
+
         status_text = AWAITING_PAYMENT
         snap = await order_snapshot(db, aggregate_cart_qty(checkout.items), {r["id"]: dict(r) for r in rows})
         checkout_note = f"📦 Доставка: {checkout.delivery_method or 'Не указан'}"
         if checkout.comment:
             checkout_note += f"\n💬 Комментарий: {checkout.comment}"
+        if promo_code:
+            checkout_note += f"\n🏷 Промокод {promo_code}: −{promo_discount} ₽"
         try:
           order_id = await db.fetchval(
             """INSERT INTO orders
                (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items, checkout_note,
-                planned_purchase_cost, planned_shipping, purchase_usd, fx_rate, product_kind)
-               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13, $14, $15, $16, $17, $18) RETURNING id""",
+                planned_purchase_cost, planned_shipping, purchase_usd, fx_rate, product_kind, promo_code, promo_discount)
+               VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id""",
             client_id, items_text, total_price, paid_amount, status_text, first_photo, order_date,
             name, phone, telegram, checkout.payment_type, dump_stock_items(reserved) if reserved else "", checkout_note,
-            snap["planned_purchase_cost"], snap["planned_shipping"], snap["purchase_usd"], snap["fx_rate"], snap["product_kind"]
+            snap["planned_purchase_cost"], snap["planned_shipping"], snap["purchase_usd"], snap["fx_rate"], snap["product_kind"],
+            promo_code, promo_discount
           )
         except Exception:
             await restore_stock(db, reserved)
+            if promo_code:
+                await db.execute("DELETE FROM promo_redemptions WHERE code = $1 AND NOT used", promo_code)
             raise
+        if promo_code:
+            await db.execute("UPDATE promo_redemptions SET order_id = $1 WHERE code = $2", order_id, promo_code)
 
         payment_url = None
         if TBANK_TERMINAL_KEY and TBANK_PASSWORD:
@@ -1224,6 +1269,9 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                     print(f"T-Bank Init error: {tbank_resp}")
             except Exception as e:
                 print(f"T-Bank Init exception: {e}")
+
+        if promo_code and not payment_url:
+            await db.execute("UPDATE promo_redemptions SET used = TRUE WHERE code = $1", promo_code)
 
         # With an online payment the admins hear about the order only when it is paid (see the T-Bank webhook);
         # without a payment link the order stands as it is and the manager must be told now.
@@ -1303,6 +1351,7 @@ async def tbank_notification(req: Request):
                 await notify_admins(paid_alert_text(order, order["client_id"], email, order["checkout_note"]))
                 await send_order_email(email, order, order["checkout_note"])
                 await reconcile_order(db, oid, note="оплата Т-Банк")
+                await db.execute("UPDATE promo_redemptions SET used = TRUE WHERE order_id = $1", oid)
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
             await db.execute(
                 "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
@@ -1312,6 +1361,7 @@ async def tbank_notification(req: Request):
             )
             if given_back:
                 await restore_stock(db, parse_stock_items(given_back))
+            await release_promo(db, oid)
 
     return Response(content="OK")
 
@@ -1700,6 +1750,73 @@ async def ai_describe(body: DescribeIn, admin: dict = Depends(require_admin)):
     if not text:
         raise HTTPException(status_code=502, detail="Сервис генерации не ответил, попробуйте ещё раз через минуту")
     return {"description": text}
+
+
+# ======================= Game promo codes =======================
+# The bot's game stores prizes in series_codes as "Приз: Скидка 500₽ #<time>". Only these money prizes work on the site.
+PROMO_ALLOWED_AMOUNTS = (300, 500, 1000)
+PROMO_PRIZE_RE = re.compile(r"^\s*Приз:\s*Скидка\s*(\d+)\s*₽", re.I)
+
+
+def normalize_promo(code):
+    return re.sub(r"[^A-Z0-9]", "", (code or "").upper())[:32]
+
+
+def promo_amount(series_slug):
+    """Rubles off for a game prize, or None when the prize is not one of the money discounts the site accepts."""
+    m_ = PROMO_PRIZE_RE.match(series_slug or "")
+    if not m_:
+        return None
+    amount = int(m_.group(1))
+    return amount if amount in PROMO_ALLOWED_AMOUNTS else None
+
+
+def apply_promo(total, amount):
+    """Order total after the discount; the discount must be smaller than the order."""
+    if amount >= total:
+        raise ValueError(f"Промокод на {amount} ₽ действует для заказа дороже {amount} ₽")
+    return total - amount
+
+
+async def lookup_promo(db, code):
+    """(amount, message): amount is None with a reason when the code cannot be used."""
+    code = normalize_promo(code)
+    if len(code) < 6:
+        return None, "Промокод не найден"
+    row = await db.fetchrow("SELECT series_slug FROM series_codes WHERE upper(code) = $1", code)
+    if not row:
+        return None, "Промокод не найден"
+    amount = promo_amount(row["series_slug"])
+    if amount is None:
+        return None, "Этот промокод не скидка в рублях: на сайте принимаются промокоды на 300, 500 и 1000 ₽. С остальными призами напишите @Funko_Stop"
+    taken = await db.fetchrow("SELECT used FROM promo_redemptions WHERE code = $1", code)
+    if taken:
+        return None, "Промокод уже использован" if taken["used"] else "Промокод уже применён к другому заказу, который ждёт оплаты"
+    return amount, ""
+
+
+async def release_promo(db, order_id):
+    """An order that will never be paid gives its game code back."""
+    await db.execute("DELETE FROM promo_redemptions WHERE order_id = $1 AND NOT used", order_id)
+
+
+class PromoCheckIn(BaseModel):
+    code: str
+
+
+@app.post("/api/promo/check")
+async def promo_check(request: Request, body: PromoCheckIn):
+    now = time.time()
+    keys = {f"promo:{client_ip(request)}": 15}
+    async with pool.acquire() as db:
+        if await throttle_is_blocked(db, list(keys), now):
+            raise HTTPException(status_code=429, detail="Слишком много попыток, попробуйте через 15 минут")
+        amount, message = await lookup_promo(db, body.code)
+        if amount is None:
+            if message == "Промокод не найден":
+                await throttle_register_failure(db, keys, now)
+            raise HTTPException(status_code=400, detail=message)
+    return {"code": normalize_promo(body.code), "amount": amount}
 
 
 @app.get("/api/ledger")
@@ -2135,6 +2252,25 @@ def webp_to_mail_jpeg(webp_bytes, size=240):
 HERO_W, HERO_H = 640, 800
 
 
+def convex_hull(points):
+    """Andrew's monotone chain; points are (x, y) tuples."""
+    pts = sorted(set(points))
+    if len(pts) < 3:
+        return pts
+    def cross(o, a, b):
+        return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lower, upper = [], []
+    for p in pts:
+        while len(lower) >= 2 and cross(lower[-2], lower[-1], p) <= 0:
+            lower.pop()
+        lower.append(p)
+    for p in reversed(pts):
+        while len(upper) >= 2 and cross(upper[-2], upper[-1], p) <= 0:
+            upper.pop()
+        upper.append(p)
+    return lower[:-1] + upper[:-1]
+
+
 def hero_cutout(content):
     """A catalog packshot -> a 640x800 WebP for the home collage: the white studio backdrop removed, the box cropped to
     its outline and scaled to the same height, bottom-centred. Every box comes out the same size whatever the photo's
@@ -2169,20 +2305,19 @@ def hero_cutout(content):
         if wp[p] == 255:
             ImageDraw.floodfill(white, p, 128, thresh=0)
     alpha = white.point(lambda v: 0 if v == 128 else 255)
-    # a box is convex: white lids and windows inside its outline touch the backdrop and were flooded too.
-    # Keep every pixel inside the object's span on both its row and its column.
-    rows = Image.new("L", (w, h), 0)
-    cols = Image.new("L", (w, h), 0)
-    dr, dc = ImageDraw.Draw(rows), ImageDraw.Draw(cols)
+    # a box is convex: its white lid and window touch the backdrop and were flooded too. The convex hull of what is
+    # left restores them with straight, clean edges (no staircase on the lid corners). Specks are dropped first.
+    solid = alpha.filter(ImageFilter.MinFilter(5)).filter(ImageFilter.MaxFilter(5))
+    pts = []
     for y in range(h):
-        bb = alpha.crop((0, y, w, y + 1)).getbbox()
+        bb = solid.crop((0, y, w, y + 1)).getbbox()
         if bb:
-            dr.line((bb[0], y, bb[2] - 1, y), fill=255)
-    for x in range(w):
-        bb = alpha.crop((x, 0, x + 1, h)).getbbox()
-        if bb:
-            dc.line((x, bb[1], x, bb[3] - 1), fill=255)
-    alpha = ImageChops.multiply(rows, cols).filter(ImageFilter.GaussianBlur(0.8))
+            pts += [(bb[0], y), (bb[2] - 1, y)]
+    hull = convex_hull(pts)
+    mask = Image.new("L", (w, h), 0)
+    if len(hull) >= 3:
+        ImageDraw.Draw(mask).polygon(hull, fill=255)
+    alpha = mask.filter(ImageFilter.GaussianBlur(0.7))
     img.putalpha(alpha)
     box = alpha.point(lambda v: 255 if v > 40 else 0).getbbox()
     if box:

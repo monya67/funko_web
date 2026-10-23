@@ -3034,6 +3034,62 @@ window.openCartModal = function() {
 // --- Checkout & Strict Validation Engine ---
 window.currentPaymentOption = '50%';
 window.pendingCheckoutData = null;
+// a game promo code applied in the checkout: { code, amount } (the server checks it again when the order is placed)
+window.checkoutPromo = null;
+
+function checkoutTotal() {
+    const total = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
+    return Math.max(0, total - (window.checkoutPromo?.amount || 0));
+}
+
+function renderCheckoutAmounts() {
+    const total = checkoutTotal();
+    const a50 = document.getElementById('checkout-amount-50');
+    const a100 = document.getElementById('checkout-amount-100');
+    if (a50) a50.textContent = `${Math.round(total * 0.5).toLocaleString('ru')} ₽`;
+    if (a100) a100.textContent = `${total.toLocaleString('ru')} ₽`;
+    updateCheckoutPayButton();
+}
+
+function showPromoStatus(text, ok) {
+    const el = document.getElementById('checkout-promo-status');
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('hidden', !text);
+    el.classList.toggle('ok', !!ok);
+}
+
+async function applyCheckoutPromo() {
+    const input = document.getElementById('checkout-promo');
+    const btn = document.getElementById('checkout-promo-apply');
+    if (window.checkoutPromo) {  // the button reads "Убрать" while a code is applied
+        window.checkoutPromo = null;
+        input.value = ''; input.disabled = false; btn.textContent = 'Применить';
+        showPromoStatus('', false);
+        renderCheckoutAmounts();
+        return;
+    }
+    const code = input.value.trim();
+    if (!code) { input.focus(); return; }
+    btn.disabled = true;
+    try {
+        const res = await fetch(`${API_BASE}/promo/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || 'Промокод не подошёл');
+        const goods = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
+        if (data.amount >= goods) throw new Error(`Промокод на ${data.amount} ₽ действует для заказа дороже ${data.amount} ₽`);
+        window.checkoutPromo = { code: data.code, amount: data.amount };
+        input.value = data.code; input.disabled = true; btn.textContent = 'Убрать';
+        showPromoStatus(`Скидка ${data.amount.toLocaleString('ru')} ₽ применена`, true);
+        renderCheckoutAmounts();
+    } catch (err) {
+        showPromoStatus(err.message, false);
+    } finally {
+        btn.disabled = false;
+    }
+}
+document.getElementById('checkout-promo-apply')?.addEventListener('click', applyCheckoutPromo);
+document.getElementById('checkout-promo')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyCheckoutPromo(); } });
 
 window.selectPaymentOption = function(type) {
     window.currentPaymentOption = type;
@@ -3050,7 +3106,7 @@ window.selectPaymentOption = function(type) {
 };
 
 function updateCheckoutPayButton() {
-    const total = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
+    const total = checkoutTotal();
     const dueAmount = window.currentPaymentOption === '50%' ? Math.round(total * 0.5) : total;
     const payBtnAmount = document.getElementById('checkout-pay-btn-amount');
     if (payBtnAmount) {
@@ -3080,11 +3136,17 @@ window.openCheckoutModal = function() {
         `;
     }
 
-    const total = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
-    const amount50El = document.getElementById('checkout-amount-50');
-    const amount100El = document.getElementById('checkout-amount-100');
-    if (amount50El) amount50El.textContent = `${Math.round(total * 0.5).toLocaleString('ru')} ₽`;
-    if (amount100El) amount100El.textContent = `${total.toLocaleString('ru')} ₽`;
+    // a code applied earlier stays only while it still fits the cart
+    const goods = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
+    if (window.checkoutPromo && window.checkoutPromo.amount >= goods) {
+        window.checkoutPromo = null;
+        const pi = document.getElementById('checkout-promo');
+        if (pi) { pi.value = ''; pi.disabled = false; }
+        const pb = document.getElementById('checkout-promo-apply');
+        if (pb) pb.textContent = 'Применить';
+        showPromoStatus('', false);
+    }
+    renderCheckoutAmounts();
 
     window.selectPaymentOption('50%');
 
@@ -3231,10 +3293,11 @@ window.proceedToPayment = function(event) {
         return false;
     }
 
-    const total = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
+    const total = checkoutTotal();
     const dueAmount = window.currentPaymentOption === '50%' ? Math.round(total * 0.5) : total;
 
     window.pendingCheckoutData = {
+        promo_code: window.checkoutPromo?.code || '',
         items: funkoCart.map(i => ({
             id: i.id,
             name: i.name,

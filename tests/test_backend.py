@@ -257,7 +257,7 @@ def test_expire_unpaid_orders_returns_stock_and_skips_orders_paid_meanwhile():
 
     db = FakeDB()
     assert asyncio.run(main.expire_unpaid_orders(db)) == 1
-    assert db.executed == [(2, 5)]
+    assert db.executed == [(2, 5), (1,)]  # stock back, then the order's promo code released
 
 
 def test_login_error_does_not_reveal_the_limit():
@@ -428,3 +428,27 @@ def test_index_gets_three_catalog_figures():
     assert "Saul &lt;Goodman&gt;" in page and 'hero-collage from-catalog' in page
     assert "dexter-box" not in page
     assert "dexter-box" in main.render_index([])
+
+
+def test_only_money_prizes_of_300_500_1000_are_accepted():
+    assert main.promo_amount("Приз: Скидка 300₽ #1787716139") == 300
+    assert main.promo_amount("Приз: Скидка 500₽ #1") == 500
+    assert main.promo_amount("Приз: Скидка 1000₽ #1789912908") == 1000
+    for slug in ("Приз: Скидка 20% #1788173335", "Приз: Скидка 25% #1", "Приз: Funko Pop #1789656606",
+                 "Приз: 10 Бонус Паков #1", "stranger_things", "Приз: Скидка 700₽ #1", ""):
+        assert main.promo_amount(slug) is None, slug
+
+
+def test_promo_discount_must_be_smaller_than_the_order():
+    assert main.apply_promo(2050, 500) == 1550
+    for total in (500, 300):
+        try:
+            main.apply_promo(total, 500)
+        except ValueError as exc:
+            assert "дороже 500" in str(exc)
+        else:
+            raise AssertionError(total)
+
+
+def test_promo_codes_are_normalised():
+    assert main.normalize_promo(" vx3m-igmz ") == "VX3MIGMZ"
