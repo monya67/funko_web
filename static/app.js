@@ -2430,6 +2430,40 @@ window.openAddProductModal = function() {
     openModal(productModal);
 };
 
+// Description written by the AI from the product's name, number, brand and series; the admin edits it before saving
+async function generateProductDescription({ silent = false } = {}) {
+    const btn = document.getElementById('product-desc-ai');
+    const area = document.getElementById('product-description');
+    const name = document.getElementById('product-name').value.trim();
+    if (!name) { if (!silent) alert('Сначала укажите название товара'); return; }
+    if (btn.disabled) return;
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Пишу…';
+    area.classList.add('ai-busy');
+    try {
+        const data = await fetchAPI('/ai/describe', { method: 'POST', body: JSON.stringify({
+            name,
+            figure_number: document.getElementById('product-figure-number').value.trim(),
+            category: document.getElementById('product-category').value.trim(),
+            series: document.getElementById('product-series').value.trim(),
+            badge: (document.getElementById('product-badge')?.value || '').trim()
+        }) });
+        // never overwrite what the admin typed while the request was running
+        if (!silent || !area.value.trim()) area.value = data.description;
+    } catch (err) {
+        if (!silent) alert(err.message);
+    } finally {
+        btn.disabled = false; btn.textContent = label;
+        area.classList.remove('ai-busy');
+    }
+}
+document.getElementById('product-desc-ai')?.addEventListener('click', () => generateProductDescription());
+// a new product gets a draft description by itself once its name is filled in and the description is still empty
+document.getElementById('product-name')?.addEventListener('change', () => {
+    const isNew = !document.getElementById('product-id').value;
+    if (isNew && !document.getElementById('product-description').value.trim()) generateProductDescription({ silent: true });
+});
+
 // Private purchase data of a product (admins only receive these fields from the server)
 function fillProductFinance(p) {
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = (v === null || v === undefined) ? '' : v; };

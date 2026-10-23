@@ -382,3 +382,20 @@ def test_mail_photo_is_a_small_jpeg_on_white():
     Image.new("RGBA", (800, 600), (0, 0, 0, 0)).save(buf, format="WEBP")
     out = Image.open(io.BytesIO(main.webp_to_mail_jpeg(buf.getvalue())))
     assert out.format == "JPEG" and max(out.size) == 240 and out.getpixel((5, 5)) == (255, 255, 255)
+
+
+def test_ai_description_prompt_and_cleanup():
+    p = main.DescribeIn(name="Vox", figure_number="2536", category="Funko", series="Hazbin Hotel")
+    assert main.describe_user_prompt(p) == "Название: Vox\nНомер: 2536\nБренд: Funko\nСерия: Hazbin Hotel"
+    assert main.clean_description('**«Фигурка Vox.**\n\nИз Hazbin Hotel.»') == "Фигурка Vox. Из Hazbin Hotel."
+
+
+def test_ai_description_is_off_without_a_key(monkeypatch):
+    import asyncio
+    monkeypatch.setattr(main, "GROQ_API_KEY", "")
+    try:
+        asyncio.run(main.ai_describe(main.DescribeIn(name="Vox"), admin={"role": "admin"}))
+    except main.HTTPException as exc:
+        assert exc.status_code == 503
+    else:
+        raise AssertionError("expected 503")

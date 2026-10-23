@@ -4601,3 +4601,8 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .ascii-fig .sign { color: var(--pre); }
 .ascii-fig .pole { color: var(--muted); }
 .ascii-fig span, .ascii-fig b { font-family: inherit; }
+
+/* product form: AI description */
+.desc-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.desc-label-row label { margin: 0; }
+#product-description.ai-busy { opacity: 0.55; }

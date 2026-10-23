@@ -43,6 +43,10 @@ ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.
 # without it the photo goes to the first admin and is deleted right away (the file stays reachable).
 PHOTO_STORAGE_CHAT_ID = os.getenv("PHOTO_STORAGE_CHAT_ID", "").strip()
 
+# Product descriptions written by an LLM (Groq, OpenAI-compatible API). Empty key = the button says it is off.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b").strip()
+
 TBANK_TERMINAL_KEY = os.getenv("TBANK_TERMINAL_KEY", "")
 TBANK_PASSWORD = os.getenv("TBANK_PASSWORD", "")
 
@@ -1614,6 +1618,64 @@ async def update_order_costs(order_id: int, body: OrderCostsIn, admin: dict = De
             raise HTTPException(status_code=404, detail="Order not found")
         await reconcile_order(db, order_id, note="изменение себестоимости/доставки")
     return {"success": True}
+
+
+class DescribeIn(BaseModel):
+    name: str
+    figure_number: str = ""
+    category: str = ""
+    series: str = ""
+    badge: str = ""
+
+
+DESCRIBE_SYSTEM_PROMPT = (
+    "Ты пишешь короткие описания товаров для магазина коллекционных фигурок. Пиши по-русски, 2–3 предложения. "
+    "Не упоминай магазин. Бренд и линейку называй только если они есть во входных данных.\n"
+    "Строго: только факты, в которых ты уверен. О персонаже — одно предложение: кто он и из какого произведения; "
+    "если не уверен в деталях персонажа, напиши только название произведения. Не выдумывай даты выхода, эксклюзивность, "
+    "тираж, размер, комплектацию. Укажи линейку и номер фигурки, если они даны. Без эмодзи, без кавычек, без призывов купить."
+)
+
+
+def describe_user_prompt(p):
+    """The product facts the model may use, one per line; empty fields are left out."""
+    rows = [("Название", p.name), ("Номер", p.figure_number), ("Бренд", p.category), ("Серия", p.series), ("Стикер", p.badge)]
+    return "\n".join(f"{k}: {v.strip()[:200]}" for k, v in rows if (v or "").strip())
+
+
+def clean_description(text):
+    """Model output -> one tidy paragraph without wrapping quotes or markdown."""
+    t = re.sub(r"[*_#`]+", "", (text or "").strip()).strip().strip('"«»').strip()
+    return re.sub(r"\s*\n\s*", " ", t)[:2000]
+
+
+@app.post("/api/ai/describe")
+async def ai_describe(body: DescribeIn, admin: dict = Depends(require_admin)):
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="Генерация описаний выключена: на сервере не задан GROQ_API_KEY")
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="Сначала укажите название товара")
+    try:
+        async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(45.0, connect=10.0)) as client:
+            r = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={"model": GROQ_MODEL, "temperature": 0.2, "max_tokens": 700,
+                      "messages": [{"role": "system", "content": DESCRIBE_SYSTEM_PROMPT},
+                                   {"role": "user", "content": describe_user_prompt(body)}]})
+        data = r.json()
+        if r.status_code != 200:
+            print(f"Groq error {r.status_code}: {data}")
+            raise HTTPException(status_code=502, detail="Сервис генерации не ответил, попробуйте ещё раз")
+        text = clean_description(data["choices"][0]["message"]["content"])
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(f"Groq request failed: {exc!r}")
+        raise HTTPException(status_code=502, detail="Сервис генерации не ответил, попробуйте ещё раз")
+    if not text:
+        raise HTTPException(status_code=502, detail="Пустой ответ, попробуйте ещё раз")
+    return {"description": text}
 
 
 @app.get("/api/ledger")
