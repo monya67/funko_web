@@ -1647,8 +1647,11 @@ async function handlePhotoUpload(e, targetInputId) {
             headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
-        if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Ошибка загрузки'); }
-        const data = await res.json();
+        // the server may answer with an HTML page (restart, proxy error): never let JSON parsing hide that
+        const raw = await res.text();
+        let data = {};
+        try { data = JSON.parse(raw); } catch (_) {}
+        if (!res.ok || !data.photo_id) throw new Error(data.detail || `Фото не загрузилось (ответ сервера ${res.status}). Попробуйте ещё раз через минуту.`);
         document.getElementById(targetInputId).value = data.photo_id;
         label.textContent = 'Загружено \u2713';
         setTimeout(() => label.textContent = originalText, 2000);

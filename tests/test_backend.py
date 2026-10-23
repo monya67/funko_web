@@ -342,3 +342,25 @@ def test_product_finance_fields_change_only_when_the_form_sends_them():
     assert main.product_finance_values(old_form) == {}
     sent = main.ProductUpdate(name="Vox", price=100, purchase_usd=14.999, planned_shipping_rub=0, purchase_source=" Funko.com ", product_kind="Standard Pop")
     assert main.product_finance_values(sent) == {"purchase_usd": 15.0, "planned_shipping_rub": None, "purchase_source": "Funko.com", "product_kind": "Standard Pop"}
+
+
+def test_upload_accepts_heic_and_fixes_rotation_and_size():
+    import io
+    from PIL import Image
+    import pillow_heif
+    buf = io.BytesIO()
+    Image.new("RGB", (4000, 3000), (200, 30, 30)).save(buf, format="HEIF")
+    out = Image.open(io.BytesIO(main.prepare_upload_image(buf.getvalue())))
+    assert out.format == "WEBP" and max(out.size) == 1600
+    png = io.BytesIO()
+    Image.new("RGBA", (300, 200), (0, 0, 0, 0)).save(png, format="PNG")
+    assert Image.open(io.BytesIO(main.prepare_upload_image(png.getvalue()))).mode == "RGBA"
+
+
+def test_upload_rejects_files_that_are_not_images():
+    try:
+        main.prepare_upload_image(b"%PDF-1.7 not a photo")
+    except ValueError as exc:
+        assert "JPG" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")

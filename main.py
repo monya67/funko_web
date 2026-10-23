@@ -21,7 +21,13 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import io
 import random
-from PIL import Image
+from PIL import Image, ImageOps
+try:
+    # Photos from a Mac or an iPhone are HEIC; without this Pillow cannot open them
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except ImportError:
+    print("pillow-heif is not installed: HEIC photos cannot be converted")
 import finance as F
 
 load_dotenv()
@@ -1978,58 +1984,68 @@ async def get_telegram_photo(photo_id: str):
         except Exception as e:
             return Response(content=photo_res.content, media_type="image/jpeg", headers={"Content-Disposition": f'inline; filename="{photo_id}.jpg"'})
 
+MAX_UPLOAD_BYTES = 30 * 1024 * 1024
+
+
+def prepare_upload_image(content):
+    """Any photo the admin picks (JPEG, PNG, WebP, HEIC from a Mac or iPhone) -> WebP, long edge <= 1600 px.
+    Raises ValueError with a message for the admin when the file is not an image we can read."""
+    try:
+        img = Image.open(io.BytesIO(content))
+        img.load()
+    except Exception:
+        raise ValueError("Не удалось прочитать фото. Подойдут JPG, PNG, WebP или HEIC; другой формат сохраните как JPG.")
+    img = ImageOps.exif_transpose(img)  # phone photos keep their rotation in EXIF
+    has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
+    if max(img.size) > 1600:
+        img.thumbnail((1600, 1600), Image.LANCZOS)
+    img = img.convert("RGBA" if has_alpha else "RGB")
+    out_io = io.BytesIO()
+    img.save(out_io, format="WEBP", quality=92, method=6)
+    return out_io.getvalue()
+
+
 @app.post("/api/upload_photo")
 async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(require_admin)):
     missing = [n for n, v in (("BOT_TOKEN", BOT_TOKEN), ("ADMIN_IDS", ADMIN_IDS)) if not v]
     if missing:
         raise HTTPException(status_code=500, detail=f"Загрузка фото не настроена на сервере: не задана переменная {', '.join(missing)}")
-        
+
     content = await file.read()
-    
-    # Check for transparency (PNG, WebP with alpha channel)
-    has_alpha = False
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Фото больше 30 МБ, уменьшите его и попробуйте снова")
+    try:
+        content = await asyncio.to_thread(prepare_upload_image, content)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     try:
-        img = Image.open(io.BytesIO(content))
-        if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
-            has_alpha = True
+        # a few MB to Telegram can take longer than httpx's default 5 s
+        async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(60.0, connect=15.0)) as client:
+            # Sent as an opaque .bin on purpose: sendPhoto recompresses to 1280px JPEG, and a
+            # .webp via sendDocument comes back as a sticker (no "document" key, may be shrunk).
+            files = {"document": ("photo.bin", content, "application/octet-stream")}
+            data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
+            res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
+            res_data = res.json()
+            if not res_data.get("ok"):
+                raise HTTPException(status_code=502, detail=f"Telegram не принял фото: {res_data.get('description', 'неизвестная ошибка')}")
+            message = res_data["result"]
 
-        # Cap the long edge so a 4000px phone photo doesn't become a multi-MB download
-        if max(img.size) > 1600:
-            img.thumbnail((1600, 1600), Image.LANCZOS)
+            # Delete before anything else can fail, so the storage message never lingers in the admin's chat
+            try:
+                await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": ADMIN_IDS[0], "message_id": message["message_id"]})
+            except Exception:
+                pass
+    except HTTPException:
+        raise
+    except Exception as exc:
+        print(f"photo upload to Telegram failed: {exc!r}")
+        raise HTTPException(status_code=502, detail="Не удалось сохранить фото: хранилище не ответило. Попробуйте ещё раз через минуту.")
 
-        if has_alpha:
-            if img.mode != "RGBA":
-                img = img.convert("RGBA")
-        elif img.mode != "RGB":
-            img = img.convert("RGB")
-
-        out_io = io.BytesIO()
-        img.save(out_io, format="WEBP", quality=92, method=6)
-        content = out_io.getvalue()
-    except Exception as e:
-        print(f"Image processing error: {e}")
-
-    async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
-        # Sent as an opaque .bin on purpose: sendPhoto recompresses to 1280px JPEG, and a
-        # .webp via sendDocument comes back as a sticker (no "document" key, may be shrunk).
-        files = {"document": ("photo.bin", content, "application/octet-stream")}
-        data = {"chat_id": ADMIN_IDS[0], "disable_notification": "true"}
-        res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
-        res_data = res.json()
-        if not res_data.get("ok"):
-            raise HTTPException(status_code=500, detail=f"Telegram upload failed: {res_data.get('description', 'unknown error')}")
-        message = res_data["result"]
-
-        # Delete before anything else can fail, so the storage message never lingers in the admin's chat
-        try:
-            await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": ADMIN_IDS[0], "message_id": message["message_id"]})
-        except Exception:
-            pass
-
-        if "document" not in message:
-            raise HTTPException(status_code=500, detail="Telegram сохранил файл не как документ")
-        return {"photo_id": message["document"]["file_id"]}
+    if "document" not in message:
+        raise HTTPException(status_code=500, detail="Telegram сохранил файл не как документ")
+    return {"photo_id": message["document"]["file_id"]}
 
 
 # --- Static Files ---
