@@ -4612,3 +4612,7 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .hero-fig.hero-fig-swap { opacity: 0; }
 .hero-fig.hero-fig-card { background: #fff; border-radius: 14px; padding: 4%; box-sizing: border-box; object-fit: contain; aspect-ratio: 1 / 1; }
 .hero-callout { max-width: 24%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* catalog boxes are square packshots, bigger than the default cut-outs: give them room so they barely overlap */
+.hero-collage.from-catalog .hero-fig-1 { left: 2%; top: 30%; width: 34%; }
+.hero-collage.from-catalog .hero-fig-2 { left: 31%; top: 6%; width: 37%; }
+.hero-collage.from-catalog .hero-fig-3 { left: 60%; top: 33%; width: 33%; }

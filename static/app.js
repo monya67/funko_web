@@ -2082,6 +2082,18 @@ function shuffleHeroFigures() {
                 if (x > 0) stack.push(k - 1); if (x < w - 1) stack.push(k + 1);
                 if (k >= w) stack.push(k - w); if (k < w * (h - 1)) stack.push(k + w);
             }
+            // a box is convex: white panels inside its outline (the lid, the window) were eaten by the fill because they
+            // touch the backdrop. Keep every pixel that lies inside the object's span on both its row and its column.
+            const rowMin = new Int32Array(h).fill(w), rowMax = new Int32Array(h).fill(-1);
+            const colMin = new Int32Array(w).fill(h), colMax = new Int32Array(w).fill(-1);
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                if (px[(y * w + x) * 4 + 3] === 0) continue;
+                if (x < rowMin[y]) rowMin[y] = x; if (x > rowMax[y]) rowMax[y] = x;
+                if (y < colMin[x]) colMin[x] = y; if (y > colMax[x]) colMax[x] = y;
+            }
+            for (let y = 0; y < h; y++) for (let x = rowMin[y]; x <= rowMax[y]; x++) {
+                if (y >= colMin[x] && y <= colMax[x]) px[(y * w + x) * 4 + 3] = 255;
+            }
             // soften the cut: a pixel next to the removed backdrop keeps half its opacity, so edges do not look torn
             const alpha = new Uint8ClampedArray(w * h);
             for (let k = 0; k < w * h; k++) alpha[k] = px[k * 4 + 3];
@@ -2104,6 +2116,7 @@ function shuffleHeroFigures() {
             setTimeout(() => {
                 slot.src = cut || img.src;
                 slot.classList.toggle('hero-fig-card', !cut);
+                slot.closest('.hero-collage')?.classList.add('from-catalog');
                 slot.alt = p.name || '';
                 const call = document.querySelector(`.hero-callout-${i + 1}`);
                 if (call) call.textContent = p.name || '';
