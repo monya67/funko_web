@@ -4594,3 +4594,10 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .fin-tip { position: absolute; top: 40px; z-index: 2; display: grid; gap: 3px; padding: 8px 10px; border-radius: 10px; background: var(--card); border: 1px solid rgba(var(--ink-rgb), 0.16); box-shadow: 0 8px 22px rgba(var(--shadow-rgb), 0.18); font-size: 12px; pointer-events: none; white-space: nowrap; color: var(--ink); }
 .fin-tip .muted { color: var(--muted); }
 .fin-chart .b { pointer-events: none; }
+.ascii-fig { animation: none; }
+.ascii-fig .r { font-weight: 800; }
+.ascii-fig .r.dim { opacity: 0.35; }
+.ascii-fig { color: var(--pre); }
+.ascii-fig .sign { color: var(--pre); }
+.ascii-fig .pole { color: var(--muted); }
+.ascii-fig span, .ascii-fig b { font-family: inherit; }

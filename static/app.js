@@ -4257,44 +4257,48 @@ init();
     }
 })();
 
-// --- Footer terminal: an ASCII Funko that blinks and sparkles, and a typewriter pitch ---
+// --- Footer terminal: a STOP sign drawn in code that glitches now and then, and a typewriter pitch ---
 (function footerAscii() {
     const fig = document.querySelector('.ascii-fig');
     const out = document.querySelector('.ascii-type');
     if (!fig || !out) return;
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const sp = ['*', '+', '.', 'o'];
-    const draw = (eye, mouth, s) => [
-        `  ${s[0]}   .-----------.   ${s[1]}`,
-        `    /  _       _  \\`,
-        `   |  (<b class="r">${eye}</b>)     (<b class="r">${eye}</b>)  |`,
-        `   |       v       |`,
-        `   |    <b class="r">${mouth}</b>    |`,
-        `    '-.__     __.-'  ${s[2]}`,
-        `  ${s[3]}  |   FUNKO   |`,
-        `     |   POP!    |`,
-        `     '-----------'`
-    ].join('\n');
-    let blink = false, tick = 0;
-    const paint = () => {
-        const s = [0, 1, 2, 3].map(i => `<b class="s">${sp[(tick + i) % sp.length]}</b>`);
-        fig.innerHTML = draw(blink ? '-' : 'O', tick % 6 < 3 ? '\\_____/' : '\\_____/'.replace('\\_____/', ' \\___/ '), s);
-    };
-    paint();
-    if (still) { out.textContent = '$ funko --collect\n> original figures\n> preorders from the US and Europe\n> delivery across Russia'; return; }
-    setInterval(() => { tick++; paint(); }, 420);
-    (function blinker() {
-        setTimeout(() => { blink = true; paint(); setTimeout(() => { blink = false; paint(); blinker(); }, 140); }, 1800 + Math.random() * 2400);
+    const GLYPHS = '01#$%&*+=<>/{}[]';
+    const draw = (word, lit) => [
+        `      .--------.`,
+        `     /          \\`,
+        `    /            \\`,
+        `   |   <b class="${lit ? 'r' : 'r dim'}">${word}</b>    |`,
+        `    \\            /`,
+        `     \\          /`,
+        `      '--------'`,
+        `          ||`,
+        `          ||`,
+        `       ___||___`
+    ].map((l, i) => l.replace(/^( *)(.*)$/, `$1<span class="${i < 7 ? 'sign' : 'pole'}">$2</span>`)).join('\n');
+    const WORD = 'S T O P';
+    fig.innerHTML = draw(WORD, true);
+    const lines = ['stop переплачивать', 'stop ждать без трекинга', 'stop искать по всем сайтам', 'echo "funko stop. collect. trade. repeat."'];
+    if (still) { out.textContent = lines.map(l => '$ ' + l).join('\n'); return; }
+    // every few seconds the sign glitches into code for a moment and flickers back on
+    (function glitch() {
+        setTimeout(() => {
+            let n = 0;
+            const t = setInterval(() => {
+                const scrambled = WORD.replace(/[A-Z]/g, () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)]);
+                fig.innerHTML = draw(n % 2 ? WORD : scrambled, n % 3 !== 1);
+                if (++n > 6) { clearInterval(t); fig.innerHTML = draw(WORD, true); glitch(); }
+            }, 70);
+        }, 2600 + Math.random() * 2600);
     })();
-    const lines = ['funko --collect', 'figures --original', 'preorder --from "USA, Europe"', 'delivery --to "all Russia"', 'echo "collect. trade. repeat."'];
     let li = 0, ci = 0, erasing = false;
     const caret = '<span class="c"></span>';
     const type = () => {
         const text = lines[li];
         out.innerHTML = `<span class="p">$</span> ${text.slice(0, ci).replace(/</g, '&lt;')}${caret}`;
         if (!erasing && ci < text.length) { ci++; return setTimeout(type, 55 + Math.random() * 45); }
-        if (!erasing) { erasing = true; return setTimeout(type, 1500); }
-        if (ci > 0) { ci -= 2; ci = Math.max(0, ci); return setTimeout(type, 22); }
+        if (!erasing) { erasing = true; return setTimeout(type, 1600); }
+        if (ci > 0) { ci = Math.max(0, ci - 2); return setTimeout(type, 22); }
         erasing = false; li = (li + 1) % lines.length; setTimeout(type, 350);
     };
     type();
