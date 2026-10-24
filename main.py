@@ -2275,7 +2275,15 @@ def convex_hull(points):
 
 
 def hero_cutout(content):
-    """A catalog packshot -> a 640x800 WebP for the home collage: the white studio backdrop removed, the box cropped to
+    return hero_cutout_info(content)[0]
+
+
+def polygon_area(pts):
+    return abs(sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))) / 2
+
+
+def hero_cutout_info(content):
+    """(webp, is_box). A catalog packshot -> a 640x800 WebP for the home collage: the white studio backdrop removed, the box cropped to
     its outline and scaled to the same height, bottom-centred. Every box comes out the same size whatever the photo's
     margins. A photo whose edges are not a plain white backdrop is put on a rounded white card instead."""
     img = ImageOps.exif_transpose(Image.open(io.BytesIO(content))).convert("RGBA")
@@ -2302,7 +2310,7 @@ def hero_cutout(content):
         card.alpha_composite(inner, ((HERO_W - inner.width) // 2, 40 + (HERO_H - 40 - inner.height) // 2))
         out = io.BytesIO()
         card.save(out, format="WEBP", quality=90)
-        return out.getvalue()
+        return out.getvalue(), False
 
     # no flood fill at all (a per-pixel Python loop froze the site on Render's small CPU): everything that is not
     # backdrop white belongs to the box, and the convex hull below fills the white lid and window inside it
@@ -2316,6 +2324,13 @@ def hero_cutout(content):
         if bb:
             pts += [(bb[0], y), (bb[2] - 1, y)]
     hull = convex_hull(pts)
+    # a box: an opaque photo whose silhouette fills its bounding rectangle; a figure render is see-through or ragged
+    see_through = sum(transparent.histogram()[255:]) / (w * h)
+    xs, ys = [p[0] for p in hull] or [0], [p[1] for p in hull] or [0]
+    rect = max(1, (max(xs) - min(xs)) * (max(ys) - min(ys)))
+    # measured on the catalog: boxes fill 0.89-0.95 of their rectangle with ~20% see-through margin, figures 0.67-0.89 with 36%+
+    fill = polygon_area(hull) / rect if len(hull) >= 3 else 0
+    is_box = fill > 0.88 and see_through < 0.3
     mask = Image.new("L", (w, h), 0)
     if len(hull) >= 3:
         ImageDraw.Draw(mask).polygon(hull, fill=255)
@@ -2333,20 +2348,34 @@ def hero_cutout(content):
     canvas.alpha_composite(img, ((HERO_W - img.width) // 2, HERO_H - img.height - 10))
     out = io.BytesIO()
     canvas.save(out, format="WEBP", quality=90)
-    return out.getvalue()
+    return out.getvalue(), is_box
 
 
 HERO_CACHE = {}
+HERO_IS_BOX = {}
+
+
+async def hero_prepare(photo_id):
+    """Cut out one photo once; remembers whether it shows a box (memory + database)."""
+    photo_id = first_photo_id(photo_id)
+    if photo_id in HERO_IS_BOX and photo_id in HERO_CACHE:
+        return HERO_IS_BOX[photo_id]
+    data = await photo_cache_get("h4:" + photo_id)
+    flag = await photo_cache_get("b4:" + photo_id)
+    if data is None or flag is None:
+        data, is_box = await asyncio.to_thread(hero_cutout_info, await telegram_photo_bytes(photo_id))
+        flag = b"1" if is_box else b"0"
+        await photo_cache_put("h4:" + photo_id, data)
+        await photo_cache_put("b4:" + photo_id, flag)
+    HERO_CACHE[photo_id] = data
+    HERO_IS_BOX[photo_id] = bytes(flag) == b"1"
+    return HERO_IS_BOX[photo_id]
 
 
 async def hero_image_bytes(photo_id):
     photo_id = first_photo_id(photo_id)
     if photo_id not in HERO_CACHE:
-        data = await photo_cache_get("h2:" + photo_id)
-        if data is None:
-            data = await asyncio.to_thread(hero_cutout, await telegram_photo_bytes(photo_id))
-            await photo_cache_put("h2:" + photo_id, data)
-        HERO_CACHE[photo_id] = data
+        await hero_prepare(photo_id)
     return HERO_CACHE[photo_id]
 
 
@@ -2363,29 +2392,53 @@ async def get_hero_photo(photo_id: str):
 
 
 HERO_PRODUCTS = {"at": 0.0, "items": []}
+HERO_SCAN = {"running": False}
 
 
 async def hero_products():
-    """Visible products with a photo, re-read at most once a minute."""
+    """Visible products with their photos, re-read at most once a minute."""
     if time.time() - HERO_PRODUCTS["at"] > 60:
         try:
             async with pool.acquire() as db:
                 rows = await db.fetch("SELECT name, photo_id FROM products WHERE NOT COALESCE(hidden, FALSE) AND COALESCE(photo_id, '') <> ''")
-            HERO_PRODUCTS["items"] = [(r["name"], first_photo_id(r["photo_id"])) for r in rows if first_photo_id(r["photo_id"])]
+            HERO_PRODUCTS["items"] = [(r["name"], [x.strip() for x in r["photo_id"].split(",") if x.strip()]) for r in rows]
             HERO_PRODUCTS["at"] = time.time()
         except Exception as exc:
             print(f"hero products query failed: {exc!r}")
     return HERO_PRODUCTS["items"]
 
 
-async def warm_hero_cutouts():
-    """Cut out every catalog figure once after start, so the first visitors do not wait for it."""
-    await asyncio.sleep(5)
-    for _, photo in await hero_products():
-        try:
-            await hero_image_bytes(photo)
-        except Exception as exc:
-            print(f"hero warm-up skipped {photo[:12]}: {exc!r}")
+def hero_box_choices(items):
+    """(name, photo) for every product that has a photo already known to show a box."""
+    out = []
+    for name, photos in items:
+        box = next((p for p in photos if HERO_IS_BOX.get(p)), None)
+        if box:
+            out.append((name, box))
+    return out
+
+
+async def hero_scan():
+    """In the background, one photo at a time: find out which catalog photos show a box."""
+    if HERO_SCAN["running"]:
+        return
+    HERO_SCAN["running"] = True
+    try:
+        for _, photos in await hero_products():
+            for photo in photos:
+                if photo in HERO_IS_BOX:
+                    if HERO_IS_BOX[photo]:
+                        break
+                    continue
+                try:
+                    if await hero_prepare(photo):
+                        break
+                except Exception as exc:
+                    HERO_IS_BOX[photo] = False
+                    print(f"hero scan skipped {photo[:12]}: {exc!r}")
+                await asyncio.sleep(0.5)
+    finally:
+        HERO_SCAN["running"] = False
 
 
 INDEX_HTML = {"mtime": 0.0, "text": ""}
@@ -2419,7 +2472,11 @@ def render_index(picks):
 
 async def spa_index():
     items = await hero_products()
-    picks = _random.sample(items, 3) if len(items) >= 3 else []
+    if any(p not in HERO_IS_BOX for _, photos in items for p in photos) and not HERO_SCAN["running"]:
+        asyncio.create_task(hero_scan())
+    boxes = hero_box_choices(items)
+    # only boxes; until three are known the page keeps its default boxes
+    picks = _random.sample(boxes, 3) if len(boxes) >= 3 else []
     return Response(content=render_index(picks), media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-cache"})
 
 
