@@ -1466,7 +1466,7 @@ async def delete_promocode(item_id: int, admin: dict = Depends(require_admin)):
 # ======================= Accounting (see finance.py for the rules) =======================
 FINAL_STATUS = "Выдано"
 ORDER_FIN_COLS = ("id, items, status, total_price, paid_amount, cost_price, delivery_cost, planned_purchase_cost, "
-                  "planned_shipping, product_kind, completed_at, archived")
+                  "planned_shipping, product_kind, completed_at, archived, order_date, created_at")
 
 
 async def fin_get(db, key, default=None):

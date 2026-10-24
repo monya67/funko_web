@@ -27,7 +27,7 @@ DEFAULT_SETTINGS = {
     "status_stages": {
         "Ожидает оплаты": STAGE_SKIP,
         "Заказ принят в обработку": STAGE_AWAITING,
-        "Ожидает выхода в продажу": STAGE_BOUGHT,
+        "Ожидает выхода в продажу": STAGE_AWAITING,  # a preorder is bought when it is released
         "Заказ ожидает отправки из магазина": STAGE_BOUGHT,
         "Заказ едет на склад США": STAGE_BOUGHT,
         "Заказ начал сортировку на складе США": STAGE_BOUGHT,
@@ -157,6 +157,12 @@ def summary(orders, events, ledger, withdrawals, settings, month):
     start = parse_day(settings["start_date"]) or date(2026, 11, 1)
     counted = lambda d: (parse_day(d) or date.min) >= start
 
+    # the accounting starts on start_date: orders placed before it are left out entirely, with all their money
+    def placed(o):
+        return parse_day(o.get("order_date")) or parse_day(o.get("created_at"))
+    old_ids = {o.get("id") for o in orders if (placed(o) or date.min) < start}
+    orders = [o for o in orders if o.get("id") not in old_ids]
+    events = [e for e in events if e.get("order_id") not in old_ids]
     rows = [order_money(o, settings) | {"order": o} for o in orders]
     active = [r for r in rows if r["stage"] in (STAGE_AWAITING, STAGE_BOUGHT, STAGE_SHIPPED)]
 

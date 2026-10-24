@@ -10,7 +10,8 @@ S = F.merged_settings({"start_date": "2026-11-01", "start_balance": 10000, "tax_
 
 def order(**kw):
     base = {"id": 1, "items": "Vox", "status": "Заказ принят в обработку", "total_price": 4000, "paid_amount": 2000,
-            "cost_price": 0, "delivery_cost": 0, "planned_purchase_cost": 1500, "planned_shipping": 700}
+            "cost_price": 0, "delivery_cost": 0, "planned_purchase_cost": 1500, "planned_shipping": 700,
+            "order_date": "02.11.2026"}
     return base | kw
 
 
@@ -29,10 +30,6 @@ def test_bought_releases_the_purchase_reserve_but_keeps_shipping():
 def test_shipping_paid_and_done_need_nothing():
     for status in ("Заказ отправлен из США на наш склад в Россию", "Выдано"):
         assert F.order_money(order(status=status), S)["need"] == 0
-
-
-def test_preorder_waiting_for_release_counts_as_bought():
-    assert F.order_money(order(status="Ожидает выхода в продажу"), S)["need_purchase"] == 0
 
 
 def test_unknown_status_is_treated_as_not_bought_and_flagged():
@@ -134,3 +131,18 @@ def test_cbr_rate_parsing_and_markup():
     assert F.parse_cbr_usd('{"Valute": {"USD": {"Nominal": 1, "Value": 80.5}}}') == 80.5
     assert F.parse_cbr_usd("garbage") is None
     assert F.rate_with_markup(80.0, 3) == 82.4 and F.rate_with_markup(None, 3) is None
+
+
+def test_orders_placed_before_the_start_are_left_out():
+    old = order(id=1, order_date="20.10.2026")
+    new = order(id=2, order_date="03.11.2026")
+    events = [{"created_at": "2026-11-05", "kind": "payment", "amount": 500, "order_id": 1},
+              {"created_at": "2026-11-05", "kind": "payment", "amount": 700, "order_id": 2}]
+    out = F.summary([old, new], events, [], [], S, "2026-11")
+    assert [o["id"] for o in out["orders"]] == [2]
+    assert out["need"]["total"] == 2200
+    assert out["available"]["cash"] == 10000 + 700
+
+
+def test_waiting_for_release_is_not_bought_yet():
+    assert F.order_money(order(status="Ожидает выхода в продажу"), S)["need_purchase"] == 1500
