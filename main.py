@@ -1977,8 +1977,8 @@ def order_email(order, note=""):
     rows = "".join(
         f'<tr><td style="padding:8px 0;border-bottom:1px solid {line};font:15px/1.4 Arial,sans-serif;color:{ink};">{_h(l)}</td></tr>'
         for l in lines)
-    img = (f'<td width="96" valign="top" style="padding-right:16px;"><img src="{SITE_URL}/api/photos/{_h(photo)}/mail.jpg" width="96" height="96" alt="" '
-           f'style="display:block;width:96px;height:96px;object-fit:cover;border-radius:10px;background:#F2EFEA;"></td>') if photo else ""
+    # an order keeps one photo for all its items, so a picture next to the list was misleading: no picture
+    img = ""
     money = [("Сумма заказа", f"{total:,} ₽".replace(",", " "), ink), ("Оплачено", f"{paid:,} ₽".replace(",", " "), "#1E8E3E")]
     if left:
         money.append(("Осталось доплатить", f"{left:,} ₽".replace(",", " "), red))

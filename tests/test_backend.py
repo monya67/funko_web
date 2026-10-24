@@ -314,7 +314,7 @@ def test_order_email_puts_the_order_first_and_escapes_client_text():
     assert html.index("2536 - Vox") < html.index("Ваши данные")
     assert "Осталось доплатить" in html and "3 000 ₽" in html
     assert "&lt;b&gt;Ален&lt;/b&gt;" in html and "<b>Ален</b>" not in html
-    assert "/api/photos/abc/mail.jpg" in html and "def" not in html.split("/api/photos/")[1][:10]
+    assert "/api/photos/" not in html
     assert "СДЭК" in html
     assert "Осталось доплатить" not in main.order_email({**order, "paid_amount": 6000})[1]
 
