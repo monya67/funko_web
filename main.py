@@ -1738,7 +1738,7 @@ async def ai_describe(body: DescribeIn, admin: dict = Depends(require_admin)):
                 r = await client.post(
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    json={"model": model, "temperature": 0.2, "max_tokens": 2500, "reasoning_effort": "medium",
+                    json={"model": model, "temperature": 0.2, "max_tokens": 900 if model.startswith("qwen") else 2500, "reasoning_effort": "medium" if not model.startswith("qwen") else "none",
                           "messages": [{"role": "system", "content": DESCRIBE_SYSTEM_PROMPT},
                                        {"role": "user", "content": describe_user_prompt(body)}]})
                 data = r.json()
