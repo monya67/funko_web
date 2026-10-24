@@ -464,3 +464,32 @@ def test_hero_cutout_keeps_a_transparent_background_transparent():
     bb = out.getchannel("A").getbbox()
     corner = out.getpixel((bb[0] + 3, bb[1] + 3))   # beside the triangle's tip: was painted black before
     assert corner[3] < 40
+
+
+def test_order_packs_only_once_and_only_from_2000():
+    import asyncio
+
+    class DB:
+        def __init__(self, total, given=0, tg=111):
+            self.row = {"total_price": total, "packs_given": given, "user_tg_id": tg}
+            self.added = []
+        async def fetchrow(self, sql, *a):
+            return self.row
+        async def fetchval(self, sql, *a):
+            if self.row["packs_given"]:
+                return None
+            self.row["packs_given"] = a[0]
+            return a[1]
+        async def execute(self, sql, *a):
+            self.added.append(a)
+
+    old = main.BOT_TOKEN
+    main.BOT_TOKEN = ""
+    try:
+        db = DB(2550)
+        assert asyncio.run(main.give_order_packs(db, 1)) is True and db.added == [(111, 3)]
+        assert asyncio.run(main.give_order_packs(db, 1)) is False and len(db.added) == 1   # never twice
+        assert asyncio.run(main.give_order_packs(DB(1999), 2)) is False
+        assert asyncio.run(main.give_order_packs(DB(5000, tg=None), 3)) is False          # not linked to the bot
+    finally:
+        main.BOT_TOKEN = old

@@ -20,7 +20,7 @@ from datetime import date, datetime
 STAGE_SKIP, STAGE_AWAITING, STAGE_BOUGHT, STAGE_SHIPPED, STAGE_DONE = 0, 1, 2, 3, 4
 
 DEFAULT_SETTINGS = {
-    "start_date": "2026-11-01",
+    "start_date": "2026-10-01",
     "start_balance": 0,
     "fx_markup_pct": 0,
     "fx_add_rub": 3,  # rubles added to the CBR rate for purchases
@@ -160,7 +160,8 @@ def summary(orders, events, ledger, withdrawals, settings, month):
 
     # the accounting starts on start_date: orders placed before it are left out entirely, with all their money
     def placed(o):
-        return parse_day(o.get("order_date")) or parse_day(o.get("created_at"))
+        # every order the site or the admin creates gets an order_date; the ones without it are the old bot-era orders
+        return parse_day(o.get("order_date"))
     old_ids = {o.get("id") for o in orders if (placed(o) or date.min) < start}
     orders = [o for o in orders if o.get("id") not in old_ids]
     events = [e for e in events if e.get("order_id") not in old_ids]

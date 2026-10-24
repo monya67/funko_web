@@ -4173,7 +4173,6 @@ function openFinSettings() {
     const form = document.getElementById('fin-settings-form');
     form.querySelector('.reg-error').classList.add('hidden');
     document.getElementById('fin-set-start').value = s.start_date;
-    if (finData.baseline_at) document.getElementById('fin-set-start').min = finData.baseline_at;
     document.getElementById('fin-set-balance').value = s.start_balance;
     document.getElementById('fin-set-markup').value = s.fx_markup_pct;
     document.getElementById('fin-set-add-rub').value = s.fx_add_rub ?? 3;

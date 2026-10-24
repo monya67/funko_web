@@ -211,6 +211,9 @@ async def startup():
         # does not send every visitor's photo request to Telegram again
         await db.execute("CREATE TABLE IF NOT EXISTS photo_cache (key TEXT PRIMARY KEY, data BYTEA NOT NULL, created_at TIMESTAMPTZ DEFAULT now())")
 
+        # Game reward for an order: set once the packs were given, so an order never gives them twice
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS packs_given INTEGER DEFAULT 0")
+
         # Promo codes from the Telegram bot's game (table series_codes belongs to the bot and is only read here)
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_discount INTEGER DEFAULT 0")
@@ -788,6 +791,7 @@ async def create_order(order: OrderCreate, admin: dict = Depends(require_admin))
             order.client_id, order.items, order.total_price, order.paid_amount, "Заказ принят в обработку", order.photo_id, order_date, order.cost_price, order.delivery_cost
         )
         await reconcile_order(db, new_id)
+        await give_order_packs(db, new_id)
         
         # Send Telegram notification if client is linked to TG
         if client["user_tg_id"] and BOT_TOKEN:
@@ -1082,6 +1086,7 @@ async def create_order_from_product(product_id: int, order_data: QuickOrderCreat
             snap["planned_purchase_cost"], snap["planned_shipping"], snap["purchase_usd"], snap["fx_rate"], snap["product_kind"]
         )
         await reconcile_order(db, new_order_id)
+        await give_order_packs(db, new_order_id)
 
         # Telegram notification
         if client["user_tg_id"] and BOT_TOKEN:
@@ -1355,6 +1360,7 @@ async def tbank_notification(req: Request):
                 await send_order_email(email, order, order["checkout_note"])
                 await reconcile_order(db, oid, note="оплата Т-Банк")
                 await db.execute("UPDATE promo_redemptions SET used = TRUE WHERE order_id = $1", oid)
+                await give_order_packs(db, oid)
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
             await db.execute(
                 "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
@@ -1623,9 +1629,6 @@ async def finance_save_settings(body: FinanceSettingsIn, admin: dict = Depends(r
     stages = {str(k): int(v) for k, v in body.status_stages.items() if int(v) in range(0, 5)}
     norms = {str(k).strip(): int(v) for k, v in body.shipping_norms.items() if str(k).strip() and str(v).strip() and int(v) > 0}
     async with pool.acquire() as db:
-        baseline = F.parse_day(await fin_get(db, "baseline_at"))
-        if baseline and start < baseline:
-            raise HTTPException(status_code=400, detail=f"Начало учёта не может быть раньше {baseline.strftime('%d.%m.%Y')} — до этой даты у сайта нет истории операций")
         old = await fin_get(db, "settings", {})
         await fin_set(db, "settings", {"start_date": start.isoformat(), "start_balance": body.start_balance,
                                        "fx_markup_pct": body.fx_markup_pct, "fx_add_rub": body.fx_add_rub, "tax_pct": body.tax_pct,
@@ -1755,6 +1758,43 @@ async def ai_describe(body: DescribeIn, admin: dict = Depends(require_admin)):
     if not text:
         raise HTTPException(status_code=502, detail="Сервис генерации не ответил, попробуйте ещё раз через минуту")
     return {"description": text}
+
+
+# ======================= Game packs for orders =======================
+# An order of 2000 ₽ or more gives the client 3 packs in the bot's card game (table card_users belongs to the bot).
+ORDER_PACKS_MIN_TOTAL = 2000
+ORDER_PACKS = 3
+
+
+async def give_order_packs(db, order_id):
+    """Once per order: +3 packs to the client's Telegram account in the game, and a message from the bot.
+    Needs the client's Telegram id (user_tg_id, set when they linked the bot); without it nothing happens."""
+    try:
+        row = await db.fetchrow(
+            "SELECT o.total_price, o.packs_given, c.user_tg_id FROM orders o JOIN clients c ON c.id = o.client_id WHERE o.id = $1",
+            order_id)
+        if not row or row["packs_given"] or not row["user_tg_id"] or (row["total_price"] or 0) < ORDER_PACKS_MIN_TOTAL:
+            return False
+        claimed = await db.fetchval("UPDATE orders SET packs_given = $1 WHERE id = $2 AND COALESCE(packs_given, 0) = 0 RETURNING id",
+                                    ORDER_PACKS, order_id)
+        if not claimed:
+            return False
+        await db.execute(
+            "INSERT INTO card_users (telegram_id, packs_count) VALUES ($1, $2) "
+            "ON CONFLICT (telegram_id) DO UPDATE SET packs_count = card_users.packs_count + $2",
+            row["user_tg_id"], ORDER_PACKS)
+    except Exception as exc:
+        print(f"order packs for #{order_id} failed: {exc!r}")
+        return False
+    if BOT_TOKEN:
+        try:
+            async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=15) as client:
+                await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={
+                    "chat_id": row["user_tg_id"],
+                    "text": f"🎁 За заказ #{order_id} вам начислено {ORDER_PACKS} пака в игре! Откройте их в коллекции карточек."})
+        except Exception as exc:
+            print(f"order packs message for #{order_id} failed: {exc!r}")
+    return True
 
 
 # ======================= Game promo codes =======================
