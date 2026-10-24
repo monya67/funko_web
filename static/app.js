@@ -4176,6 +4176,7 @@ function openFinSettings() {
     if (finData.baseline_at) document.getElementById('fin-set-start').min = finData.baseline_at;
     document.getElementById('fin-set-balance').value = s.start_balance;
     document.getElementById('fin-set-markup').value = s.fx_markup_pct;
+    document.getElementById('fin-set-add-rub').value = s.fx_add_rub ?? 3;
     document.getElementById('fin-set-tax').value = s.tax_pct;
     const fx = finData.fx || {};
     document.getElementById('fin-set-fx').innerHTML = fx.cbr
@@ -4251,6 +4252,7 @@ function addNormRow(kind = '', value = '') {
             start_date: document.getElementById('fin-set-start').value,
             start_balance: parseInt(document.getElementById('fin-set-balance').value, 10) || 0,
             fx_markup_pct: parseFloat(document.getElementById('fin-set-markup').value) || 0,
+            fx_add_rub: parseFloat(document.getElementById('fin-set-add-rub').value) || 0,
             tax_pct: parseFloat(document.getElementById('fin-set-tax').value) || 0,
             status_stages, shipping_norms
         };

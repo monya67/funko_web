@@ -23,6 +23,7 @@ DEFAULT_SETTINGS = {
     "start_date": "2026-11-01",
     "start_balance": 0,
     "fx_markup_pct": 0,
+    "fx_add_rub": 3,  # rubles added to the CBR rate for purchases
     "tax_pct": 9.5,  # УСН 6% + чеки 1.5% + эквайринг 2%, as the old accounting table counted
     "status_stages": {
         "Ожидает оплаты": STAGE_SKIP,
@@ -278,5 +279,6 @@ def parse_cbr_usd(payload):
         return None
 
 
-def rate_with_markup(cbr_rate, markup_pct):
-    return round(cbr_rate * (1 + float(markup_pct or 0) / 100), 4) if cbr_rate else None
+def rate_with_markup(cbr_rate, markup_pct, add_rub=0):
+    """CBR rate plus a percentage and plus a fixed number of rubles (e.g. CBR + 3 ₽)."""
+    return round(cbr_rate * (1 + float(markup_pct or 0) / 100) + float(add_rub or 0), 4) if cbr_rate else None

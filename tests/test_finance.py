@@ -146,3 +146,8 @@ def test_orders_placed_before_the_start_are_left_out():
 
 def test_waiting_for_release_is_not_bought_yet():
     assert F.order_money(order(status="Ожидает выхода в продажу"), S)["need_purchase"] == 1500
+
+
+def test_rate_is_cbr_plus_three_rubles_by_default():
+    assert F.rate_with_markup(80.0, 0, 3) == 83.0
+    assert F.merged_settings({})["fx_add_rub"] == 3

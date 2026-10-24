@@ -1501,7 +1501,7 @@ async def usd_rate(db, settings, force=False):
                 await fin_set(db, "fx", cached)
                 break
     cbr = cached.get("cbr")
-    return F.rate_with_markup(cbr, settings["fx_markup_pct"]), cbr, cached.get("day")
+    return F.rate_with_markup(cbr, settings["fx_markup_pct"], settings.get("fx_add_rub", 0)), cbr, cached.get("day")
 
 
 async def order_snapshot(db, qty_by_product, products):
@@ -1565,6 +1565,7 @@ class FinanceSettingsIn(BaseModel):
     start_date: str
     start_balance: int = 0
     fx_markup_pct: float = 0
+    fx_add_rub: float = 3
     tax_pct: float = 9.5
     status_stages: dict = {}
     shipping_norms: dict = {}
@@ -1617,7 +1618,7 @@ async def finance_save_settings(body: FinanceSettingsIn, admin: dict = Depends(r
     start = F.parse_day(body.start_date)
     if not start:
         raise HTTPException(status_code=400, detail="Неверная дата начала учёта")
-    if not (0 <= body.tax_pct < 50) or not (-50 < body.fx_markup_pct < 100):
+    if not (0 <= body.tax_pct < 50) or not (-50 < body.fx_markup_pct < 100) or not (-50 < body.fx_add_rub < 100):
         raise HTTPException(status_code=400, detail="Неверный процент")
     stages = {str(k): int(v) for k, v in body.status_stages.items() if int(v) in range(0, 5)}
     norms = {str(k).strip(): int(v) for k, v in body.shipping_norms.items() if str(k).strip() and str(v).strip() and int(v) > 0}
@@ -1627,7 +1628,7 @@ async def finance_save_settings(body: FinanceSettingsIn, admin: dict = Depends(r
             raise HTTPException(status_code=400, detail=f"Начало учёта не может быть раньше {baseline.strftime('%d.%m.%Y')} — до этой даты у сайта нет истории операций")
         old = await fin_get(db, "settings", {})
         await fin_set(db, "settings", {"start_date": start.isoformat(), "start_balance": body.start_balance,
-                                       "fx_markup_pct": body.fx_markup_pct, "tax_pct": body.tax_pct,
+                                       "fx_markup_pct": body.fx_markup_pct, "fx_add_rub": body.fx_add_rub, "tax_pct": body.tax_pct,
                                        "status_stages": stages, "shipping_norms": norms})
         corrected = 0
         if (old or {}).get("status_stages", {}) != stages or (old or {}).get("shipping_norms", {}) != norms:
