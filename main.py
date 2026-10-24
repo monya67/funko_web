@@ -2295,6 +2295,7 @@ def webp_to_mail_jpeg(webp_bytes, size=240):
 
 
 HERO_W, HERO_H = 640, 800
+HERO_VERSION = 4  # bump when the cut-out changes: browsers keep hero images for a year
 
 
 def convex_hull(points):
@@ -2502,7 +2503,7 @@ def render_index(picks):
     def img(mt):
         name, photo = picks[int(mt.group(1)) - 1]
         fallback = HERO_DEFAULTS[int(mt.group(1)) - 1]
-        return (f'<img class="hero-fig hero-fig-{mt.group(1)}" src="/api/photos/{html_lib.escape(photo, quote=True)}/hero.webp" '
+        return (f'<img class="hero-fig hero-fig-{mt.group(1)}" src="/api/photos/{html_lib.escape(photo, quote=True)}/hero.webp?v={HERO_VERSION}" '
                 f'alt="" width="{HERO_W}" height="{HERO_H}" fetchpriority="high" '
                 f'onerror="this.onerror=null;this.src=\'/static/images/hero/{fallback}\'">')
     def callout(mt):
