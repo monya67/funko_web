@@ -3924,7 +3924,7 @@ function renderFinance() {
     if (note) {
         const future = d.start_date > today;
         note.classList.toggle('hidden', !future);
-        note.textContent = future ? `Учёт денег начнётся ${isoRu(d.start_date)}: до этой даты «Доступно к выводу» считает только стартовый баланс из настроек минус резерв на текущие заказы. Резерв и таблица заказов работают уже сейчас.` : '';
+        note.textContent = future ? `Учёт начнётся ${isoRu(d.start_date)}: в бухгалтерию попадут только заказы, оформленные с этой даты. Старые заказы в ней не учитываются.` : '';
     }
 
     const att = document.getElementById('fin-attention');
