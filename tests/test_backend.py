@@ -452,3 +452,15 @@ def test_promo_discount_must_be_smaller_than_the_order():
 
 def test_promo_codes_are_normalised():
     assert main.normalize_promo(" vx3m-igmz ") == "VX3MIGMZ"
+
+
+def test_hero_cutout_keeps_a_transparent_background_transparent():
+    import io
+    from PIL import Image, ImageDraw
+    im = Image.new("RGBA", (600, 800), (0, 0, 0, 0))
+    ImageDraw.Draw(im).polygon([(300, 100), (500, 700), (100, 700)], fill=(230, 60, 160, 255))  # a figure, no box
+    buf = io.BytesIO(); im.save(buf, format="PNG")
+    out = Image.open(io.BytesIO(main.hero_cutout(buf.getvalue()))).convert("RGBA")
+    bb = out.getchannel("A").getbbox()
+    corner = out.getpixel((bb[0] + 3, bb[1] + 3))   # beside the triangle's tip: was painted black before
+    assert corner[3] < 40

@@ -2319,7 +2319,9 @@ def hero_cutout(content):
     mask = Image.new("L", (w, h), 0)
     if len(hull) >= 3:
         ImageDraw.Draw(mask).polygon(hull, fill=255)
-    alpha = mask.filter(ImageFilter.GaussianBlur(0.7))
+    # a photo that already had a transparent background keeps it: the hull only restores white panels, it must not
+    # paint the transparent (black-valued) pixels around a figure render
+    alpha = ImageChops.multiply(mask, ImageChops.invert(transparent)).filter(ImageFilter.GaussianBlur(0.7))
     img.putalpha(alpha)
     box = alpha.point(lambda v: 255 if v > 40 else 0).getbbox()
     if box:
@@ -2340,10 +2342,10 @@ HERO_CACHE = {}
 async def hero_image_bytes(photo_id):
     photo_id = first_photo_id(photo_id)
     if photo_id not in HERO_CACHE:
-        data = await photo_cache_get("h:" + photo_id)
+        data = await photo_cache_get("h2:" + photo_id)
         if data is None:
             data = await asyncio.to_thread(hero_cutout, await telegram_photo_bytes(photo_id))
-            await photo_cache_put("h:" + photo_id, data)
+            await photo_cache_put("h2:" + photo_id, data)
         HERO_CACHE[photo_id] = data
     return HERO_CACHE[photo_id]
 
