@@ -4621,3 +4621,6 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .promo-row .btn { flex: 0 0 auto; width: auto; padding: 10px 16px; }
 .promo-status { margin-top: 6px; font-size: 0.82rem; color: var(--pre); }
 .promo-status.ok { color: var(--ok); font-weight: 600; }
+.fin-item-row { display: flex; align-items: center; gap: 10px; }
+.fin-thumb { width: 44px; height: 44px; flex: none; object-fit: cover; border-radius: 8px; background: rgba(var(--ink-rgb), 0.06); cursor: zoom-in; }
+.fin-thumb.empty { display: inline-block; cursor: default; }

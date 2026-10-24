@@ -225,7 +225,7 @@ def summary(orders, events, ledger, withdrawals, settings, month):
         "attention": attention,
         "orders": [
             {k: v for k, v in r.items() if k != "order"} | {
-                "items": r["order"].get("items", ""), "status": r["order"].get("status", ""),
+                "items": r["order"].get("items", ""), "status": r["order"].get("status", ""), "photo_id": r["order"].get("photo_id") or "",
                 "archived": bool(r["order"].get("archived")),
             }
             for r in sorted(active, key=lambda r: -(r["id"] or 0))

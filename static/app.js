@@ -3966,7 +3966,7 @@ function renderFinOrders() {
         const profit = (o.missing_purchase || o.missing_shipping) ? '<span class="fin-missing">?</span>' : `${profitApprox}${signedRub(o.profit)}`;
         tr.innerHTML = `
             <td>#${o.id}</td>
-            <td class="fin-item">${escapeHtml(o.items || '')}</td>
+            <td class="fin-item"><div class="fin-item-row">${o.photo_id ? `<img class="fin-thumb" src="/api/photos/${encodeURIComponent(o.photo_id.split(',')[0])}" alt="" loading="lazy" onclick="viewPhoto('${escapeHtml(o.photo_id.split(',')[0])}')">` : '<span class="fin-thumb empty"></span>'}<span>${escapeHtml(o.items || '')}</span></div></td>
             <td><span class="fin-stage s${o.stage}" title="${escapeHtml(o.status)}">${FIN_STAGES[o.stage]}</span></td>
             <td class="num">${rub(o.received)} / ${rub(o.price)}</td>
             ${finCostCell(o, 'purchase')}
