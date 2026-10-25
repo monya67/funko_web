@@ -1483,7 +1483,9 @@ window.openEditModal = function(orderId) {
     document.getElementById('edit-order-paid').value = order.paid_amount;
     document.getElementById('edit-order-status').value = order.status;
     document.getElementById('edit-order-photo-id').value = order.photo_id || '';
-    document.getElementById('edit-order-date').value = order.order_date || '';
+    // a date input only takes yyyy-mm-dd; orders keep dd.mm.yyyy. A value it cannot read was saved back as an empty date
+    const od = String(order.order_date || '').trim();
+    document.getElementById('edit-order-date').value = /^\d{2}\.\d{2}\.\d{4}$/.test(od) ? od.split('.').reverse().join('-') : od;
     document.getElementById('edit-order-cost-price').value = order.cost_price || 0;
     document.getElementById('edit-order-delivery-cost').value = order.delivery_cost || 0;
     openModal(editOrderModal);
@@ -3722,8 +3724,9 @@ const REGISTERS = {
         modal: 'promocode-modal',
         newTitle: 'Новый промокод',
         editTitle: it => `Промокод ${it.code}`,
-        empty: { code: '', value: '', value_kind: 'percent', site: '', conditions: '' },
-        visible: () => true,
+        empty: { code: '', value: '', value_kind: 'percent', site: '', conditions: '', used: false },
+        view: 'active',
+        visible(it, view) { return view === 'archive' ? !!it.used : !it.used; },
         haystack: it => [it.code, it.site, it.conditions].join(' '),
         row(it) {
             const value = it.value_kind === 'rub' ? `${(it.value || 0).toLocaleString('ru')} ₽` : `${it.value || 0}%`;
@@ -3731,7 +3734,8 @@ const REGISTERS = {
                 <td><span class="reg-code">${escapeHtml(it.code)}</span></td>
                 <td style="white-space:nowrap;"><b>−${value}</b></td>
                 <td>${escapeHtml(it.site) || '—'}</td>
-                <td style="text-align:right;"><button type="button" class="btn secondary outline reg-act" data-act="copy">Копировать</button></td>`;
+                <td style="text-align:right; white-space:nowrap;"><button type="button" class="btn secondary outline reg-act" data-act="copy">Копировать</button>
+                    ${it.used ? '<button type="button" class="btn secondary outline reg-act" data-act="unuse">Вернуть</button>' : '<button type="button" class="btn secondary outline reg-act" data-act="use">Использован</button>'}</td>`;
         },
         count: (list, all) => `${list.length} из ${all.length}`,
         async act(it, act) {
@@ -3739,6 +3743,7 @@ const REGISTERS = {
                 try { await navigator.clipboard.writeText(it.code); } catch (e) {}
                 return 'copied';
             }
+            await fetchAPI(`/promocodes/${it.id}`, { method: 'PUT', body: JSON.stringify({ ...it, used: act === 'use' }) });
         }
     }
 };
@@ -3817,7 +3822,11 @@ function readRegisterForm(name) {
     const out = {};
     Object.keys(REGISTERS[name].empty).forEach(k => {
         const el = form.elements[k];
-        if (!el) return;
+        if (!el) {  // a field the form does not show (e.g. "used") keeps its stored value
+            const item = registerEditing.item;
+            if (item && k in item) out[k] = item[k];
+            return;
+        }
         if (el.type === 'checkbox') out[k] = el.checked;
         else if (el.type === 'number') out[k] = parseInt(el.value, 10) || 0;
         else out[k] = el.value.trim();

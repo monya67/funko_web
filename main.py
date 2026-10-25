@@ -256,6 +256,8 @@ async def startup():
             )
         """)
 
+        await db.execute("ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS used BOOLEAN DEFAULT FALSE")
+
         # Catalog tables
         await db.execute("""
             CREATE TABLE IF NOT EXISTS categories (
@@ -433,6 +435,7 @@ class PromoCodeIn(BaseModel):
     value_kind: str = "percent"  # 'percent' or 'rub'
     site: str = ""
     conditions: str = ""
+    used: bool = False
 
 
 def clean_purchase(p: PurchaseIn) -> dict:
@@ -464,7 +467,7 @@ def clean_promo(p: PromoCodeIn) -> dict:
     if p.value < 0 or (p.value_kind == "percent" and p.value > 100):
         raise ValueError("Неверный размер скидки")
     return {"code": code[:100], "value": p.value, "value_kind": p.value_kind,
-            "site": p.site.strip()[:300], "conditions": p.conditions.strip()[:5000]}
+            "site": p.site.strip()[:300], "conditions": p.conditions.strip()[:5000], "used": bool(p.used)}
 
 
 class LedgerEntryCreate(BaseModel):
@@ -824,6 +827,12 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
         
         # Auto-archive when status is "Выдано"
         archived = order.status == "Выдано"
+        # the order date is kept as dd.mm.yyyy; an empty value from the form never wipes the stored one
+        day = F.parse_day(order.order_date)
+        if day:
+            order.order_date = day.strftime("%d.%m.%Y")
+        else:
+            order.order_date = await db.fetchval("SELECT COALESCE(order_date, '') FROM orders WHERE id = $1", order_id) or ""
         res = await db.execute(
             "UPDATE orders SET items = $1, total_price = $2, paid_amount = $3, status = $4, photo_id = $5, archived = $6, order_date = $7, cost_price = $8, delivery_cost = $9 WHERE id = $10",
             order.items, order.total_price, order.paid_amount, order.status, order.photo_id, archived, order.order_date, order.cost_price, order.delivery_cost, order_id
@@ -1383,7 +1392,7 @@ async def get_payment_status(order_id: int):
         return {"status": row["payment_status"]}
 
 PURCHASE_COLS = ("title", "description", "amount", "purchase_date", "track", "kind", "expected_date", "shop", "delivered")
-PROMO_COLS = ("code", "value", "value_kind", "site", "conditions")
+PROMO_COLS = ("code", "value", "value_kind", "site", "conditions", "used")
 
 
 def _valid(fn, payload):
@@ -1444,7 +1453,7 @@ async def create_promocode(p: PromoCodeIn, admin: dict = Depends(require_admin))
     v = _valid(clean_promo, p)
     async with pool.acquire() as db:
         new_id = await db.fetchval(
-            "INSERT INTO promo_codes (code, value, value_kind, site, conditions) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+            "INSERT INTO promo_codes (code, value, value_kind, site, conditions, used) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
             *[v[c] for c in PROMO_COLS])
         return {"success": True, "id": new_id}
 
@@ -1454,7 +1463,7 @@ async def update_promocode(item_id: int, p: PromoCodeIn, admin: dict = Depends(r
     v = _valid(clean_promo, p)
     async with pool.acquire() as db:
         res = await db.execute(
-            "UPDATE promo_codes SET code = $1, value = $2, value_kind = $3, site = $4, conditions = $5 WHERE id = $6",
+            "UPDATE promo_codes SET code = $1, value = $2, value_kind = $3, site = $4, conditions = $5, used = $6 WHERE id = $7",
             *[v[c] for c in PROMO_COLS], item_id)
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Не найдено")
