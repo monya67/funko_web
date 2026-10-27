@@ -659,6 +659,15 @@ function formatDisplayDate(dateStr) {
     return dateStr;
 }
 
+// dd.mm.yyyy (or yyyy-mm-dd) -> "yyyymmdd", so dates sort by time and not as text; no date sorts as the oldest
+function dateSortKey(d) {
+    const s = String(d || '').trim();
+    let m = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+    if (m) return m[3] + m[2] + m[1];
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? m[1] + m[2] + m[3] : '';
+}
+
 function filterByDate(orders, yearId, monthId) {
     const yearVal = document.getElementById(yearId)?.value;
     const monthVal = document.getElementById(monthId)?.value;
@@ -734,7 +743,7 @@ function sortOrders(orders, sortState) {
         let valA, valB;
         const k = sortState.key;
         if (k === 'id') { valA = a.id; valB = b.id; }
-        else if (k === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (k === 'date') { valA = dateSortKey(a.order_date); valB = dateSortKey(b.order_date); }
         else if (k === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
         else if (k === 'price') { 
             valA = a.total_price || 0; 
@@ -1164,7 +1173,7 @@ function renderAccounting() {
         let valA, valB;
         const k = accountingSort.key;
         if (k === 'id') { valA = a.id; valB = b.id; }
-        else if (k === 'date') { valA = a.order_date || ''; valB = b.order_date || ''; }
+        else if (k === 'date') { valA = dateSortKey(a.order_date); valB = dateSortKey(b.order_date); }
         else if (k === 'price') { valA = a.price; valB = b.price; }
         else if (k === 'cost') { valA = a.cost; valB = b.cost; }
         else if (k === 'delivery') { valA = a.delivery; valB = b.delivery; }
