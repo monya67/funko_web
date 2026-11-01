@@ -3187,6 +3187,18 @@ window.showCookieBanner = function() {
     }
 };
 
+// Self-pickup needs no address: the field stays, but is optional
+document.getElementById('checkout-delivery')?.addEventListener('change', (e) => {
+    const pickup = e.target.value.toLowerCase().includes('самовывоз');
+    const label = document.getElementById('checkout-comment-label');
+    const input = document.getElementById('checkout-comment');
+    if (label) label.innerHTML = pickup ? 'Комментарий' : 'Город и пункт выдачи <span style="color:var(--pre);">*</span>';
+    if (input) {
+        input.placeholder = pickup ? 'Необязательно' : 'Город и адрес ПВЗ';
+        input.classList.remove('field-error');
+    }
+});
+
 window.proceedToPayment = function(event) {
     if (event) event.preventDefault();
 
@@ -3207,9 +3219,10 @@ window.proceedToPayment = function(event) {
     const phone = (phoneInput?.value || '').trim();
     const tg = (tgInput?.value || '').trim();
     const email = (emailInput?.value || '').trim();
+    const pickup = (deliveryInput?.value || '').toLowerCase().includes('самовывоз');
 
     // Reset previous error classes
-    [fnInput, lnInput, phoneInput, tgInput, emailInput].forEach(inp => inp?.classList.remove('field-error'));
+    [fnInput, lnInput, phoneInput, tgInput, emailInput, commentInput].forEach(inp => inp?.classList.remove('field-error'));
     if (consentContainer) consentContainer.classList.remove('field-error');
     if (errBanner) errBanner.classList.add('hidden');
 
@@ -3243,6 +3256,12 @@ window.proceedToPayment = function(event) {
         if (!firstInvalid) firstInvalid = emailInput;
     }
 
+    if (!pickup && (commentInput?.value || '').trim().length < 2) {
+        commentInput?.classList.add('field-error');
+        hasError = true;
+        if (!firstInvalid) firstInvalid = commentInput;
+    }
+
     // 152-FZ Mandatory Consent Check
     if (consentInput && !consentInput.checked) {
         if (consentContainer) consentContainer.classList.add('field-error');
@@ -3255,7 +3274,10 @@ window.proceedToPayment = function(event) {
             if (consentInput && !consentInput.checked) {
                 errBanner.textContent = 'Для продолжения необходимо подтвердить согласие на обработку персональных данных (152-ФЗ)!';
             } else {
-                errBanner.textContent = 'Обязательно укажите Имя, Фамилию, Телефон, Telegram и почту для связи перед оплатой!';
+                errBanner.textContent = pickup
+                    ? 'Обязательно укажите Имя, Фамилию, Телефон, Telegram и почту перед оплатой!'
+                    : 'Обязательно укажите Имя, Фамилию, Телефон, Telegram, почту, город и пункт выдачи перед оплатой!';
+                errBanner.scrollIntoView({ block: 'center' });
             }
             errBanner.classList.remove('hidden');
             errBanner.classList.add('shake-it');

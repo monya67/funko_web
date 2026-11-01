@@ -491,6 +491,11 @@ class CartItem(BaseModel):
     photo_id: str = ""
     qty: int = 1
 
+def delivery_address_ok(method, comment):
+    """Everything except self-pickup needs a city and a pick-up point."""
+    return "самовывоз" in (method or "").lower() or len((comment or "").strip()) >= 2
+
+
 class CheckoutRequest(BaseModel):
     items: list[CartItem]
     customer_name: str = ""
@@ -1137,6 +1142,8 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
 
     if (not first_name and not name) or not phone or not telegram:
         raise HTTPException(status_code=400, detail="Имя, телефон и Telegram обязательны для оформления")
+    if not delivery_address_ok(checkout.delivery_method, checkout.comment):
+        raise HTTPException(status_code=400, detail="Укажите город и пункт выдачи")
     if not valid_email(email):
         raise HTTPException(status_code=400, detail="Укажите корректную электронную почту")
 
@@ -1366,7 +1373,7 @@ async def tbank_notification(req: Request):
             if first:
                 email = await db.fetchval("SELECT email FROM clients WHERE id = $1", order["client_id"])
                 await notify_admins(paid_alert_text(order, order["client_id"], email, order["checkout_note"]))
-                await send_order_email(email, order, order["checkout_note"])
+                asyncio.create_task(send_order_email(email, order, order["checkout_note"]))
                 await reconcile_order(db, oid, note="оплата Т-Банк")
                 await db.execute("UPDATE promo_redemptions SET used = TRUE WHERE order_id = $1", oid)
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
@@ -2120,6 +2127,17 @@ def status_email(order, status):
     return f"Заказ #{oid}: {short[:1].lower()}{short[1:]} — Funko Stop", html, text
 
 
+MAIL_WARNED = {"at": 0.0}
+
+
+async def warn_mail_failure(to_addr, error):
+    """Tell the admins when client e-mails stop going out; at most once an hour, so a mail outage is not a flood."""
+    if time.time() - MAIL_WARNED["at"] < 3600:
+        return
+    MAIL_WARNED["at"] = time.time()
+    await notify_admins(f"⚠️ Письмо клиенту ({to_addr}) не ушло: {str(error)[:200] or type(error).__name__}. Проверьте настройки почты.")
+
+
 async def send_client_email(to_addr, subject, html, text):
     """Best effort: a failed e-mail is logged and never breaks the order flow."""
     if not (SMTP_USER and SMTP_PASSWORD):
@@ -2131,7 +2149,8 @@ async def send_client_email(to_addr, subject, html, text):
         await asyncio.to_thread(_smtp_send, to_addr, subject, html, text)
         return True
     except Exception as e:
-        print(f"client e-mail failed: {e}")
+        print(f"client e-mail failed: {e!r}")
+        await warn_mail_failure(to_addr, e)
         return False
 
 
@@ -2142,12 +2161,13 @@ async def send_order_email(to_addr, order, note=""):
         return False
     if not to_addr or not valid_email(to_addr):
         return False
-    subject, html, text = order_email(order, note)
     try:
+        subject, html, text = order_email(order, note)
         await asyncio.to_thread(_smtp_send, to_addr, subject, html, text)
         return True
     except Exception as e:
-        print(f"order e-mail to client failed: {e}")
+        print(f"order e-mail to client failed: {e!r}")
+        await warn_mail_failure(to_addr, e)
         return False
 
 

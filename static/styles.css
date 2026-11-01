@@ -4624,3 +4624,17 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .fin-item-row { display: flex; align-items: center; gap: 10px; }
 .fin-thumb { width: 44px; height: 44px; flex: none; object-fit: cover; border-radius: 8px; background: rgba(var(--ink-rgb), 0.06); cursor: zoom-in; }
 .fin-thumb.empty { display: inline-block; cursor: default; }
+
+/* checkout on phones: nothing may push the form wider than the screen (it scrolled sideways), one field per row */
+#checkout-modal { overflow-x: hidden; }
+#checkout-modal [style*="grid-template-columns"] > * { min-width: 0; }
+#checkout-modal input, #checkout-modal select { width: 100%; min-width: 0; box-sizing: border-box; }
+#checkout-modal .prepay-options-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+@media (max-width: 560px) {
+    #checkout-form [style*="grid-template-columns"] { grid-template-columns: minmax(0, 1fr) !important; }
+    #checkout-modal input[type="checkbox"] { width: 18px; }
+}
+@media (max-width: 560px) {
+    #checkout-form .modal-actions { flex-direction: column-reverse; }
+    #checkout-form .modal-actions .btn { width: 100% !important; flex: none !important; white-space: normal; }
+}

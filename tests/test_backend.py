@@ -506,3 +506,28 @@ def test_client_filter_is_for_admins_only():
     page = open("static/index.html", encoding="utf-8").read()
     for name in ("orders", "archived"):
         assert f'id="{name}-client-filter" class="filter-input xnarrow admin-only hidden"' in page
+
+
+def test_delivery_needs_an_address_except_self_pickup():
+    assert not main.delivery_address_ok("Авито Доставка", "")
+    assert not main.delivery_address_ok("Почта России", "  ")
+    assert main.delivery_address_ok("Авито Доставка", "Москва, ПВЗ на Ленина")
+    assert main.delivery_address_ok("Самовывоз Новокосино", "")
+
+
+def test_a_failed_order_email_warns_the_admins_once_and_never_raises(monkeypatch):
+    import asyncio
+    sent = []
+    async def fake_notify(text):
+        sent.append(text)
+    def boom(*a):
+        raise OSError("Network is unreachable")
+    monkeypatch.setattr(main, "notify_admins", fake_notify)
+    monkeypatch.setattr(main, "_smtp_send", boom)
+    monkeypatch.setattr(main, "SMTP_USER", "u")
+    monkeypatch.setattr(main, "SMTP_PASSWORD", "p")
+    monkeypatch.setitem(main.MAIL_WARNED, "at", 0.0)
+    order = {"id": 1, "items": "Vox", "total_price": 10, "paid_amount": 5, "customer_name": "A", "customer_phone": "1", "photo_id": ""}
+    assert asyncio.run(main.send_order_email("a@b.ru", order)) is False
+    assert asyncio.run(main.send_order_email("a@b.ru", order)) is False
+    assert len(sent) == 1 and "Network is unreachable" in sent[0]
