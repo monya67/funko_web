@@ -1334,12 +1334,6 @@ th.sorted-col {
     color: var(--ink);
 }
 
-.stock-badge-info {
-    margin-left: auto;
-    color: var(--muted);
-    font-size: 0.78rem;
-}
-
 .stock-badge:has(input:checked) {
     border: none;
     background: none;
