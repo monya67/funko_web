@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1797400000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1797500000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -791,7 +791,7 @@
         <select id="orders-month-filter" class="filter-input narrow">
             <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
         </select>
-        <input type="number" id="orders-client-filter" class="filter-input xnarrow" placeholder="ID клиента">
+        <input type="number" id="orders-client-filter" class="filter-input xnarrow admin-only hidden" placeholder="ID клиента">
         <input type="number" id="orders-price-min" class="filter-input narrow" placeholder="Сумма от &#8381;">
         <input type="number" id="orders-price-max" class="filter-input narrow" placeholder="Сумма до &#8381;">
         <input type="number" id="orders-paid-min" class="filter-input narrow" placeholder="Внесено от &#8381;">
@@ -1022,7 +1022,7 @@
                 <div class="glass-panel table-container">
                     <table class="reg-table" data-reg-table="purchases">
                         <thead><tr>
-                            <th>Дата</th><th>Название</th><th>Магазин</th><th>Сумма</th><th>Трек-номер</th><th>Тип</th><th style="width:150px;"></th>
+                            <th>Дата</th><th>Название</th><th>Магазин</th><th>Заказ в магазине</th><th>Сумма</th><th>Трек-номер</th><th>Тип</th><th style="width:150px;"></th>
                         </tr></thead>
                         <tbody></tbody>
                     </table>
@@ -1177,7 +1177,7 @@
         <select id="archived-month-filter" class="filter-input narrow">
             <option value="">Месяц</option><option value="01">Январь</option><option value="02">Февраль</option><option value="03">Март</option><option value="04">Апрель</option><option value="05">Май</option><option value="06">Июнь</option><option value="07">Июль</option><option value="08">Август</option><option value="09">Сентябрь</option><option value="10">Октябрь</option><option value="11">Ноябрь</option><option value="12">Декабрь</option>
         </select>
-        <input type="number" id="archived-client-filter" class="filter-input xnarrow" placeholder="ID клиента">
+        <input type="number" id="archived-client-filter" class="filter-input xnarrow admin-only hidden" placeholder="ID клиента">
         <input type="number" id="archived-price-min" class="filter-input narrow" placeholder="Сумма от &#8381;">
         <input type="number" id="archived-price-max" class="filter-input narrow" placeholder="Сумма до &#8381;">
         <input type="number" id="archived-paid-min" class="filter-input narrow" placeholder="Внесено от &#8381;">
@@ -1509,6 +1509,10 @@
                 <div class="reg-grid">
                     <div class="input-group"><label for="pur-shop">Магазин</label><input type="text" id="pur-shop" name="shop" placeholder="Hot Topic, Amazon, BoxLunch…"></div>
                     <div class="input-group"><label for="pur-track">Трек-номер</label><input type="text" id="pur-track" name="track" placeholder="—"></div>
+                </div>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="pur-order-number">Номер заказа</label><input type="text" id="pur-order-number" name="order_number" placeholder="—"></div>
+                    <div class="input-group"><label for="pur-email">Почта</label><input type="text" id="pur-email" name="email" placeholder="аккаунт, с которого выкупили" autocomplete="off"></div>
                 </div>
                 <div class="reg-grid">
                     <div class="input-group"><label for="pur-kind">Тип</label>
@@ -2233,6 +2237,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1797400000000"></script>
+    <script src="/static/app.js?v=1797500000000"></script>
 </body>
 </html>

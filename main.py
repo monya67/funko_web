@@ -241,6 +241,8 @@ async def startup():
                 created_at TIMESTAMPTZ DEFAULT now()
             )
         """)
+        await db.execute("ALTER TABLE purchases ADD COLUMN IF NOT EXISTS order_number TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE purchases ADD COLUMN IF NOT EXISTS email TEXT DEFAULT ''")
         await db.execute("""
             CREATE TABLE IF NOT EXISTS promo_codes (
                 id SERIAL PRIMARY KEY,
@@ -424,6 +426,8 @@ class PurchaseIn(BaseModel):
     expected_date: str = ""      # preorders only: when the shop is expected to ship
     shop: str = ""
     delivered: bool = False
+    order_number: str = ""       # the order number in the shop we bought from
+    email: str = ""              # the shop account the purchase was made with
 
 
 class PromoCodeIn(BaseModel):
@@ -452,6 +456,7 @@ def clean_purchase(p: PurchaseIn) -> dict:
         "purchase_date": p.purchase_date, "track": p.track.strip()[:200], "kind": p.kind,
         "expected_date": p.expected_date if p.kind == "preorder" else "",
         "shop": p.shop.strip()[:200], "delivered": p.delivered,
+        "order_number": p.order_number.strip()[:200], "email": p.email.strip()[:200],
     }
 
 
@@ -1385,7 +1390,7 @@ async def get_payment_status(order_id: int):
             raise HTTPException(status_code=404, detail="Order not found")
         return {"status": row["payment_status"]}
 
-PURCHASE_COLS = ("title", "description", "amount", "purchase_date", "track", "kind", "expected_date", "shop", "delivered")
+PURCHASE_COLS = ("title", "description", "amount", "purchase_date", "track", "kind", "expected_date", "shop", "delivered", "order_number", "email")
 PROMO_COLS = ("code", "value", "value_kind", "site", "conditions", "used")
 
 
@@ -1408,8 +1413,8 @@ async def create_purchase(p: PurchaseIn, admin: dict = Depends(require_admin)):
     v = _valid(clean_purchase, p)
     async with pool.acquire() as db:
         new_id = await db.fetchval(
-            "INSERT INTO purchases (title, description, amount, purchase_date, track, kind, expected_date, shop, delivered) "
-            "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
+            "INSERT INTO purchases (title, description, amount, purchase_date, track, kind, expected_date, shop, delivered, order_number, email) "
+            "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id",
             *[v[c] for c in PURCHASE_COLS])
         return {"success": True, "id": new_id}
 
@@ -1420,7 +1425,7 @@ async def update_purchase(item_id: int, p: PurchaseIn, admin: dict = Depends(req
     async with pool.acquire() as db:
         res = await db.execute(
             "UPDATE purchases SET title = $1, description = $2, amount = $3, purchase_date = $4, track = $5, kind = $6, "
-            "expected_date = $7, shop = $8, delivered = $9 WHERE id = $10",
+            "expected_date = $7, shop = $8, delivered = $9, order_number = $10, email = $11 WHERE id = $12",
             *[v[c] for c in PURCHASE_COLS], item_id)
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Не найдено")

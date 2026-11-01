@@ -262,6 +262,10 @@ function updateRoleUI(role) {
         if (hubTrackingAction) hubTrackingAction.innerHTML = 'Войти в кабинет &rarr;';
         if (hubTrackingIcon) hubTrackingIcon.className = 'hub-card-icon amber';
     }
+    ['orders-search', 'archived-search'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) input.placeholder = role === 'admin' ? 'Поиск (ID, товар, клиент)...' : 'Поиск (номер заказа, товар)...';
+    });
 }
 
 function handleLogout() {
@@ -3656,10 +3660,10 @@ const REGISTERS = {
         modal: 'purchase-modal',
         newTitle: 'Новый выкуп',
         editTitle: it => `Выкуп: ${it.title}`,
-        empty: { title: '', description: '', amount: '', purchase_date: '', track: '', kind: 'stock', expected_date: '', shop: '', delivered: false },
+        empty: { title: '', description: '', amount: '', purchase_date: '', track: '', kind: 'stock', expected_date: '', shop: '', delivered: false, order_number: '', email: '' },
         view: 'active',
         visible(it, view) { return view === 'archive' ? it.delivered : !it.delivered; },
-        haystack: it => [it.title, it.shop, it.track, it.description].join(' '),
+        haystack: it => [it.title, it.shop, it.track, it.description, it.order_number, it.email].join(' '),
         row(it) {
             const kind = it.kind === 'preorder'
                 ? `<span class="reg-pill pre">Предзаказ</span>${it.expected_date ? `<div class="reg-sub">рассылка ${isoToRu(it.expected_date)}</div>` : ''}`
@@ -3671,6 +3675,7 @@ const REGISTERS = {
                 <td style="white-space:nowrap;">${isoToRu(it.purchase_date) || '—'}</td>
                 <td><b>${escapeHtml(it.title)}</b></td>
                 <td>${escapeHtml(it.shop) || '—'}</td>
+                <td><span class="reg-mono">${escapeHtml(it.order_number) || '—'}</span>${it.email ? `<div class="reg-sub">${escapeHtml(it.email)}</div>` : ''}</td>
                 <td style="white-space:nowrap;">${(it.amount || 0).toLocaleString('ru')} ₽</td>
                 <td class="reg-mono">${escapeHtml(it.track) || '—'}</td>
                 <td>${kind}</td>

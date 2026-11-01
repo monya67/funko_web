@@ -494,3 +494,15 @@ def test_catalog_is_open_and_packs_are_gone_from_the_page():
         assert gone not in page, gone
     for gone in ("catalogOpenForMe", "CATALOG_PREVIEW_CLIENT_IDS", "пак."):
         assert gone not in script, gone
+
+
+def test_purchase_keeps_the_shop_order_number_and_email():
+    v = main.clean_purchase(main.PurchaseIn(title="Vox", order_number=" FO-123 ", email=" buy@mail.ru "))
+    assert v["order_number"] == "FO-123" and v["email"] == "buy@mail.ru"
+    assert set(main.PURCHASE_COLS) == set(v)
+
+
+def test_client_filter_is_for_admins_only():
+    page = open("static/index.html", encoding="utf-8").read()
+    for name in ("orders", "archived"):
+        assert f'id="{name}-client-filter" class="filter-input xnarrow admin-only hidden"' in page
