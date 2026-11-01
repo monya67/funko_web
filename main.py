@@ -138,6 +138,7 @@ async def startup():
     pool = await asyncpg.create_pool(DATABASE_URL)
     app.state.cleanup_task = asyncio.create_task(unpaid_orders_loop())
     app.state.finance_baseline = asyncio.create_task(finance_baseline())
+    app.state.mystery_task = asyncio.create_task(mystery_flush_loop())
     # Add archived column if it doesn't exist yet
     async with pool.acquire() as db:
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE")
@@ -210,6 +211,9 @@ async def startup():
         # Photos live in Telegram; a copy of every converted image is kept here, so a restart of the server
         # does not send every visitor's photo request to Telegram again
         await db.execute("CREATE TABLE IF NOT EXISTS photo_cache (key TEXT PRIMARY KEY, data BYTEA NOT NULL, created_at TIMESTAMPTZ DEFAULT now())")
+
+        # The shared click counter of the /mystery page
+        await db.execute("CREATE TABLE IF NOT EXISTS site_counters (key TEXT PRIMARY KEY, value BIGINT NOT NULL DEFAULT 0)")
 
         # Promo codes from the Telegram bot's game (table series_codes belongs to the bot and is only read here)
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT DEFAULT ''")
@@ -292,6 +296,7 @@ async def startup():
 @app.on_event("shutdown")
 async def shutdown():
     if pool:
+        await mystery_flush()
         await pool.close()
 
 # --- Auth ---
@@ -2703,6 +2708,102 @@ async def get_oferta():
 @app.get("/returns")
 async def get_returns():
     return FileResponse("static/returns.html")
+
+# ======================= /mystery: a shared click counter =======================
+# Clicks are added in memory and written to the database every few seconds as a difference: thousands of clicks
+# must not mean thousands of writes on the small server, and two instances during a deploy do not overwrite each other.
+MYSTERY_GOAL = 100000
+MYSTERY_DEADLINE = datetime(2026, 11, 2, 17, 0, tzinfo=timezone(timedelta(hours=3))).timestamp()
+MYSTERY_KEY = "mystery_clicks"
+MYSTERY_RATE = 15       # clicks a second one address can add...
+MYSTERY_BURST = 60      # ...with this much saved up
+MYSTERY_MAX_BATCH = 50
+MYSTERY = {"loaded": False, "base": 0, "pending": 0, "seen": 0.0}
+MYSTERY_BUCKETS = {}
+
+
+def mystery_allowed(buckets, ip, wanted, now):
+    """How many of the wanted clicks this address may add now (a token bucket)."""
+    tokens, last = buckets.get(ip, (MYSTERY_BURST, now))
+    tokens = min(MYSTERY_BURST, tokens + (now - last) * MYSTERY_RATE)
+    allowed = int(min(tokens, wanted))
+    buckets[ip] = (tokens - allowed, now)
+    if len(buckets) > 20000:
+        buckets.clear()
+    return allowed
+
+
+def mystery_room(count, goal, now, deadline):
+    """How many more clicks count: none after the deadline or past the goal."""
+    return 0 if now >= deadline else max(0, goal - count)
+
+
+async def mystery_load():
+    if MYSTERY["loaded"]:
+        return
+    async with pool.acquire() as db:
+        MYSTERY["base"] = await db.fetchval("SELECT value FROM site_counters WHERE key = $1", MYSTERY_KEY) or 0
+    MYSTERY["loaded"] = True
+
+
+async def mystery_flush():
+    """Write the pending clicks; also picks up what another instance wrote."""
+    if not pool or not MYSTERY["loaded"]:
+        return
+    delta = MYSTERY["pending"]
+    try:
+        async with pool.acquire() as db:
+            MYSTERY["base"] = await db.fetchval(
+                "INSERT INTO site_counters (key, value) VALUES ($1, LEAST($2::bigint, $3::bigint)) "
+                "ON CONFLICT (key) DO UPDATE SET value = LEAST(site_counters.value + $2::bigint, $3::bigint) RETURNING value",
+                MYSTERY_KEY, delta, MYSTERY_GOAL)
+            MYSTERY["pending"] -= delta
+            if MYSTERY["base"] >= MYSTERY_GOAL:
+                first = await db.fetchval(
+                    "INSERT INTO site_counters (key, value) VALUES ('mystery_announced', 1) ON CONFLICT (key) DO NOTHING RETURNING key")
+                if first:
+                    await notify_admins(f"🎯 /mystery: цель достигнута, {MYSTERY_GOAL} кликов! Пора публиковать информацию в канале.")
+    except Exception as exc:
+        print(f"mystery flush failed: {exc!r}")
+
+
+async def mystery_flush_loop():
+    """Touches the database only while the page is being used, so an idle site lets it sleep."""
+    while True:
+        await asyncio.sleep(5)
+        if MYSTERY["pending"] or (MYSTERY["loaded"] and time.time() - MYSTERY["seen"] < 30):
+            await mystery_flush()
+
+
+def mystery_state():
+    now = time.time()
+    count = min(MYSTERY_GOAL, MYSTERY["base"] + MYSTERY["pending"])
+    return {"count": count, "goal": MYSTERY_GOAL, "deadline": MYSTERY_DEADLINE, "now": now,
+            "reached": count >= MYSTERY_GOAL, "closed": now >= MYSTERY_DEADLINE}
+
+
+class MysteryClickIn(BaseModel):
+    n: int = 1
+
+
+@app.get("/api/mystery")
+async def mystery_get():
+    await mystery_load()
+    MYSTERY["seen"] = time.time()
+    return Response(content=json.dumps(mystery_state()), media_type="application/json", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/mystery/click")
+async def mystery_click(request: Request, body: MysteryClickIn):
+    await mystery_load()
+    now = time.time()
+    MYSTERY["seen"] = now
+    wanted = max(0, min(MYSTERY_MAX_BATCH, body.n))
+    count = MYSTERY["base"] + MYSTERY["pending"]
+    wanted = min(wanted, mystery_room(count, MYSTERY_GOAL, now, MYSTERY_DEADLINE))
+    MYSTERY["pending"] += mystery_allowed(MYSTERY_BUCKETS, client_ip(request), wanted, now)
+    return Response(content=json.dumps(mystery_state()), media_type="application/json", headers={"Cache-Control": "no-store"})
+
 
 # Reachable only by its direct link: not in the menu, the catalog or the sitemap
 @app.get("/mystery")

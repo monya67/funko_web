@@ -2,17 +2,153 @@
 <html lang="ru">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#3a0002">
     <title>?</title>
     <link rel="icon" href="/favicon.ico">
     <style>
-        html, body { height: 100%; margin: 0; background: #000; }
-        body { display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        div { color: #fff; font: 700 min(80vw, 80vh)/1 Arial, Helvetica, sans-serif; user-select: none; }
+        * { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; }
+        body {
+            min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px 16px;
+            background: #3a0002 repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.08) 3px 4px);
+            color: #f3f1ee; font-family: Arial, Helvetica, sans-serif; text-align: center;
+        }
+        main { width: min(560px, 100%); display: flex; flex-direction: column; align-items: center; }
+        .mark { font: 700 clamp(120px, 30dvh, 260px)/0.95 Arial, Helvetica, sans-serif; user-select: none; }
+        .title { margin: 10px 0 0; font-size: clamp(20px, 3.4dvh, 28px); font-weight: 400; letter-spacing: 0.42em; margin-right: -0.42em; }
+        .sub { margin: 10px 0 0; font-size: clamp(11px, 1.8dvh, 14px); letter-spacing: 0.22em; text-transform: uppercase; opacity: 0.9; }
+        .count { margin: 16px 0 12px; font-size: min(9.4vw, clamp(30px, 6.4dvh, 54px)); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .bar { width: 100%; height: 18px; padding: 2px; border: 1.5px solid #f3f1ee; border-radius: 999px; }
+        .bar i { display: block; height: 100%; width: 0; min-width: 0; border-radius: 999px; background: #f3f1ee; transition: width 0.3s ease; }
+        .time { margin-top: 14px; font-size: 13px; letter-spacing: 0.14em; font-variant-numeric: tabular-nums; opacity: 0.85; }
+        .press, .link {
+            display: block; width: min(320px, 100%); margin-top: 18px; padding: 18px 20px; border: 0; border-radius: 2px;
+            background: #f3f1ee; color: #4a0003; font: 700 19px/1 Arial, Helvetica, sans-serif; letter-spacing: 0.1em; text-decoration: none;
+            cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
+        }
+        .press { transition: transform 0.06s ease-out; }
+        .press:active { transform: scale(0.96); }
+        .press:focus-visible, .link:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+        .done { margin-top: 18px; font-size: 18px; line-height: 1.4; }
+        .done b { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; }
+        [hidden] { display: none !important; }
+        @media (prefers-reduced-motion: reduce) { .press, .bar i { transition: none; } }
     </style>
 </head>
 <body>
-    <div role="img" aria-label="Вопросительный знак">?</div>
+<main>
+    <div class="mark" role="img" aria-label="Вопросительный знак">?</div>
+    <h1 class="title">ОТКРЫТИЕ</h1>
+    <p class="sub">Первое раскрытие — 100 000 кликов</p>
+    <div class="count" id="count" aria-live="off">0 / 100 000</div>
+    <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100000" id="bar"><i id="fill"></i></div>
+    <div class="time" id="time">&nbsp;</div>
+    <button type="button" class="press" id="press">НАЖАТЬ</button>
+    <div class="done" id="done" hidden>
+        <b id="done-head"></b><span id="done-text"></span>
+    </div>
+    <a class="link" id="link" href="https://t.me/FunkoStop" target="_blank" rel="noopener" hidden>TELEGRAM-КАНАЛ</a>
+</main>
+<script>
+(function () {
+    const els = {};
+    ['count', 'bar', 'fill', 'time', 'press', 'done', 'done-head', 'done-text', 'link'].forEach(id => { els[id] = document.getElementById(id); });
+    const MAX_BATCH = 50;
+    const state = { count: 0, goal: 100000, deadline: 0, skew: 0, reached: false, closed: false, unsent: 0, sending: false, failures: 0, loaded: false };
+    const fmt = n => n.toLocaleString('ru-RU').replace(/ /g, ' ');
+
+    function render() {
+        const shown = Math.min(state.goal, state.count + state.unsent);
+        els.count.textContent = `${fmt(shown)} / ${fmt(state.goal)}`;
+        els.fill.style.width = `${(shown / state.goal) * 100}%`;
+        els.bar.setAttribute('aria-valuenow', String(shown));
+        const over = state.reached || state.closed;
+        els.press.hidden = over || !state.loaded;
+        els.link.hidden = !over;
+        els.done.hidden = !over;
+        if (state.reached) {
+            els['done-head'].textContent = 'Цель достигнута';
+            els['done-text'].innerHTML = 'Ждите информацию в нашем <span style="white-space:nowrap">Telegram-канале</span>';
+        } else if (state.closed) {
+            els['done-head'].textContent = 'Время вышло';
+            els['done-text'].innerHTML = 'Следите за новостями в нашем <span style="white-space:nowrap">Telegram-канале</span>';
+        }
+    }
+
+    function tick() {
+        if (!state.deadline || state.reached || state.closed) {
+            els.time.textContent = ' ';
+            return;
+        }
+        const left = Math.max(0, Math.floor(state.deadline - (Date.now() / 1000 + state.skew)));
+        const p = n => String(n).padStart(2, '0');
+        const days = Math.floor(left / 86400);
+        els.time.textContent = `ОСТАЛОСЬ ${days ? `${days} Д ` : ''}${p(Math.floor(left / 3600) % 24)}:${p(Math.floor(left / 60) % 60)}:${p(left % 60)}`;
+        if (left === 0) { state.closed = true; render(); }
+    }
+
+    function apply(data) {
+        state.count = data.count;
+        state.goal = data.goal;
+        state.deadline = data.deadline;
+        state.skew = data.now - Date.now() / 1000;
+        state.reached = data.reached;
+        state.closed = data.closed;
+        state.loaded = true;
+        if (state.reached || state.closed) state.unsent = 0;
+        render();
+        tick();
+    }
+
+    async function sync() {
+        if (state.sending || document.hidden) return;
+        state.sending = true;
+        const n = Math.min(MAX_BATCH, state.unsent);
+        try {
+            const res = n
+                ? await fetch('/api/mystery/click', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n }) })
+                : await fetch('/api/mystery');
+            if (!res.ok) throw new Error(String(res.status));
+            const data = await res.json();
+            state.unsent = Math.max(0, state.unsent - n);
+            state.failures = 0;
+            apply(data);
+        } catch (e) {
+            state.failures += 1;   // clicks stay in unsent and go with the next request
+        } finally {
+            state.sending = false;
+        }
+    }
+
+    // clicks go out every 2 s, the counter refreshes every 6 s; both slow down when the server does not answer
+    let lastSync = 0;
+    setInterval(async () => {
+        const wait = (state.unsent ? 2000 : 6000) * Math.min(8, state.failures + 1);
+        if (Date.now() - lastSync < wait) return;
+        lastSync = Date.now();
+        await sync();
+    }, 500);
+    // clicks made just before leaving the page still count
+    window.addEventListener('pagehide', () => {
+        const n = Math.min(MAX_BATCH, state.unsent);
+        if (n) fetch('/api/mystery/click', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n }), keepalive: true }).catch(() => {});
+        state.unsent = 0;
+    });
+
+    els.press.addEventListener('click', () => {
+        if (state.reached || state.closed) return;
+        state.unsent = Math.min(state.unsent + 1, 500);
+        render();
+    });
+    // holding Enter or Space must not count as clicks
+    els.press.addEventListener('keydown', e => { if (e.repeat && (e.key === 'Enter' || e.key === ' ')) e.preventDefault(); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) sync(); });
+    setInterval(tick, 1000);
+    render();
+    sync();
+})();
+</script>
 </body>
 </html>
