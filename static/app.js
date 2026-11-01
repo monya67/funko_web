@@ -262,39 +262,7 @@ function updateRoleUI(role) {
         if (hubTrackingAction) hubTrackingAction.innerHTML = 'Войти в кабинет &rarr;';
         if (hubTrackingIcon) hubTrackingIcon.className = 'hub-card-icon amber';
     }
-    window.updateCatalogDevMode();
 }
-
-// Clients who get the catalog before it opens for everyone (client ids)
-const CATALOG_PREVIEW_CLIENT_IDS = [184];
-function catalogOpenForMe() {
-    return currentRole === 'admin' || (currentRole === 'client' && CATALOG_PREVIEW_CLIENT_IDS.includes(Number(currentClientId)));
-}
-
-window.updateCatalogDevMode = function() {
-    const devBanner = document.getElementById('catalog-guest-under-dev');
-    const catalogHeader = document.getElementById('catalog-header-bar');
-    const catalogBody = document.getElementById('catalog-body-layout');
-    const adminNotice = document.getElementById('catalog-admin-dev-notice');
-    const catalogCartBtn = document.querySelector('.catalog-btn-cart');
-    const viewToggle = document.getElementById('catalog-view-toggle');
-
-    if (catalogOpenForMe()) {
-        if (devBanner) devBanner.classList.add('hidden');
-        if (catalogHeader) catalogHeader.style.display = 'flex';
-        if (catalogBody) catalogBody.style.display = 'grid';
-        if (adminNotice) adminNotice.classList.toggle('hidden', currentRole !== 'admin');
-        if (catalogCartBtn) catalogCartBtn.style.display = 'inline-flex';
-        if (viewToggle) viewToggle.style.display = 'flex';
-    } else {
-        if (devBanner) devBanner.classList.remove('hidden');
-        if (catalogHeader) catalogHeader.style.display = 'none';
-        if (catalogBody) catalogBody.style.display = 'none';
-        if (adminNotice) adminNotice.classList.add('hidden');
-        if (catalogCartBtn) catalogCartBtn.style.display = 'none';
-        if (viewToggle) viewToggle.style.display = 'none';
-    }
-};
 
 function handleLogout() {
     token = null;
@@ -434,8 +402,7 @@ window.switchTab = function(tabName, pushState = true) {
         }
     });
     if (tabName === 'catalog') {
-        window.updateCatalogDevMode();
-        if (catalogOpenForMe() && rawCatalogProducts.length === 0) {
+        if (rawCatalogProducts.length === 0) {
             loadCatalog();
             loadCatalogMeta();
         }
@@ -2144,13 +2111,9 @@ function renderHomeNew() {
         b.addEventListener('click', () => { homeNewCategory = c; renderHomeNew(); });
         return b;
     }));
-    const open = catalogOpenForMe();
-    document.getElementById('home-new-stub')?.classList.toggle('hidden', open);
-    tabs.classList.toggle('hidden', !open);
-    grid.classList.toggle('hidden', !open);
-    const items = open ? rawCatalogProducts
+    const items = rawCatalogProducts
         .filter(p => !homeNewCategory || (p.category || '').toLowerCase() === homeNewCategory.toLowerCase())
-        .slice(0, 5) : [];
+        .slice(0, 5);
     grid.replaceChildren(...items.map(productCard));
 }
 
@@ -2396,7 +2359,6 @@ window.openOrderInquiryModal = function(id) {
     const num = document.getElementById('inquiry-number');
     const title = document.getElementById('inquiry-title');
     const price = document.getElementById('inquiry-price');
-    const packs = document.getElementById('inquiry-packs');
     const tgBtn = document.getElementById('inquiry-tg-btn');
 
     if (img) {
@@ -2411,7 +2373,6 @@ window.openOrderInquiryModal = function(id) {
     if (title) title.textContent = p.name;
     const finalPrice = (p.final_price || p.price || 0).toLocaleString('ru');
     if (price) price.textContent = `${finalPrice} ₽`;
-    if (packs) packs.textContent = p.packs_count > 0 ? `+${p.packs_count} пак.` : '';
 
     if (tgBtn) {
         const clientInfo = currentClientId ? ` (Клиент #${currentClientId})` : '';
@@ -2429,7 +2390,6 @@ window.openAddProductModal = function() {
     document.getElementById('product-id').value = '';
     document.getElementById('product-modal-title').textContent = 'Добавить товар в каталог';
     document.getElementById('product-availability').value = 'preorder';
-    document.getElementById('product-packs').value = '0';
     document.getElementById('product-stock-qty').value = '';
     document.getElementById('product-hidden').checked = false;
     document.getElementById('product-discount').value = '0';
@@ -2509,7 +2469,6 @@ window.openEditProductModal = function(id) {
     document.getElementById('product-price').value = p.price;
     document.getElementById('product-discount').value = p.discount_percent || 0;
     document.getElementById('product-final-price').value = p.final_price || p.price;
-    document.getElementById('product-packs').value = p.packs_count || 0;
     document.getElementById('product-stock-qty').value = (p.stock_qty === null || p.stock_qty === undefined) ? '' : p.stock_qty;
     document.getElementById('product-hidden').checked = !!p.hidden;
     document.getElementById('product-availability').value = p.in_stock ? 'instock' : 'preorder';
@@ -2609,7 +2568,6 @@ productForm?.addEventListener('submit', async (e) => {
         final_price: finalPrice,
         category: document.getElementById('product-category').value.trim(),
         series: document.getElementById('product-series').value.trim(),
-        packs_count: parseInt(document.getElementById('product-packs').value) || 0,
         photo_id: document.getElementById('product-photo-id').value.trim(),
         in_stock: document.getElementById('product-availability').value === 'instock',
         badge: (document.getElementById('product-badge')?.value || '').trim(),
@@ -2664,7 +2622,6 @@ window.openQuickOrderModal = function(id) {
     
     const priceVal = p.final_price > 0 ? p.final_price : p.price;
     document.getElementById('quick-order-price').textContent = `${priceVal.toLocaleString('ru')} ₽`;
-    document.getElementById('quick-order-packs').textContent = p.packs_count > 0 ? `+${p.packs_count} пак.` : '';
     
     const imgEl = document.getElementById('quick-order-img');
     if (photoIds(p.photo_id)[0]) {

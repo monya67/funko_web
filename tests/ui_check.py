@@ -273,17 +273,6 @@ def product_page(page):
     return errors
 
 
-@check("guest_catalog_stub", widths=(390, 1440), path="/catalog")
-def guest_catalog_stub(page):
-    # The contrast detector skips text over gradients, so assert the stub card itself is a flat light surface first.
-    errors = []
-    bg = page.evaluate("() => { const s = getComputedStyle(document.querySelector('.under-dev-card')); return [s.backgroundImage, s.backgroundColor]; }")
-    if bg[0] != "none":
-        errors.append(f"stub card still paints a background image: {bg[0][:60]}")
-    errors += [f"low contrast {i}" for i in page.evaluate(LOW_CONTRAST_JS)]
-    return errors
-
-
 @check("write_guard", role="admin")
 def write_guard(page):
     # Probe a route that does not exist: without the guard it 404s, so even a failing run cannot touch the DB.
@@ -1148,14 +1137,6 @@ def faq_opens_smoothly(page):
     if "opacity" not in info["pprop"] or info["pdur"] < 0.35:
         errors.append("FAQ answer text does not fade in gently")
     return errors
-
-
-@check("catalog_stub_blocks_turn_transparent", widths=(1440,), path="/catalog")
-def catalog_stub_blocks_turn_transparent(page):
-    page.hover(".under-dev-feature")
-    page.wait_for_timeout(700)
-    bg = page.evaluate("() => getComputedStyle(document.querySelector('.under-dev-feature')).backgroundColor")
-    return [] if bg in ("rgba(0, 0, 0, 0)", "transparent") else [f"stub block stays filled on hover: {bg}"]
 
 
 @check("cart_text_and_icon", widths=(1440,), path="/")

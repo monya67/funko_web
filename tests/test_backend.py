@@ -472,3 +472,25 @@ def test_mystery_page_is_served_but_linked_from_nowhere():
     assert res.status_code == 200 and "?" in res.text and "noindex" in res.text
     for path in ("static/index.html", "static/app.js", "static/sitemap.xml"):
         assert "mystery" not in open(path, encoding="utf-8").read().lower().replace("mystery one piece", "")
+
+
+def test_hero_cutout_keeps_the_corners_of_a_transparent_box():
+    import io
+    from PIL import Image, ImageDraw
+    im = Image.new("RGBA", (869, 1122), (255, 255, 255, 0))
+    ImageDraw.Draw(im).rectangle((50, 50, 818, 1071), fill=(40, 90, 200, 255))
+    buf = io.BytesIO(); im.save(buf, format="PNG")
+    out, is_box = main.hero_cutout_info(buf.getvalue())
+    out = Image.open(io.BytesIO(out)).convert("RGBA")
+    assert is_box
+    x0, y0, x1, y1 = out.getchannel("A").getbbox()
+    assert out.getpixel((x0 + 1, y0 + 1))[3] > 200 and out.getpixel((x1 - 2, y1 - 2))[3] > 200   # the tips stay
+
+
+def test_catalog_is_open_and_packs_are_gone_from_the_page():
+    page = open("static/index.html", encoding="utf-8").read()
+    script = open("static/app.js", encoding="utf-8").read()
+    for gone in ("catalog-guest-under-dev", "home-new-stub", "Количество паков", "product-packs", "quick-order-packs", "inquiry-packs"):
+        assert gone not in page, gone
+    for gone in ("catalogOpenForMe", "CATALOG_PREVIEW_CLIENT_IDS", "пак."):
+        assert gone not in script, gone

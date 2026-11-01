@@ -2261,7 +2261,7 @@ def webp_to_mail_jpeg(webp_bytes, size=240):
 
 
 HERO_W, HERO_H = 640, 800
-HERO_VERSION = 4  # bump when the cut-out changes: browsers keep hero images for a year
+HERO_VERSION = 5  # bump when the cut-out changes: browsers keep hero images for a year
 
 
 def convex_hull(points):
@@ -2295,8 +2295,9 @@ def hero_cutout_info(content):
     """(webp, is_box). A catalog packshot -> a 640x800 WebP for the home collage: the white studio backdrop removed, the box cropped to
     its outline and scaled to the same height, bottom-centred. Every box comes out the same size whatever the photo's
     margins. A photo whose edges are not a plain white backdrop is put on a rounded white card instead."""
-    img = ImageOps.exif_transpose(Image.open(io.BytesIO(content))).convert("RGBA")
-    img.thumbnail((520, 520), Image.LANCZOS)  # small enough to process in a few tens of ms on a weak CPU
+    full = ImageOps.exif_transpose(Image.open(io.BytesIO(content))).convert("RGBA")
+    img = full.copy()
+    img.thumbnail((520, 520), Image.LANCZOS)  # the analysis only: small enough for a few tens of ms on a weak CPU
     w, h = img.size
     rgb = img.convert("RGB")
     r, g, b = rgb.split()
@@ -2340,13 +2341,18 @@ def hero_cutout_info(content):
     # measured on the catalog: boxes fill 0.89-0.95 of their rectangle with ~20% see-through margin, figures 0.67-0.89 with 36%+
     fill = polygon_area(hull) / rect if len(hull) >= 3 else 0
     is_box = fill > 0.88 and see_through < 0.3
-    mask = Image.new("L", (w, h), 0)
-    if len(hull) >= 3:
-        ImageDraw.Draw(mask).polygon(hull, fill=255)
-    # a photo that already had a transparent background keeps it: the hull only restores white panels, it must not
-    # paint the transparent (black-valued) pixels around a figure render
-    alpha = ImageChops.multiply(mask, ImageChops.invert(transparent)).filter(ImageFilter.GaussianBlur(0.7))
-    img.putalpha(alpha)
+    # the picture itself comes from the full-size photo. One with a transparent background already has a clean outline:
+    # keep it. The hull (built after specks were filtered away, so it chops corner tips) is only for photos on white.
+    fw, fh = full.size
+    if see_through >= 0.02:
+        alpha = full.getchannel("A")
+    else:
+        mask = Image.new("L", (fw, fh), 0)
+        if len(hull) >= 3:
+            ImageDraw.Draw(mask).polygon([(x * fw / w, y * fh / h) for x, y in hull], fill=255)
+        alpha = mask.filter(ImageFilter.GaussianBlur(0.7))
+    full.putalpha(alpha)
+    img = full
     box = alpha.point(lambda v: 255 if v > 40 else 0).getbbox()
     if box:
         img = img.crop(box)
@@ -2369,13 +2375,13 @@ async def hero_prepare(photo_id):
     photo_id = first_photo_id(photo_id)
     if photo_id in HERO_IS_BOX and photo_id in HERO_CACHE:
         return HERO_IS_BOX[photo_id]
-    data = await photo_cache_get("h4:" + photo_id)
-    flag = await photo_cache_get("b4:" + photo_id)
+    data = await photo_cache_get("h5:" + photo_id)
+    flag = await photo_cache_get("b5:" + photo_id)
     if data is None or flag is None:
         data, is_box = await asyncio.to_thread(hero_cutout_info, await telegram_photo_bytes(photo_id))
         flag = b"1" if is_box else b"0"
-        await photo_cache_put("h4:" + photo_id, data)
-        await photo_cache_put("b4:" + photo_id, flag)
+        await photo_cache_put("h5:" + photo_id, data)
+        await photo_cache_put("b5:" + photo_id, flag)
     HERO_CACHE[photo_id] = data
     HERO_IS_BOX[photo_id] = bytes(flag) == b"1"
     return HERO_IS_BOX[photo_id]

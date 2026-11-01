@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1797200000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1797300000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -329,7 +329,6 @@
                             </div>
                             <div id="home-new-tabs" class="home-new-tabs" role="tablist" aria-label="Бренды"></div>
                         </div>
-                        <div id="home-new-stub" class="home-new-stub"><strong>Раздел в разработке</strong><span>Новинки и предзаказы появятся здесь совсем скоро.</span></div>
                         <div id="home-new-grid" class="catalog-grid"></div>
                     </section>
 
@@ -855,66 +854,6 @@
 
             <!-- CATALOG TAB -->
             <section id="catalog-tab" class="tab-content">
-                <!-- Admin Notification Banner when Catalog is in Dev Mode -->
-                <div id="catalog-admin-dev-notice" class="admin-only hidden" style="background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.4); border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: var(--ink);">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffb400" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                        <span><strong>Режим администратора:</strong> Каталог открыт для вас. Для обычных посетителей включена заглушка <em>«В разработке»</em>.</span>
-                    </div>
-                    <span style="font-size: 0.78rem; background: rgba(var(--ink-rgb), 0.1); padding: 4px 10px; border-radius: 6px; color: var(--pre); white-space: nowrap;">Доступ админа</span>
-                </div>
-
-                <!-- Guest Under Development Screen -->
-                <div id="catalog-guest-under-dev" class="catalog-under-dev-container">
-                    <div class="under-dev-card glass-panel">
-                        <div class="under-dev-badge">
-                            <span class="under-dev-badge-dot"></span>
-                            СКОРО ЗАПУСК ОНЛАЙН-ВИТРИНЫ
-                        </div>
-                        <h2 class="under-dev-title">Раздел каталога в разработке</h2>
-                        <p class="under-dev-subtitle">
-                            Мы активно наполняем базу редких оригинальных фигурок <strong>Funko POP</strong>, лимитированных выставочных эксклюзивов (SDCC, NYCC, Funko Shop) и акриловых протекторов. Прямой заказ через сайт заработает совсем скоро!
-                        </p>
-
-                        <div class="under-dev-highlights">
-                            <div class="under-dev-feature">
-                                <div class="feature-icon">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                </div>
-                                <div class="feature-title">Предзаказ через менеджера</div>
-                                <div class="feature-desc">Напишите нам в Telegram — найдём и доставим любую фигурку из США и Европы с фиксированной ценой и предоплатой 50%.</div>
-                            </div>
-                            <div class="under-dev-feature">
-                                <div class="feature-icon">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                                </div>
-                                <div class="feature-title">В наличии в Москве</div>
-                                <div class="feature-desc">Более 150 оригинальных позиций с отправкой через Авито Доставку в день заказа в бронебойной упаковке.</div>
-                            </div>
-                            <div class="under-dev-feature">
-                                <div class="feature-icon">
-                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                                </div>
-                                <div class="feature-title">Отслеживание в боте</div>
-                                <div class="feature-desc">Статусы всех ваших предзаказов и посылок обновляются онлайн через официальный Telegram-бот @funkostop_bot.</div>
-                            </div>
-                        </div>
-
-                        <div class="under-dev-actions">
-                            <a href="https://t.me/Funko_Stop" target="_blank" rel="noopener" class="btn primary btn-large" style="display:inline-flex; align-items:center; gap:10px;">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-1.49.95-4.22 2.79-.4.27-.76.41-1.08.4-.36-.01-1.04-.2-1.55-.37-.63-.2-1.12-.31-1.08-.66.02-.18.27-.36.74-.55 2.92-1.27 4.86-2.11 5.83-2.51 2.78-1.16 3.35-1.36 3.73-1.36.08 0 .27.02.39.12.1.08.13.19.14.27-.01.06.01.24 0 .38z"/></svg>
-                                <span>Написать менеджеру @Funko_Stop</span>
-                            </a>
-                            <a href="https://www.avito.ru/brands/a6a14fad8b3a1fc5b6a6f0afc4e4d277" target="_blank" rel="noopener" class="btn secondary outline btn-large" style="display:inline-flex; align-items:center; gap:8px;">
-                                <span>Наличие на Авито ↗</span>
-                            </a>
-                            <button type="button" class="btn secondary outline btn-large" onclick="window.switchTab('home')">
-                                <span>← На Главную (Условия)</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="catalog-header-bar" id="catalog-header-bar">
                     <div class="catalog-header-left">
                         <h2>Каталог товаров</h2>
@@ -2056,10 +1995,6 @@
 
                 <div class="input-group flex-row">
                     <div style="flex: 1;">
-                        <label>Количество паков</label>
-                        <input type="number" id="product-packs" placeholder="0" min="0" value="0">
-                    </div>
-                    <div style="flex: 1;">
                         <label for="product-availability">Тип товара</label>
                         <select id="product-availability">
                             <option value="preorder">Предзаказ</option>
@@ -2143,7 +2078,6 @@
                     <div id="quick-order-title" style="font-weight: 600; font-size: 0.95rem; color: var(--ink);"></div>
                     <div style="display: flex; gap: 8px; margin-top: 4px; align-items: baseline;">
                         <span id="quick-order-price" style="color: var(--primary); font-weight: bold; font-size: 1.1rem;"></span>
-                        <span id="quick-order-packs" style="color: var(--warn); font-size: 0.85rem;"></span>
                     </div>
                 </div>
             </div>
@@ -2214,7 +2148,6 @@
                     <div id="inquiry-title" style="font-weight: 600; font-size: 0.95rem; color: var(--ink); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></div>
                     <div style="display: flex; gap: 8px; margin-top: 4px; align-items: baseline;">
                         <span id="inquiry-price" style="color: #ff3b30; font-weight: 800; font-size: 1.15rem;"></span>
-                        <span id="inquiry-packs" style="color: var(--warn); font-size: 0.82rem;"></span>
                     </div>
                 </div>
             </div>
@@ -2300,6 +2233,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1797200000000"></script>
+    <script src="/static/app.js?v=1797300000000"></script>
 </body>
 </html>
