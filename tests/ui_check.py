@@ -535,8 +535,8 @@ def benefits_copy(page):
     errors = []
     if "30–60 ДНЕЙ ХРАНЕНИЯ" not in text.upper():  # benefit titles are uppercased by CSS
         errors.append("storage benefit is not '30–60 дней хранения'")
-    if "Яндекс, Авито, Ozon, Почта, СДЭК" not in text:
-        errors.append("delivery list does not end with СДЭК")
+    if "Авито, Яндекс, Почта" not in text:
+        errors.append("delivery list is not Авито, Яндекс, Почта")
     return errors
 
 

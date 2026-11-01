@@ -3283,7 +3283,7 @@ window.proceedToPayment = function(event) {
         email: email,
         marketing_consent: !!marketingInput?.checked,
         payment_type: window.currentPaymentOption,
-        delivery_method: deliveryInput?.value || 'СДЭК',
+        delivery_method: deliveryInput?.value || 'Авито Доставка',
         comment: commentInput?.value || '',
         due_amount: dueAmount,
         total_price: total

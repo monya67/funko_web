@@ -196,8 +196,8 @@ def test_tbank_token_signs_booleans_like_the_bank(monkeypatch):
 def test_paid_alert_has_everything_the_manager_needs():
     order = {"id": 480, "customer_name": "Ален", "customer_phone": "+77054540001", "customer_tg": "@monya325",
              "items": "2536 - Vox", "total_price": 2, "paid_amount": 1, "payment_type": "50%"}
-    text = main.paid_alert_text(order, 184, "a@b.ru", "📦 Доставка: СДЭК\n💬 Комментарий: позвонить")
-    for part in ("ОПЛАЧЕН", "480", "184", "+77054540001", "@monya325", "a@b.ru", "СДЭК", "позвонить", "2536 - Vox", "50%"):
+    text = main.paid_alert_text(order, 184, "a@b.ru", "📦 Доставка: Авито Доставка\n💬 Комментарий: позвонить")
+    for part in ("ОПЛАЧЕН", "480", "184", "+77054540001", "@monya325", "a@b.ru", "Авито Доставка", "позвонить", "2536 - Vox", "50%"):
         assert part in text
     assert "Почта: —" in main.paid_alert_text(order, 184, "", "")
 
@@ -309,13 +309,13 @@ def test_admin_register_pages_are_served():
 def test_order_email_puts_the_order_first_and_escapes_client_text():
     order = {"id": 482, "items": "2536 - Vox\n1975 - Damon x2", "total_price": 6000, "paid_amount": 3000,
              "customer_name": "<b>Ален</b>", "customer_phone": "+77054540001", "photo_id": "abc,def"}
-    subject, html, text = main.order_email(order, "📦 Доставка: СДЭК\n💬 Комментарий: x")
+    subject, html, text = main.order_email(order, "📦 Доставка: Авито Доставка\n💬 Комментарий: x")
     assert "482" in subject
     assert html.index("2536 - Vox") < html.index("Ваши данные")
     assert "Осталось доплатить" in html and "3 000 ₽" in html
     assert "&lt;b&gt;Ален&lt;/b&gt;" in html and "<b>Ален</b>" not in html
     assert "/api/photos/" not in html
-    assert "СДЭК" in html
+    assert "Авито Доставка" in html
     assert "Осталось доплатить" not in main.order_email({**order, "paid_amount": 6000})[1]
 
 
