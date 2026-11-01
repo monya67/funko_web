@@ -4632,3 +4632,19 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
     #checkout-form .modal-actions { flex-direction: column-reverse; }
     #checkout-form .modal-actions .btn { width: 100% !important; flex: none !important; white-space: normal; }
 }
+
+/* The series strip in the catalog: arrows and dragging for a mouse */
+.chips-scroller { position: relative; max-width: 100%; }
+.franchise-chips-wrap { cursor: grab; }
+.franchise-chips-wrap:active { cursor: grabbing; }
+.chips-arrow {
+    position: absolute; top: 50%; z-index: 2; width: 40px; height: 40px; margin-top: -22px; padding: 0 0 3px;
+    border: 1px solid rgba(var(--ink-rgb), 0.25); border-radius: 50%;
+    background: var(--card); color: var(--ink); font-size: 24px; line-height: 1; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.chips-arrow:hover { border-color: var(--primary); color: var(--primary); }
+.chips-arrow[hidden] { display: none; }
+.chips-arrow-back { left: 0; }
+.chips-arrow-forward { right: 0; }
+@media (hover: none) { .chips-arrow { display: none; } }

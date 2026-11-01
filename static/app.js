@@ -1868,6 +1868,7 @@ function renderFranchiseChips() {
         return;
     }
     if (wrap) wrap.style.display = 'block';
+    initChipsScroller();
 
     const list = ['Все', ...allSeries];
 
@@ -1885,6 +1886,47 @@ function renderFranchiseChips() {
             </button>
         `;
     }).join('');
+    updateChipsArrows();
+}
+
+let updateChipsArrows = () => {};
+
+// A mouse cannot scroll sideways with its wheel, so the strip gets arrows and can be dragged; phones swipe as usual
+function initChipsScroller() {
+    const strip = document.querySelector('.franchise-chips-wrap');
+    const back = document.getElementById('chips-back');
+    const forward = document.getElementById('chips-forward');
+    if (!strip || !back || !forward || strip.dataset.scroller) return;
+    strip.dataset.scroller = '1';
+
+    updateChipsArrows = () => {
+        back.hidden = strip.scrollLeft <= 2;
+        forward.hidden = strip.scrollLeft >= strip.scrollWidth - strip.clientWidth - 2;
+    };
+    back.addEventListener('click', () => strip.scrollBy({ left: -strip.clientWidth * 0.7, behavior: 'smooth' }));
+    forward.addEventListener('click', () => strip.scrollBy({ left: strip.clientWidth * 0.7, behavior: 'smooth' }));
+    strip.addEventListener('scroll', updateChipsArrows, { passive: true });
+    new ResizeObserver(updateChipsArrows).observe(strip);
+
+    let dragging = false, moved = false, startX = 0, startLeft = 0;
+    strip.addEventListener('pointerdown', e => {
+        if (e.pointerType !== 'mouse' || e.button !== 0) return;
+        dragging = true;
+        moved = false;
+        startX = e.clientX;
+        startLeft = strip.scrollLeft;
+    });
+    window.addEventListener('pointermove', e => {
+        if (!dragging) return;
+        const dx = e.clientX - startX;
+        if (Math.abs(dx) > 4) moved = true;
+        if (moved) strip.scrollLeft = startLeft - dx;
+    });
+    window.addEventListener('pointerup', () => { dragging = false; });
+    // letting go after a drag must not pick the series under the cursor
+    strip.addEventListener('click', e => {
+        if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; }
+    }, true);
 }
 
 window.selectFranchiseChip = function(franchise) {
@@ -2117,8 +2159,22 @@ function renderHomeNew() {
     }));
     const items = rawCatalogProducts
         .filter(p => !homeNewCategory || (p.category || '').toLowerCase() === homeNewCategory.toLowerCase())
-        .slice(0, 5);
+        .slice(0, 12);
     grid.replaceChildren(...items.map(productCard));
+    fitHomeNew();
+}
+
+// The row is always full: one row on a computer, two rows of two on a phone
+function fitHomeNew() {
+    const grid = document.getElementById('home-new-grid');
+    if (!grid) return;
+    if (!grid.dataset.fitted) {
+        grid.dataset.fitted = '1';
+        new ResizeObserver(fitHomeNew).observe(grid);
+    }
+    const columns = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+    const limit = columns <= 2 ? columns * 2 : columns;
+    [...grid.children].forEach((card, i) => { card.style.display = i < limit ? '' : 'none'; });
 }
 
 function renderCatalog() {

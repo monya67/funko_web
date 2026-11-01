@@ -29,17 +29,15 @@
         .count { margin: 16px 0 12px; font-size: min(9.4vw, clamp(30px, 6.4dvh, 54px)); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .bar { width: 100%; height: 18px; padding: 2px; border: 1.5px solid #f3f1ee; border-radius: 999px; }
         .bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: #f3f1ee; transition: width 0.3s ease; }
-        .press, .link {
+        .press {
             display: block; width: min(320px, 100%); margin-top: 18px; padding: 18px 20px; border: 0; border-radius: 2px;
             background: #f3f1ee; color: #4a0003; font: 700 19px/1 Arial, Helvetica, sans-serif; letter-spacing: 0.1em; text-decoration: none;
             cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
         }
         .press { transition: transform 0.06s ease-out; }
+        .admin { position: fixed; right: 12px; bottom: 12px; padding: 8px 12px; border: 1px solid #f3f1ee; border-radius: 6px; color: #f3f1ee; font-size: 13px; text-decoration: none; }
         .press:active { transform: scale(0.96); }
-        .press:focus-visible, .link:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-        .done { margin-top: 18px; font-size: 18px; line-height: 1.4; }
-        .done b { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 400; letter-spacing: 0.22em; text-transform: uppercase; }
-        .done span { white-space: nowrap; }
+        .press:focus-visible, .admin:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
         [hidden] { display: none !important; }
         @media (prefers-reduced-motion: reduce) { .press, .bar i { transition: none; } }
     </style>
@@ -66,12 +64,9 @@
         <div class="count" id="count">0 / 100 000</div>
         <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100000" id="bar"><i id="fill"></i></div>
         <button type="button" class="press" id="press">НАЖАТЬ</button>
-        <div class="done" id="done" hidden>
-            <b>Цель достигнута</b>Ждите информацию в нашем <span>Telegram-канале</span>
-        </div>
-        <a class="link" id="link" href="https://t.me/FunkoStop" target="_blank" rel="noopener" hidden>TELEGRAM-КАНАЛ</a>
     </div>
 </main>
+<a class="admin" id="admin" href="/mystery/boxes" hidden>Страница боксов (видят только админы)</a>
 <script>
 (function () {
     const $ = id => document.getElementById(id);
@@ -87,9 +82,6 @@
         $('count').textContent = `${fmt(shown)} / ${fmt(state.goal)}`;
         $('fill').style.width = `${(shown / state.goal) * 100}%`;
         $('bar').setAttribute('aria-valuenow', String(shown));
-        $('press').hidden = state.reached;
-        $('done').hidden = !state.reached;
-        $('link').hidden = !state.reached;
     }
 
     function tick() {
@@ -110,7 +102,11 @@
         state.open = data.open;
         state.reached = data.reached;
         state.loaded = true;
-        if (state.reached) state.unsent = 0;
+        if (state.reached) {   // the goal is reached: everybody moves on to the boxes page
+            state.unsent = 0;
+            location.replace('/mystery/boxes');
+            return;
+        }
         render();
         tick();
     }
@@ -162,6 +158,12 @@
     setInterval(tick, 1000);
     render();
     sync();
+    let adminToken = null;
+    try { adminToken = localStorage.getItem('funko_token'); } catch (e) {}
+    if (adminToken) {
+        fetch('/api/mystery/admin/boxes', { headers: { Authorization: `Bearer ${adminToken}` } })
+            .then(res => { $('admin').hidden = !res.ok; }).catch(() => {});
+    }
 })();
 </script>
 </body>

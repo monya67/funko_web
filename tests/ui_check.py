@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore", category=jwt.warnings.InsecureKeyLengthWarning
 
 BASE = "http://127.0.0.1:8000"
 WIDTHS = [390, 768, 1024, 1440]
-GUEST_PAGES = ["/", "/catalog", "/static/privacy.html", "/static/oferta.html", "/static/returns.html"]
+GUEST_PAGES = ["/", "/catalog", "/privacy", "/oferta", "/returns"]
 ADMIN_PAGES = ["/", "/catalog", "/orders", "/archive", "/accounting", "/clients"]
 
 OVERFLOW_JS = "() => document.documentElement.scrollWidth - window.innerWidth"
@@ -420,7 +420,7 @@ def admin_table_header_style(page):
     return [] if th == ["uppercase", "rgb(239, 236, 230)"] else [f"table header is {th}, expected uppercase on paper"]
 
 
-@check("legal_layout", widths=(390, 1440), path="/static/privacy.html")
+@check("legal_layout", widths=(390, 1440), path="/privacy")
 def legal_layout(page):
     errors = []
     if not visible(page, ".site-header"):
@@ -443,7 +443,7 @@ def no_overflow_without_webfonts(page):
     # Slow or blocked Google Fonts (common on some RU networks) must not push headings off-screen.
     page.route("**/fonts.gstatic.com/**", lambda route: route.abort())
     errors = []
-    for path in ("/", "/catalog", "/static/privacy.html"):
+    for path in ("/", "/catalog", "/privacy"):
         page.goto(BASE + path, wait_until="networkidle")
         over = page.evaluate(OVERFLOW_JS)
         if over > 1:
@@ -603,7 +603,7 @@ def _dark_sweep(path, role="guest"):
 
 
 for _n, _p, _r in (("dark_home", "/", "guest"), ("dark_catalog_stub", "/catalog", "guest"),
-                   ("dark_privacy", "/static/privacy.html", "guest"), ("dark_admin_orders", "/orders", "admin"),
+                   ("dark_privacy", "/privacy", "guest"), ("dark_admin_orders", "/orders", "admin"),
                    ("dark_admin_catalog", "/catalog", "admin")):
     check(_n, role=_r, widths=(390, 1440), path=_p)(_dark_sweep(_p, _r))
 

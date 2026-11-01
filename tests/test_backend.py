@@ -555,3 +555,86 @@ def test_mystery_limits_clicks_per_address():
     assert main.mystery_allowed(buckets, "1.1.1.1", 50, 100.0) == 10   # the saved-up burst is spent
     assert main.mystery_allowed(buckets, "2.2.2.2", 50, 100.0) == 50   # another visitor is not affected
     assert main.mystery_allowed(buckets, "1.1.1.1", 50, 102.0) == 30   # 15 a second come back
+
+
+class FakeMysteryDb:
+    def __init__(self):
+        self.cells = {}
+
+    async def fetch(self, query, *args):
+        return [{"slot": s, "photo_id": p} for s, p in sorted(self.cells.items())]
+
+    async def execute(self, query, *args):
+        if query.startswith("DELETE"):
+            self.cells.pop(args[0], None)
+        else:
+            self.cells[args[0]] = args[1]
+
+    async def fetchval(self, query, *args):
+        return 0
+
+
+class FakeMysteryPool:
+    def __init__(self, db):
+        self.db = db
+
+    def acquire(self):
+        pool = self
+
+        class Ctx:
+            async def __aenter__(self):
+                return pool.db
+
+            async def __aexit__(self, *exc):
+                return False
+        return Ctx()
+
+
+def mystery_client(monkeypatch, base, opens):
+    monkeypatch.setattr(main, "pool", FakeMysteryPool(FakeMysteryDb()))
+    monkeypatch.setattr(main, "MYSTERY_OPENS", opens)
+    monkeypatch.setattr(main, "MYSTERY", {"loaded": True, "base": base, "pending": 0, "seen": 0.0})
+    return TestClient(main.app)
+
+
+def test_mystery_boxes_stay_closed_until_the_goal(monkeypatch):
+    client = mystery_client(monkeypatch, 99999, 0)
+    assert client.get("/api/mystery/boxes").status_code == 404
+    assert "НАЖАТЬ" in client.get("/mystery").text
+
+    main.MYSTERY["base"] = 100000
+    res = client.get("/api/mystery/boxes")
+    assert res.status_code == 200 and res.json()["price"] == 3500 and res.json()["total"] == 30 and res.json()["cells"] == []
+    assert "MYSTERY BOXES" in client.get("/mystery").text
+
+
+def test_only_admins_change_mystery_cells(monkeypatch):
+    client = mystery_client(monkeypatch, 100000, 0)
+    assert client.put("/api/mystery/admin/cells/1", json={"photo_id": "x"}).status_code == 401
+    assert client.delete("/api/mystery/admin/cells/1").status_code == 401
+    assert client.get("/api/mystery/admin/boxes").status_code == 401
+
+    main.app.dependency_overrides[main.require_admin] = lambda: {"role": "admin"}
+    try:
+        assert client.put("/api/mystery/admin/cells/31", json={"photo_id": "x"}).status_code == 404
+        assert client.put("/api/mystery/admin/cells/0", json={"photo_id": "x"}).status_code == 404
+        assert client.put("/api/mystery/admin/cells/7", json={"photo_id": " "}).status_code == 400
+        assert client.put("/api/mystery/admin/cells/7", json={"photo_id": "file1"}).status_code == 200
+        assert client.put("/api/mystery/admin/cells/7", json={"photo_id": "file2"}).status_code == 200
+        assert client.get("/api/mystery/boxes").json()["cells"] == [{"slot": 7, "photo": "file2"}]
+        assert client.delete("/api/mystery/admin/cells/7").status_code == 200
+        assert client.get("/api/mystery/admin/boxes").json()["cells"] == []
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_pages_have_short_addresses_and_old_links_redirect():
+    client = TestClient(main.app)
+    for page, target in (("privacy", "/privacy"), ("oferta", "/oferta"), ("returns", "/returns"), ("index", "/"), ("mystery_boxes", "/mystery")):
+        res = client.get(f"/static/{page}.html", follow_redirects=False)
+        assert res.status_code == 301 and res.headers["location"] == target
+    assert client.get("/static/nothing.html", follow_redirects=False).status_code == 404
+    for path in ("/privacy", "/oferta", "/returns"):
+        assert client.get(path).status_code == 200
+    for path in ("static/index.html", "static/oferta.html", "static/privacy.html", "static/returns.html", "static/sitemap.xml"):
+        assert not __import__("re").search(r"/static/\w+\.html", open(path, encoding="utf-8").read()), path

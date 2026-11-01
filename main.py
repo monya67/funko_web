@@ -214,6 +214,8 @@ async def startup():
 
         # The shared click counter of the /mystery page
         await db.execute("CREATE TABLE IF NOT EXISTS site_counters (key TEXT PRIMARY KEY, value BIGINT NOT NULL DEFAULT 0)")
+        # The photos in the cells of the mystery boxes page
+        await db.execute("CREATE TABLE IF NOT EXISTS mystery_cells (slot INTEGER PRIMARY KEY, photo_id TEXT NOT NULL)")
 
         # Promo codes from the Telegram bot's game (table series_codes belongs to the bot and is only read here)
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT DEFAULT ''")
@@ -2674,6 +2676,18 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
     return {"photo_id": message["document"]["file_id"]}
 
 
+# Pages live at short addresses; old links to the files (search engines, the bank, messengers) keep working
+CLEAN_PAGE_PATHS = {"index": "/", "privacy": "/privacy", "oferta": "/oferta", "returns": "/returns",
+                    "mystery": "/mystery", "mystery_boxes": "/mystery"}
+
+
+@app.get("/static/{page}.html")
+async def clean_page_address(page: str):
+    if page not in CLEAN_PAGE_PATHS:
+        raise HTTPException(status_code=404, detail="Not found")
+    return RedirectResponse(CLEAN_PAGE_PATHS[page], status_code=301)
+
+
 # --- Static Files ---
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -2713,6 +2727,8 @@ async def get_returns():
 # Clicks are added in memory and written to the database every few seconds as a difference: thousands of clicks
 # must not mean thousands of writes on the small server, and two instances during a deploy do not overwrite each other.
 MYSTERY_GOAL = 100000
+MYSTERY_BOX_PRICE = 3500
+MYSTERY_BOX_SLOTS = 30
 MYSTERY_OPENS = datetime(2026, 11, 3, 17, 0, tzinfo=timezone(timedelta(hours=3))).timestamp()  # the countdown ends, the clicker opens
 MYSTERY_KEY = "mystery_clicks_v2"  # a new key: everything clicked before the opening does not count
 MYSTERY_RATE = 15       # clicks a second one address can add...
@@ -2771,7 +2787,8 @@ async def mystery_flush_loop():
     """Touches the database only while the page is being used, so an idle site lets it sleep."""
     while True:
         await asyncio.sleep(5)
-        if MYSTERY["pending"] or (MYSTERY["loaded"] and time.time() - MYSTERY["seen"] < 30):
+        watched = MYSTERY["loaded"] and MYSTERY["base"] < MYSTERY_GOAL and time.time() - MYSTERY["seen"] < 30
+        if MYSTERY["pending"] or watched:
             await mystery_flush()
 
 
@@ -2809,10 +2826,77 @@ async def mystery_click(request: Request, body: MysteryClickIn):
     return Response(content=json.dumps(mystery_state()), media_type="application/json", headers={"Cache-Control": "no-store"})
 
 
+async def mystery_boxes_data():
+    async with pool.acquire() as db:
+        rows = await db.fetch("SELECT slot, photo_id FROM mystery_cells ORDER BY slot")
+    return {"price": MYSTERY_BOX_PRICE, "total": MYSTERY_BOX_SLOTS, "reached": mystery_state()["reached"],
+            "cells": [{"slot": r["slot"], "photo": r["photo_id"]} for r in rows if 1 <= r["slot"] <= MYSTERY_BOX_SLOTS]}
+
+
+async def mystery_goal_reached():
+    if time.time() < MYSTERY_OPENS:
+        return False
+    await mystery_load()
+    return mystery_state()["reached"]
+
+
+@app.get("/api/mystery/boxes")
+async def mystery_boxes():
+    if not await mystery_goal_reached():
+        raise HTTPException(status_code=404, detail="Not found")
+    return Response(content=json.dumps(await mystery_boxes_data()), media_type="application/json", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/mystery/admin/boxes")
+async def mystery_admin_boxes(admin: dict = Depends(require_admin)):
+    await mystery_goal_reached()
+    return await mystery_boxes_data()
+
+
+class MysteryCellIn(BaseModel):
+    photo_id: str
+
+
+def mystery_check_slot(slot):
+    if not 1 <= slot <= MYSTERY_BOX_SLOTS:
+        raise HTTPException(status_code=404, detail="Такой ячейки нет")
+
+
+@app.put("/api/mystery/admin/cells/{slot}")
+async def mystery_set_cell(slot: int, body: MysteryCellIn, admin: dict = Depends(require_admin)):
+    mystery_check_slot(slot)
+    photo_id = body.photo_id.strip()
+    if not photo_id:
+        raise HTTPException(status_code=400, detail="Нет фото")
+    async with pool.acquire() as db:
+        await db.execute("INSERT INTO mystery_cells (slot, photo_id) VALUES ($1, $2) "
+                         "ON CONFLICT (slot) DO UPDATE SET photo_id = EXCLUDED.photo_id", slot, photo_id)
+    return {"status": "success"}
+
+
+@app.delete("/api/mystery/admin/cells/{slot}")
+async def mystery_clear_cell(slot: int, admin: dict = Depends(require_admin)):
+    mystery_check_slot(slot)
+    async with pool.acquire() as db:
+        await db.execute("DELETE FROM mystery_cells WHERE slot = $1", slot)
+    return {"status": "success"}
+
+
 # Reachable only by its direct link: not in the menu, the catalog or the sitemap
 @app.get("/mystery")
 async def get_mystery():
-    return FileResponse("static/mystery.html")
+    try:
+        reached = await mystery_goal_reached()
+    except Exception as exc:
+        print(f"mystery state failed: {exc!r}")
+        reached = False
+    return FileResponse("static/mystery_boxes.html" if reached else "static/mystery.html")
+
+
+# The admins fill the cells here before the goal is reached; for everybody else the page sends them back until then
+@app.get("/mystery/boxes")
+async def get_mystery_boxes():
+    return FileResponse("static/mystery_boxes.html")
 
 @app.get("/")
 async def root():

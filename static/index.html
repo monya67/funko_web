@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1798000000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1798100000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -739,8 +739,8 @@
                                 </div>
                                 <div class="footer-link-group">
                                     <h5>Документы</h5>
-                                    <a href="/static/privacy.html">Политика конфиденциальности</a>
-                                    <a href="/static/oferta.html">Публичная оферта</a>
+                                    <a href="/privacy">Политика конфиденциальности</a>
+                                    <a href="/oferta">Публичная оферта</a>
                                 </div>
                             </div>
                         </div>
@@ -967,10 +967,14 @@
                         </div>
 
                         <!-- Franchise Quick Filter Chips (Breaking Bad, Coraline, The Boys, Marvel, etc.) -->
-                        <div class="franchise-chips-wrap">
-                            <div class="franchise-chips-bar" id="franchise-chips-bar">
-                                <!-- Populated dynamically by app.js -->
+                        <div class="chips-scroller">
+                            <button type="button" class="chips-arrow chips-arrow-back" id="chips-back" aria-label="Предыдущие серии" hidden>‹</button>
+                            <div class="franchise-chips-wrap">
+                                <div class="franchise-chips-bar" id="franchise-chips-bar">
+                                    <!-- Populated dynamically by app.js -->
+                                </div>
                             </div>
+                            <button type="button" class="chips-arrow chips-arrow-forward" id="chips-forward" aria-label="Следующие серии" hidden>›</button>
                         </div>
 
                         <!-- Catalog Grid View -->
@@ -1816,7 +1820,7 @@
                     <div id="checkout-consent-container" class="checkout-consent-container" style="margin-top:12px; margin-bottom:12px; padding:12px 14px; background:rgba(var(--ink-rgb), 0.03); border:1px solid rgba(var(--ink-rgb), 0.1); border-radius:10px;">
                         <label for="checkout-pd-consent" style="display:flex; align-items:flex-start; gap:10px; cursor:pointer; font-size:0.83rem; color:var(--muted); line-height:1.45; margin:0;">
                             <input type="checkbox" id="checkout-pd-consent" required checked style="width:18px; height:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer; flex-shrink:0;">
-                            <span>Я даю согласие на обработку моих <a href="/static/privacy.html" target="_blank" style="color:var(--primary); text-decoration:underline;">персональных данных</a> (152-ФЗ) и принимаю условия <a href="/static/oferta.html" target="_blank" style="color:var(--primary); text-decoration:underline;">Публичной оферты</a> и <a href="/static/returns.html" target="_blank" style="color:var(--primary); text-decoration:underline;">Правил возврата</a></span>
+                            <span>Я даю согласие на обработку моих <a href="/privacy" target="_blank" style="color:var(--primary); text-decoration:underline;">персональных данных</a> (152-ФЗ) и принимаю условия <a href="/oferta" target="_blank" style="color:var(--primary); text-decoration:underline;">Публичной оферты</a> и <a href="/returns" target="_blank" style="color:var(--primary); text-decoration:underline;">Правил возврата</a></span>
                         </label>
                     </div>
                 </div>
@@ -2130,7 +2134,7 @@
                 </div>
             </form>
             <div style="margin-top: 12px; font-size: 0.74rem; color: var(--muted); line-height: 1.4;">
-                Авторизуясь, вы подтверждаете согласие с <a href="/static/privacy.html" target="_blank" style="color: var(--primary); text-decoration: underline;">Политикой конфиденциальности</a>
+                Авторизуясь, вы подтверждаете согласие с <a href="/privacy" target="_blank" style="color: var(--primary); text-decoration: underline;">Политикой конфиденциальности</a>
             </div>
             <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(var(--ink-rgb), 0.08); font-size: 0.82rem; color: var(--gray);">
                 <span>Вопросы по заказам? </span>
@@ -2187,11 +2191,11 @@
                 <span class="footer-dot">•</span>
                 <a href="https://t.me/funkostop_bot" target="_blank" rel="noopener">Telegram-бот</a>
                 <span class="footer-dot">•</span>
-                <a href="/static/privacy.html">Политика конфиденциальности</a>
+                <a href="/privacy">Политика конфиденциальности</a>
                 <span class="footer-dot">•</span>
-                <a href="/static/oferta.html">Публичная оферта</a>
+                <a href="/oferta">Публичная оферта</a>
                 <span class="footer-dot">•</span>
-                <a href="/static/returns.html">Правила возврата (ЗоЗПП)</a>
+                <a href="/returns">Правила возврата (ЗоЗПП)</a>
                 <span class="footer-dot">•</span>
                 <a href="javascript:void(0)" onclick="window.showCookieBanner()">Настройки cookie</a>
             </div>
@@ -2224,7 +2228,7 @@
             </div>
             <div class="cookie-banner-text">
                 <p>
-                    Мы используем файлы cookie и локальные данные браузера для авторизации, сохранения корзины и улучшения работы сайта. Оставаясь на сайте, вы даете согласие на обработку данных в соответствии с <a href="/static/privacy.html" target="_blank">Политикой конфиденциальности</a> (152-ФЗ).
+                    Мы используем файлы cookie и локальные данные браузера для авторизации, сохранения корзины и улучшения работы сайта. Оставаясь на сайте, вы даете согласие на обработку данных в соответствии с <a href="/privacy" target="_blank">Политикой конфиденциальности</a> (152-ФЗ).
                 </p>
             </div>
             <div class="cookie-banner-actions">
@@ -2235,6 +2239,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1798000000000"></script>
+    <script src="/static/app.js?v=1798100000000"></script>
 </body>
 </html>

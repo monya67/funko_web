@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#0b0102">
+    <title>Mystery Boxes — Funko Stop</title>
+    <link rel="icon" href="/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; }
+        body {
+            min-height: 100dvh; color: #f4f1ef; font-family: 'Outfit', Arial, Helvetica, sans-serif;
+            background: #0b0102 radial-gradient(900px 520px at 22% 22%, rgba(150, 8, 14, 0.42), transparent 70%) no-repeat;
+        }
+        main, .top { width: min(1120px, 100%); margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+        a { color: inherit; text-decoration: none; }
+        a:focus-visible, button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; }
+        .logo { font: italic 800 23px/1 'Outfit', Arial, sans-serif; letter-spacing: -0.02em; white-space: nowrap; }
+        .logo span { color: #e8121c; }
+        .menu { display: flex; gap: 34px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+        .menu a:hover, .icons a:hover { color: #ff5a60; }
+        .menu .on { color: #e8121c; }
+        .icons { display: flex; gap: 18px; }
+        .icons svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+        .rule { height: 1px; margin: 0; border: 0; background: rgba(255, 255, 255, 0.28); }
+
+        .admin-bar { margin-top: 14px; padding: 10px 14px; border: 1px solid #e8121c; border-radius: 8px; font-size: 14px; line-height: 1.35; }
+        .admin-bar b { color: #ff5a60; font-weight: 600; }
+        .admin-bar .err { display: block; margin-top: 4px; color: #ffb3b6; }
+
+        .hero { display: grid; grid-template-columns: 5fr 7fr; align-items: center; padding: 22px 0 26px; }
+        .box { width: 100%; max-width: 400px; height: auto; justify-self: center; display: block; }
+        .info { padding-left: clamp(24px, 5vw, 48px); border-left: 1px solid rgba(255, 255, 255, 0.28); }
+        .brand { margin: 0; font-size: 13px; letter-spacing: 0.34em; }
+        .name {
+            margin: 6px 0 8px; font-size: clamp(36px, 5.6vw, 58px); font-weight: 700; line-height: 1.05; letter-spacing: 0.01em;
+            background: linear-gradient(180deg, #fff 25%, #a9a6a6 92%); -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .drop { margin: 0; padding-bottom: 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); font-size: 13px; letter-spacing: 0.26em; text-transform: uppercase; }
+        .deal { display: flex; align-items: center; gap: clamp(20px, 4vw, 44px); padding-top: 22px; }
+        .price { font-size: clamp(34px, 5vw, 48px); font-weight: 600; white-space: nowrap; }
+        .reveal { padding-left: clamp(20px, 4vw, 44px); border-left: 1px solid rgba(255, 255, 255, 0.28); text-align: center; }
+        .reveal small { display: block; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; }
+        .soon {
+            display: inline-block; margin-top: 8px; padding: 9px 42px; border: 2px solid #e8121c; border-radius: 50%;
+            font-size: 28px; font-weight: 700; letter-spacing: 0.2em; text-indent: 0.2em;
+            box-shadow: 0 0 22px rgba(232, 18, 28, 0.6), inset 0 0 16px rgba(232, 18, 28, 0.32); text-shadow: 0 0 14px rgba(255, 70, 76, 0.9);
+        }
+
+        .series-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 14px; font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; }
+        .series-head h2 { margin: 0; font: inherit; letter-spacing: inherit; }
+        .series-head em { color: #e8121c; font-style: normal; }
+        .opened { white-space: nowrap; letter-spacing: 0.06em; }
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; padding-bottom: 36px; }
+        .cell {
+            position: relative; display: block; width: 100%; aspect-ratio: 92 / 68; padding: 0; overflow: hidden;
+            border: 1px solid rgba(232, 18, 28, 0.55); border-radius: 10px; background: rgba(24, 3, 5, 0.75);
+            color: #f4f1ef; font: inherit; text-align: left;
+        }
+        .cell .no { position: absolute; top: 6px; left: 8px; z-index: 1; font-size: 13px; text-shadow: 0 0 4px #000; }
+        .cell .q { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 6px; font-size: clamp(22px, 2.8vw, 32px); font-weight: 700; color: rgba(255, 255, 255, 0.34); }
+        .cell img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 6px; object-fit: contain; }
+        .cell.busy { opacity: 0.5; }
+        button.cell { cursor: pointer; }
+        button.cell:hover { border-color: #ff5a60; }
+        .wrap { position: relative; }
+        .remove {
+            position: absolute; top: 3px; right: 3px; z-index: 2; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%;
+            background: rgba(0, 0, 0, 0.75); color: #fff; font: 700 15px/24px Arial, sans-serif; cursor: pointer;
+        }
+
+        @media (max-width: 760px) {
+            .menu { gap: 14px; font-size: 12px; }
+            .logo { font-size: 18px; }
+            .icons { display: none; }
+            .hero { grid-template-columns: 1fr; padding-top: 10px; }
+            .box { max-width: 280px; }
+            .info { padding-left: 0; border-left: 0; text-align: center; }
+            .brand { letter-spacing: 0.3em; }
+            .drop { font-size: 11px; letter-spacing: 0.16em; }
+            .deal { justify-content: center; gap: 18px; }
+            .reveal { padding-left: 18px; }
+            .reveal small { font-size: 10px; letter-spacing: 0.14em; }
+            .soon { padding: 7px 24px; font-size: 21px; }
+            .series-head { font-size: 13px; letter-spacing: 0.08em; }
+            .grid { grid-template-columns: repeat(5, 1fr); gap: 7px; }
+            .cell { aspect-ratio: 1; }
+            .cell .no { top: 4px; left: 6px; font-size: 11px; }
+            .cell .q { padding-top: 12px; font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+<header class="top">
+    <a class="logo" href="/" aria-label="Funko Stop — на главную">Funko<span>Stop</span></a>
+    <nav class="menu" aria-label="Меню">
+        <a href="/catalog">Магазин</a>
+        <a class="on" href="/mystery" aria-current="page">Мистери</a>
+        <a href="/#faq-section">FAQ</a>
+    </nav>
+    <div class="icons">
+        <a href="/catalog" aria-label="Поиск по каталогу"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.6-4.6"></path></svg></a>
+        <a href="/orders" aria-label="Профиль"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
+        <a href="/catalog" aria-label="Каталог и корзина"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1.2 13H4.8L6 8z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path></svg></a>
+    </div>
+</header>
+<main>
+    <hr class="rule">
+    <div class="admin-bar" id="admin-bar" hidden>
+        <b>Режим админа.</b> Нажмите на ячейку, чтобы загрузить или заменить фото, крестик убирает его.
+        <span id="admin-preview" hidden>Покупатели этой страницы пока не видят: она откроется после 100 000 кликов.</span>
+        <span class="err" id="admin-err" role="alert" hidden></span>
+    </div>
+    <section class="hero">
+        <img class="box" src="/static/images/mystery-box.webp" alt="Закрытая коробка Funko Stop со знаком вопроса" width="760" height="550">
+        <div class="info">
+            <p class="brand">FUNKOSTOP</p>
+            <h1 class="name">MYSTERY BOXES</h1>
+            <p class="drop"><span id="total">30</span> боксов / лимитированный дроп</p>
+            <div class="deal">
+                <div class="price" id="price">&nbsp;</div>
+                <div class="reveal"><small>Первое раскрытие</small><span class="soon">SOON</span></div>
+            </div>
+        </div>
+    </section>
+    <hr class="rule">
+    <div class="series-head">
+        <h2>Серии Mystery Boxes</h2>
+        <div class="opened">Открыто <em id="opened">0</em> / <span id="opened-total">30</span></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <input type="file" id="file" accept="image/*,.heic,.heif" hidden>
+</main>
+<script>
+(function () {
+    const $ = id => document.getElementById(id);
+    let token = null;
+    try { token = localStorage.getItem('funko_token'); } catch (e) {}
+    const auth = token ? { Authorization: `Bearer ${token}` } : {};
+    const state = { total: 30, cells: new Map(), admin: false, busy: new Set(), slot: 0 };
+
+    function cellContent(cell, slot) {
+        const no = document.createElement('span');
+        no.className = 'no';
+        no.textContent = String(slot).padStart(2, '0');
+        cell.append(no);
+        const photo = state.cells.get(slot);
+        if (photo) {
+            const img = document.createElement('img');
+            img.src = `/api/photos/${encodeURIComponent(photo)}`;
+            img.alt = `Серия ${slot}`;
+            img.loading = 'lazy';
+            cell.append(img);
+        } else {
+            const q = document.createElement('span');
+            q.className = 'q';
+            q.setAttribute('aria-hidden', 'true');
+            q.textContent = '?';
+            cell.append(q);
+        }
+    }
+
+    function render() {
+        const grid = $('grid');
+        grid.replaceChildren();
+        for (let slot = 1; slot <= state.total; slot++) {
+            const wrap = document.createElement('div');
+            wrap.className = 'wrap';
+            const cell = document.createElement(state.admin ? 'button' : 'div');
+            cell.className = 'cell';
+            cellContent(cell, slot);
+            if (state.admin) {
+                cell.type = 'button';
+                cell.setAttribute('aria-label', `Ячейка ${slot}: загрузить фото`);
+                cell.disabled = state.busy.has(slot);
+                cell.classList.toggle('busy', state.busy.has(slot));
+                cell.addEventListener('click', () => { state.slot = slot; $('file').click(); });
+            }
+            wrap.append(cell);
+            if (state.admin && state.cells.has(slot) && !state.busy.has(slot)) {
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'remove';
+                remove.textContent = '×';
+                remove.setAttribute('aria-label', `Ячейка ${slot}: убрать фото`);
+                remove.addEventListener('click', () => clearCell(slot));
+                wrap.append(remove);
+            }
+            grid.append(wrap);
+        }
+        $('opened').textContent = String(state.cells.size);
+        $('opened-total').textContent = String(state.total);
+        $('total').textContent = String(state.total);
+    }
+
+    function apply(data) {
+        state.total = data.total;
+        state.cells = new Map(data.cells.map(c => [c.slot, c.photo]));
+        $('price').textContent = `${data.price.toLocaleString('ru-RU').replace(/ /g, ' ')} ₽`;
+        render();
+    }
+
+    function showError(message) {
+        $('admin-err').textContent = message || '';
+        $('admin-err').hidden = !message;
+    }
+
+    async function failure(res, fallback) {
+        try { return (await res.json()).detail || fallback; } catch (e) { return fallback; }
+    }
+
+    async function uploadCell(slot, file) {
+        state.busy.add(slot);
+        showError('');
+        render();
+        try {
+            const form = new FormData();
+            form.append('file', file);
+            let res = await fetch('/api/upload_photo', { method: 'POST', headers: auth, body: form });
+            if (!res.ok) throw new Error(await failure(res, 'Не удалось загрузить фото'));
+            const { photo_id } = await res.json();
+            res = await fetch(`/api/mystery/admin/cells/${slot}`, {
+                method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ photo_id })
+            });
+            if (!res.ok) throw new Error(await failure(res, 'Не удалось сохранить фото'));
+            state.cells.set(slot, photo_id);
+        } catch (e) {
+            showError(`Ячейка ${slot}: ${e.message}`);
+        } finally {
+            state.busy.delete(slot);
+            render();
+        }
+    }
+
+    async function clearCell(slot) {
+        if (!window.confirm(`Убрать фото из ячейки ${slot}?`)) return;
+        state.busy.add(slot);
+        showError('');
+        render();
+        try {
+            const res = await fetch(`/api/mystery/admin/cells/${slot}`, { method: 'DELETE', headers: auth });
+            if (!res.ok) throw new Error(await failure(res, 'Не удалось убрать фото'));
+            state.cells.delete(slot);
+        } catch (e) {
+            showError(`Ячейка ${slot}: ${e.message}`);
+        } finally {
+            state.busy.delete(slot);
+            render();
+        }
+    }
+
+    $('file').addEventListener('change', e => {
+        const file = e.target.files[0];
+        e.target.value = '';
+        if (file && state.slot) uploadCell(state.slot, file);
+    });
+
+    async function start() {
+        render();
+        if (token) {
+            const res = await fetch('/api/mystery/admin/boxes', { headers: auth }).catch(() => null);
+            if (res && res.ok) {
+                const data = await res.json();
+                state.admin = true;
+                $('admin-bar').hidden = false;
+                $('admin-preview').hidden = data.reached;
+                apply(data);
+                return;
+            }
+        }
+        const res = await fetch('/api/mystery/boxes').catch(() => null);
+        if (res && res.status === 404) {
+            location.replace('/mystery');   // the goal is not reached yet: the page is still closed
+            return;
+        }
+        if (res && res.ok) apply(await res.json());
+    }
+    start();
+})();
+</script>
+</body>
+</html>
