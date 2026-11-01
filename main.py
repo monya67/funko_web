@@ -2713,7 +2713,7 @@ async def get_returns():
 # Clicks are added in memory and written to the database every few seconds as a difference: thousands of clicks
 # must not mean thousands of writes on the small server, and two instances during a deploy do not overwrite each other.
 MYSTERY_GOAL = 100000
-MYSTERY_DEADLINE = datetime(2026, 11, 2, 17, 0, tzinfo=timezone(timedelta(hours=3))).timestamp()
+MYSTERY_DEADLINE = datetime(2026, 11, 3, 17, 0, tzinfo=timezone(timedelta(hours=3))).timestamp()
 MYSTERY_KEY = "mystery_clicks"
 MYSTERY_RATE = 15       # clicks a second one address can add...
 MYSTERY_BURST = 60      # ...with this much saved up

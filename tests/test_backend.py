@@ -546,7 +546,7 @@ def test_mystery_counts_only_before_the_deadline_and_up_to_the_goal():
     assert main.mystery_room(99990, 100000, 1000, 2000) == 10
     assert main.mystery_room(100000, 100000, 1000, 2000) == 0
     assert main.mystery_room(5, 100000, 2000, 2000) == 0
-    assert main.MYSTERY_DEADLINE == __import__("datetime").datetime.fromisoformat("2026-11-02T14:00:00+00:00").timestamp()
+    assert main.MYSTERY_DEADLINE == __import__("datetime").datetime.fromisoformat("2026-11-03T14:00:00+00:00").timestamp()
 
 
 def test_mystery_limits_clicks_per_address():
