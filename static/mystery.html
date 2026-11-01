@@ -49,7 +49,6 @@
 
     <!-- until the opening: only the countdown -->
     <div class="view" id="waiting" hidden>
-        <p class="sub">3 ноября — 17:00</p>
         <div class="timer" role="timer" aria-label="До открытия">
             <div class="unit"><b id="t-d">00</b><span>ДНЯ</span></div><div class="sep">:</div>
             <div class="unit"><b id="t-h">00</b><span>ЧАСА</span></div><div class="sep">:</div>
@@ -141,8 +140,8 @@
         await sync();
     }, 500);
 
-    $('press').addEventListener('click', () => {
-        if (!state.open || state.reached) return;
+    $('press').addEventListener('click', e => {
+        if (!e.isTrusted || !state.open || state.reached) return;   // a script calling .click() is not a click
         state.unsent = Math.min(state.unsent + 1, 500);
         render();
     });

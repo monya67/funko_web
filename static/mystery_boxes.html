@@ -9,97 +9,142 @@
     <link rel="icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root { --red: #ff202c; --deep: #8e060c; --paper: #f4efe9; --ink: #0d0405; --line: rgba(244, 239, 233, 0.16); --s: clamp(120px, 16vw, 200px); }
         * { box-sizing: border-box; }
         html, body { margin: 0; }
         body {
-            min-height: 100dvh; color: #f4f1ef; font-family: 'Outfit', Arial, Helvetica, sans-serif;
-            background: #0b0102 radial-gradient(900px 520px at 22% 22%, rgba(150, 8, 14, 0.42), transparent 70%) no-repeat;
+            min-height: 100dvh; color: var(--paper); font-family: 'Outfit', Arial, Helvetica, sans-serif; overflow-x: hidden;
+            background:
+                radial-gradient(760px 520px at 50% 250px, rgba(190, 10, 20, 0.5), transparent 72%),
+                repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.16) 3px 4px),
+                var(--ink);
         }
-        main, .top { width: min(1120px, 100%); margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+        main, .top { width: min(1240px, 100%); margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+        main { padding-bottom: 56px; }
         a { color: inherit; text-decoration: none; }
         a:focus-visible, button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
-        .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 64px; }
-        .logo { font: italic 800 23px/1 'Outfit', Arial, sans-serif; letter-spacing: -0.02em; white-space: nowrap; }
-        .logo span { color: #e8121c; }
-        .menu { display: flex; gap: 34px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
-        .menu a:hover, .icons a:hover { color: #ff5a60; }
-        .menu .on { color: #e8121c; }
+        .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 68px; }
+        .logo { font: 400 24px/1 'Anton', Impact, sans-serif; letter-spacing: 0.04em; white-space: nowrap; }
+        .logo span { color: var(--red); }
+        .menu { display: flex; gap: 32px; font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+        .menu a:hover, .icons a:hover { color: var(--red); }
+        .menu .on { color: var(--red); }
         .icons { display: flex; gap: 18px; }
         .icons svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-        .rule { height: 1px; margin: 0; border: 0; background: rgba(255, 255, 255, 0.28); }
 
-        .admin-bar { margin-top: 14px; padding: 10px 14px; border: 1px solid #e8121c; border-radius: 8px; font-size: 14px; line-height: 1.35; }
-        .admin-bar b { color: #ff5a60; font-weight: 600; }
+        /* MYSTERY [the box] BOXES */
+        .stage {
+            display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin: 0; padding: 26px 0 8px;
+            font: 400 clamp(84px, 11.6vw, 150px)/1 'Anton', Impact, sans-serif; letter-spacing: 0.01em;
+        }
+        .word { background: linear-gradient(180deg, #fff 30%, #a39c9c 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .word:first-child { text-align: right; }
+        .scene { position: relative; display: block; width: calc(var(--s) * 1.5); height: calc(var(--s) * 1.5); perspective: 1000px; }
+        .scene::before { content: ''; position: absolute; inset: -18%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 30, 44, 0.62), transparent); }
+        .floor { position: absolute; left: 12%; right: 12%; bottom: 2%; height: 14%; border-radius: 50%; background: radial-gradient(closest-side, rgba(255, 40, 50, 0.85), transparent); filter: blur(5px); }
+        .cube {
+            position: absolute; left: 50%; top: 46%; width: var(--s); height: var(--s); margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+            transform-style: preserve-3d; animation: spin 18s linear infinite;
+        }
+        @keyframes spin { from { transform: rotateX(-20deg) rotateY(0); } to { transform: rotateX(-20deg) rotateY(-360deg); } }
+        .f {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; backface-visibility: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.16); background: linear-gradient(150deg, #2d2729, #0b090a 75%);
+            box-shadow: inset 0 0 calc(var(--s) * 0.2) rgba(255, 30, 44, 0.16);
+        }
+        .f b { font: 700 calc(var(--s) * 0.68)/1 'Outfit', Arial, sans-serif; background: linear-gradient(170deg, #fff, #8f8a8a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .f i { font: italic 800 calc(var(--s) * 0.15)/1 'Outfit', Arial, sans-serif; color: #fff; white-space: nowrap; }
+        .front { transform: translateZ(calc(var(--s) / 2)); }
+        .back { transform: rotateY(180deg) translateZ(calc(var(--s) / 2)); }
+        .right, .left { background: linear-gradient(90deg, transparent 33%, #d70d18 33%, #f0202b 50%, #b3070f 67%, transparent 67%), linear-gradient(150deg, #2d2729, #0b090a 75%); }
+        .right i, .left i { writing-mode: vertical-rl; transform: rotate(180deg); }
+        .right { transform: rotateY(90deg) translateZ(calc(var(--s) / 2)); }
+        .left { transform: rotateY(-90deg) translateZ(calc(var(--s) / 2)); }
+        .top-face { transform: rotateX(90deg) translateZ(calc(var(--s) / 2)); background: linear-gradient(0deg, transparent 33%, #b3070f 33%, #f0202b 50%, #d70d18 67%, transparent 67%), linear-gradient(150deg, #47403f, #1a1617); }
+        .bottom { transform: rotateX(-90deg) translateZ(calc(var(--s) / 2)); }
+
+        .tag { margin: 0 0 30px; text-align: center; font-size: clamp(12px, 1.5vw, 15px); letter-spacing: 0.42em; text-transform: uppercase; }
+
+        .deal { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); background: rgba(13, 4, 5, 0.6); }
+        .deal > div { padding: 20px 18px 22px; text-align: center; }
+        .deal > div + div { border-left: 1px solid var(--line); }
+        .deal small { display: block; margin-bottom: 8px; font-size: 12px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.72; }
+        .deal strong { display: block; font: 400 clamp(30px, 4.4vw, 52px)/1.1 'Anton', Impact, sans-serif; letter-spacing: 0.02em; white-space: nowrap; }
+        .soon { color: var(--red); text-shadow: 0 0 22px rgba(255, 32, 44, 0.85); animation: pulse 2.4s ease-in-out infinite; }
+        @keyframes pulse { 50% { text-shadow: 0 0 6px rgba(255, 32, 44, 0.4); } }
+
+        .series-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 44px 0 12px; }
+        .series-head h2 { margin: 0; font: 400 clamp(30px, 4vw, 48px)/1 'Anton', Impact, sans-serif; letter-spacing: 0.03em; text-transform: uppercase; }
+        .opened { font-size: clamp(13px, 1.6vw, 16px); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
+        .opened em { color: var(--red); font-style: normal; font-weight: 700; }
+        .progress { height: 3px; margin-bottom: 18px; background: var(--line); }
+        .progress i { display: block; height: 100%; width: 0; background: var(--red); transition: width 0.3s ease; }
+
+        /* every cell is a sealed box until its series is revealed */
+        .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+        .wrap { position: relative; }
+        .cell {
+            position: relative; display: block; width: 100%; aspect-ratio: 4 / 5; padding: 0; overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 3px; background: linear-gradient(155deg, #2a1416, #0f0607 70%);
+            color: var(--paper); font: inherit; text-align: left;
+        }
+        .cell .no { position: absolute; top: 9px; left: 11px; z-index: 1; font: 400 clamp(16px, 1.9vw, 22px)/1 'Anton', Impact, sans-serif; letter-spacing: 0.04em; opacity: 0.85; }
+        .cell .q { position: absolute; inset: 0 0 18%; display: grid; place-items: center; font-size: clamp(44px, 6.4vw, 84px); font-weight: 700; color: rgba(244, 239, 233, 0.2); }
+        .cell .tape {
+            position: absolute; left: 0; right: 0; bottom: 8%; padding: 5px 0; overflow: hidden; background: linear-gradient(180deg, #d70d18, #a5060e);
+            font: italic 800 clamp(9px, 1vw, 12px)/1 'Outfit', Arial, sans-serif; letter-spacing: 0.06em; text-align: center; color: #fff; white-space: nowrap;
+        }
+        .cell.filled { border-color: rgba(255, 32, 44, 0.75); background: #f4efe9; box-shadow: 0 0 18px rgba(255, 32, 44, 0.3); }
+        .cell.filled .no { color: var(--ink); }
+        .cell img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 12%; object-fit: contain; }
+        .cell.busy { opacity: 0.5; }
+        button.cell { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
+        button.cell:hover { transform: translateY(-3px); border-color: var(--red); }
+        .remove {
+            position: absolute; top: 6px; right: 6px; z-index: 2; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%;
+            background: #0d0405; color: #fff; font: 700 15px/26px Arial, sans-serif; cursor: pointer;
+        }
+
+        .admin-bar {
+            position: sticky; bottom: 12px; z-index: 5; margin-top: 22px; padding: 10px 14px;
+            border: 1px solid var(--red); background: #1a0607; font-size: 14px; line-height: 1.35;
+        }
+        .admin-bar b { color: var(--red); font-weight: 600; }
         .admin-bar .err { display: block; margin-top: 4px; color: #ffb3b6; }
 
-        .hero { display: grid; grid-template-columns: 5fr 7fr; align-items: center; padding: 22px 0 26px; }
-        .box { width: 100%; max-width: 400px; height: auto; justify-self: center; display: block; }
-        .info { padding-left: clamp(24px, 5vw, 48px); border-left: 1px solid rgba(255, 255, 255, 0.28); }
-        .brand { margin: 0; font-size: 13px; letter-spacing: 0.34em; }
-        .name {
-            margin: 6px 0 8px; font-size: clamp(36px, 5.6vw, 58px); font-weight: 700; line-height: 1.05; letter-spacing: 0.01em;
-            background: linear-gradient(180deg, #fff 25%, #a9a6a6 92%); -webkit-background-clip: text; background-clip: text; color: transparent;
-        }
-        .drop { margin: 0; padding-bottom: 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); font-size: 13px; letter-spacing: 0.26em; text-transform: uppercase; }
-        .deal { display: flex; align-items: center; gap: clamp(20px, 4vw, 44px); padding-top: 22px; }
-        .price { font-size: clamp(34px, 5vw, 48px); font-weight: 600; white-space: nowrap; }
-        .reveal { padding-left: clamp(20px, 4vw, 44px); border-left: 1px solid rgba(255, 255, 255, 0.28); text-align: center; }
-        .reveal small { display: block; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; }
-        .soon {
-            display: inline-block; margin-top: 8px; padding: 9px 42px; border: 2px solid #e8121c; border-radius: 50%;
-            font-size: 28px; font-weight: 700; letter-spacing: 0.2em; text-indent: 0.2em;
-            box-shadow: 0 0 22px rgba(232, 18, 28, 0.6), inset 0 0 16px rgba(232, 18, 28, 0.32); text-shadow: 0 0 14px rgba(255, 70, 76, 0.9);
-        }
-
-        .series-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 14px; font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase; }
-        .series-head h2 { margin: 0; font: inherit; letter-spacing: inherit; }
-        .series-head em { color: #e8121c; font-style: normal; }
-        .opened { white-space: nowrap; letter-spacing: 0.06em; }
-        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 8px; padding-bottom: 36px; }
-        .cell {
-            position: relative; display: block; width: 100%; aspect-ratio: 92 / 68; padding: 0; overflow: hidden;
-            border: 1px solid rgba(232, 18, 28, 0.55); border-radius: 10px; background: rgba(24, 3, 5, 0.75);
-            color: #f4f1ef; font: inherit; text-align: left;
-        }
-        .cell .no { position: absolute; top: 6px; left: 8px; z-index: 1; font-size: 13px; text-shadow: 0 0 4px #000; }
-        .cell .q { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 6px; font-size: clamp(22px, 2.8vw, 32px); font-weight: 700; color: rgba(255, 255, 255, 0.34); }
-        .cell img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 6px; object-fit: contain; }
-        .cell.busy { opacity: 0.5; }
-        button.cell { cursor: pointer; }
-        button.cell:hover { border-color: #ff5a60; }
-        .wrap { position: relative; }
-        .remove {
-            position: absolute; top: 3px; right: 3px; z-index: 2; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%;
-            background: rgba(0, 0, 0, 0.75); color: #fff; font: 700 15px/24px Arial, sans-serif; cursor: pointer;
-        }
-
+        @media (max-width: 1000px) { .grid { grid-template-columns: repeat(5, 1fr); } }
         @media (max-width: 760px) {
-            .menu { gap: 14px; font-size: 12px; }
-            .logo { font-size: 18px; }
+            :root { --s: 150px; }
+            .top { height: 56px; }
+            .menu { gap: 14px; font-size: 11px; letter-spacing: 0.08em; }
+            .logo { font-size: 20px; }
             .icons { display: none; }
-            .hero { grid-template-columns: 1fr; padding-top: 10px; }
-            .box { max-width: 280px; }
-            .info { padding-left: 0; border-left: 0; text-align: center; }
-            .brand { letter-spacing: 0.3em; }
-            .drop { font-size: 11px; letter-spacing: 0.16em; }
-            .deal { justify-content: center; gap: 18px; }
-            .reveal { padding-left: 18px; }
-            .reveal small { font-size: 10px; letter-spacing: 0.14em; }
-            .soon { padding: 7px 24px; font-size: 21px; }
-            .series-head { font-size: 13px; letter-spacing: 0.08em; }
-            .grid { grid-template-columns: repeat(5, 1fr); gap: 7px; }
-            .cell { aspect-ratio: 1; }
-            .cell .no { top: 4px; left: 6px; font-size: 11px; }
-            .cell .q { padding-top: 12px; font-size: 20px; }
+            .stage { grid-template-columns: auto auto; justify-content: center; column-gap: 0.2em; padding-top: 4px; font-size: 15vw; }
+            .scene { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
+            .word:first-child { text-align: left; }
+            .tag { margin-top: 6px; font-size: 10.5px; letter-spacing: 0.22em; }
+            .deal > div { padding: 14px 4px 16px; }
+            .deal small { font-size: 9.5px; letter-spacing: 0.08em; }
+            .series-head { padding-top: 32px; }
+            .grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+            .cell .no { font-size: 17px; }
+            .cell .q { font-size: 56px; }
+            .cell .tape { font-size: 10px; }
         }
+        @media (prefers-reduced-motion: reduce) {
+            .cube { animation: none; transform: rotateX(-20deg) rotateY(-35deg); }
+            .soon { animation: none; }
+            button.cell, .progress i { transition: none; }
+        }
+        [hidden] { display: none !important; }
     </style>
 </head>
 <body>
 <header class="top">
-    <a class="logo" href="/" aria-label="Funko Stop — на главную">Funko<span>Stop</span></a>
+    <a class="logo" href="/" aria-label="Funko Stop — на главную">FUNKO <span>STOP</span></a>
     <nav class="menu" aria-label="Меню">
         <a href="/catalog">Магазин</a>
         <a class="on" href="/mystery" aria-current="page">Мистери</a>
@@ -112,31 +157,39 @@
     </div>
 </header>
 <main>
-    <hr class="rule">
-    <div class="admin-bar" id="admin-bar" hidden>
-        <b>Режим админа.</b> Нажмите на ячейку, чтобы загрузить или заменить фото, крестик убирает его.
-        <span id="admin-preview" hidden>Покупатели этой страницы пока не видят: она откроется после 100 000 кликов.</span>
-        <span class="err" id="admin-err" role="alert" hidden></span>
-    </div>
-    <section class="hero">
-        <img class="box" src="/static/images/mystery-box.webp" alt="Закрытая коробка Funko Stop со знаком вопроса" width="760" height="550">
-        <div class="info">
-            <p class="brand">FUNKOSTOP</p>
-            <h1 class="name">MYSTERY BOXES</h1>
-            <p class="drop"><span id="total">30</span> боксов / лимитированный дроп</p>
-            <div class="deal">
-                <div class="price" id="price">&nbsp;</div>
-                <div class="reveal"><small>Первое раскрытие</small><span class="soon">SOON</span></div>
-            </div>
-        </div>
+    <h1 class="stage" aria-label="MYSTERY BOXES">
+        <span class="word" aria-hidden="true">MYSTERY</span>
+        <span class="scene" aria-hidden="true">
+            <span class="floor"></span>
+            <span class="cube">
+                <span class="f front"><b>?</b></span>
+                <span class="f back"><b>?</b></span>
+                <span class="f right"><i>FunkoStop</i></span>
+                <span class="f left"><i>FunkoStop</i></span>
+                <span class="f top-face"><i>FunkoStop</i></span>
+                <span class="f bottom"></span>
+            </span>
+        </span>
+        <span class="word" aria-hidden="true">BOXES</span>
+    </h1>
+    <p class="tag">Лимитированный дроп</p>
+    <section class="deal" aria-label="Условия">
+        <div><small>Цена бокса</small><strong id="price">&nbsp;</strong></div>
+        <div><small>Всего боксов</small><strong id="total">30</strong></div>
+        <div><small>Первое раскрытие</small><strong class="soon">SOON</strong></div>
     </section>
-    <hr class="rule">
     <div class="series-head">
-        <h2>Серии Mystery Boxes</h2>
+        <h2>Серии</h2>
         <div class="opened">Открыто <em id="opened">0</em> / <span id="opened-total">30</span></div>
     </div>
+    <div class="progress" aria-hidden="true"><i id="progress"></i></div>
     <div class="grid" id="grid"></div>
     <input type="file" id="file" accept="image/*,.heic,.heif" hidden>
+    <div class="admin-bar" id="admin-bar" hidden>
+        <b>Режим админа.</b> Нажмите на ячейку, чтобы загрузить или заменить фото, крестик убирает его.
+        <span id="admin-preview" hidden>Покупатели страницу пока не видят.</span>
+        <span class="err" id="admin-err" role="alert" hidden></span>
+    </div>
 </main>
 <script>
 (function () {
@@ -158,12 +211,17 @@
             img.alt = `Серия ${slot}`;
             img.loading = 'lazy';
             cell.append(img);
+            cell.classList.add('filled');
         } else {
             const q = document.createElement('span');
             q.className = 'q';
             q.setAttribute('aria-hidden', 'true');
             q.textContent = '?';
-            cell.append(q);
+            const tape = document.createElement('span');
+            tape.className = 'tape';
+            tape.setAttribute('aria-hidden', 'true');
+            tape.textContent = 'FunkoStop';
+            cell.append(q, tape);
         }
     }
 
@@ -198,6 +256,7 @@
         $('opened').textContent = String(state.cells.size);
         $('opened-total').textContent = String(state.total);
         $('total').textContent = String(state.total);
+        $('progress').style.width = `${(state.cells.size / state.total) * 100}%`;
     }
 
     function apply(data) {

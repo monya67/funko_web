@@ -638,3 +638,17 @@ def test_pages_have_short_addresses_and_old_links_redirect():
         assert client.get(path).status_code == 200
     for path in ("static/index.html", "static/oferta.html", "static/privacy.html", "static/returns.html", "static/sitemap.xml"):
         assert not __import__("re").search(r"/static/\w+\.html", open(path, encoding="utf-8").read()), path
+
+
+def test_one_address_cannot_click_past_the_hourly_cap():
+    buckets = {}
+    now = 7200.0
+    total = 0
+    for _ in range(40000):   # an autoclicker at the full allowed speed for almost the whole hour
+        now += 0.09
+        if now >= 10800:
+            break
+        total += main.mystery_allowed(buckets, "1.1.1.1", 50, now)
+    assert total == main.MYSTERY_HOURLY_CAP
+    assert main.mystery_allowed(buckets, "2.2.2.2", 50, now) == 50    # others keep clicking
+    assert main.mystery_allowed(buckets, "1.1.1.1", 50, 10801.0) > 0  # the next hour is a new one

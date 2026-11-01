@@ -2733,17 +2733,21 @@ MYSTERY_OPENS = datetime(2026, 11, 3, 17, 0, tzinfo=timezone(timedelta(hours=3))
 MYSTERY_KEY = "mystery_clicks_v2"  # a new key: everything clicked before the opening does not count
 MYSTERY_RATE = 15       # clicks a second one address can add...
 MYSTERY_BURST = 60      # ...with this much saved up
+MYSTERY_HOURLY_CAP = 5000   # more than a person clicks in an hour, so one autoclicker cannot finish the goal alone
 MYSTERY_MAX_BATCH = 50
 MYSTERY = {"loaded": False, "base": 0, "pending": 0, "seen": 0.0}
 MYSTERY_BUCKETS = {}
 
 
 def mystery_allowed(buckets, ip, wanted, now):
-    """How many of the wanted clicks this address may add now (a token bucket)."""
-    tokens, last = buckets.get(ip, (MYSTERY_BURST, now))
+    """How many of the wanted clicks this address may add now (a token bucket plus a cap per hour)."""
+    hour = int(now // 3600)
+    tokens, last, seen_hour, used = buckets.get(ip, (MYSTERY_BURST, now, hour, 0))
     tokens = min(MYSTERY_BURST, tokens + (now - last) * MYSTERY_RATE)
-    allowed = int(min(tokens, wanted))
-    buckets[ip] = (tokens - allowed, now)
+    if seen_hour != hour:
+        used = 0
+    allowed = int(min(tokens, wanted, MYSTERY_HOURLY_CAP - used))
+    buckets[ip] = (tokens - allowed, now, hour, used + allowed)
     if len(buckets) > 20000:
         buckets.clear()
     return allowed
