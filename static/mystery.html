@@ -35,7 +35,8 @@
             cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none;
         }
         .press { transition: transform 0.06s ease-out; }
-        .admin { position: fixed; right: 12px; bottom: 12px; padding: 8px 12px; border: 1px solid #f3f1ee; border-radius: 6px; color: #f3f1ee; font-size: 13px; text-decoration: none; }
+        .admin-links { position: fixed; left: 12px; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+        .admin { padding: 8px 12px; border: 1px solid #f3f1ee; border-radius: 6px; background: #3a0002; color: #f3f1ee; font-size: 13px; text-decoration: none; }
         .press:active { transform: scale(0.96); }
         .press:focus-visible, .admin:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
         [hidden] { display: none !important; }
@@ -65,12 +66,15 @@
         <button type="button" class="press" id="press">НАЖАТЬ</button>
     </div>
 </main>
-<a class="admin" id="admin" href="/mystery/boxes" hidden>Страница боксов (видят только админы)</a>
+<div class="admin-links" id="admin" hidden>
+    <a class="admin" href="/mystery?preview">Проверить кликер (клики не считаются)</a>
+    <a class="admin" href="/mystery/boxes">Страница боксов (видят только админы)</a>
+</div>
 <script>
 (function () {
     const $ = id => document.getElementById(id);
     const MAX_BATCH = 50;
-    const state = { count: 0, goal: 100000, opens: 0, skew: 0, open: false, reached: false, unsent: 0, sending: false, failures: 0, loaded: false };
+    const state = { count: 0, goal: 100000, opens: 0, skew: 0, open: false, reached: false, unsent: 0, sending: false, failures: 0, loaded: false, preview: false };
     const fmt = n => n.toLocaleString('ru-RU').replace(/ /g, ' ');
     const p2 = n => String(n).padStart(2, '0');
 
@@ -94,6 +98,7 @@
     }
 
     function apply(data) {
+        if (state.preview) return;
         state.count = data.count;
         state.goal = data.goal;
         state.opens = data.opens;
@@ -111,7 +116,7 @@
     }
 
     async function sync() {
-        if (state.sending) return;
+        if (state.sending || state.preview) return;
         state.sending = true;
         const n = Math.min(MAX_BATCH, state.unsent);
         try {
@@ -142,6 +147,12 @@
 
     $('press').addEventListener('click', e => {
         if (!e.isTrusted || !state.open || state.reached) return;   // a script calling .click() is not a click
+        if (state.preview) {
+            state.count += 1;
+            render();
+            if (state.count >= state.goal) location.replace('/mystery/boxes');
+            return;
+        }
         state.unsent = Math.min(state.unsent + 1, 500);
         render();
     });
@@ -161,7 +172,19 @@
     try { adminToken = localStorage.getItem('funko_token'); } catch (e) {}
     if (adminToken) {
         fetch('/api/mystery/admin/boxes', { headers: { Authorization: `Bearer ${adminToken}` } })
-            .then(res => { $('admin').hidden = !res.ok; }).catch(() => {});
+            .then(res => {
+                $('admin').hidden = !res.ok;
+                // an admin tries the clicker before the opening: nothing goes to the server, the last 50 clicks lead to the boxes
+                if (res.ok && new URLSearchParams(location.search).has('preview')) {
+                    state.preview = true;
+                    state.open = true;
+                    state.loaded = true;
+                    state.reached = false;
+                    state.unsent = 0;
+                    state.count = state.goal - 50;
+                    render();
+                }
+            }).catch(() => {});
     }
 })();
 </script>

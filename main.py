@@ -2507,6 +2507,13 @@ HERO_IMG_RE = re.compile(r'<img class="hero-fig hero-fig-(\d)"[^>]*>')
 HERO_CALLOUT_RE = re.compile(r'<span class="hero-callout hero-callout-(\d)">[^<]*</span>')
 
 
+def with_opening_tab(page):
+    """The menu gets its red tab only when the countdown ends: until then nothing on the site gives the page away."""
+    if time.time() < MYSTERY_OPENS:
+        return page
+    return page.replace("<!--nav-opening-->", '<a href="/mystery" class="site-nav-link site-nav-accent">Мистери</a>', 1)
+
+
 def render_index(picks):
     """index.html with three catalog figures already in the hero, so they show up with the page, not after it."""
     path = "static/index.html"
@@ -2514,7 +2521,7 @@ def render_index(picks):
     if mtime != INDEX_HTML["mtime"]:
         INDEX_HTML["text"] = open(path, encoding="utf-8").read()
         INDEX_HTML["mtime"] = mtime
-    page = INDEX_HTML["text"]
+    page = with_opening_tab(INDEX_HTML["text"])
     if len(picks) < 3:
         return page
     def img(mt):
@@ -2851,9 +2858,24 @@ async def mystery_boxes():
     return Response(content=json.dumps(await mystery_boxes_data()), media_type="application/json", headers={"Cache-Control": "no-store"})
 
 
+MYSTERY_PASS_COOKIE = "mystery_pass"
+MYSTERY_PASS_SCOPE = "mystery_boxes"
+
+
+def mystery_pass_ok(request):
+    """A page opened by a link carries no Bearer token, so an admin gets this cookie; it is good for nothing but the page."""
+    try:
+        payload = jwt.decode(request.cookies.get(MYSTERY_PASS_COOKIE, ""), SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.PyJWTError:
+        return False
+    return payload.get("scope") == MYSTERY_PASS_SCOPE
+
+
 @app.get("/api/mystery/admin/boxes")
-async def mystery_admin_boxes(admin: dict = Depends(require_admin)):
+async def mystery_admin_boxes(response: Response, admin: dict = Depends(require_admin)):
     await mystery_goal_reached()
+    response.set_cookie(MYSTERY_PASS_COOKIE, create_access_token({"scope": MYSTERY_PASS_SCOPE}), max_age=12 * 3600,
+                        path="/mystery", httponly=True, secure=True, samesite="lax")
     return await mystery_boxes_data()
 
 
@@ -2897,10 +2919,17 @@ async def get_mystery():
     return FileResponse("static/mystery_boxes.html" if reached else "static/mystery.html")
 
 
-# The admins fill the cells here before the goal is reached; for everybody else the page sends them back until then
+# The admins fill the cells here before the goal is reached; nobody else gets this page until then
 @app.get("/mystery/boxes")
-async def get_mystery_boxes():
-    return FileResponse("static/mystery_boxes.html")
+async def get_mystery_boxes(request: Request):
+    try:
+        reached = await mystery_goal_reached()
+    except Exception as exc:
+        print(f"mystery state failed: {exc!r}")
+        reached = False
+    if not reached and not mystery_pass_ok(request):
+        return RedirectResponse("/mystery", status_code=302, headers={"Cache-Control": "no-store"})
+    return FileResponse("static/mystery_boxes.html", headers={"Cache-Control": "no-store"})
 
 @app.get("/")
 async def root():

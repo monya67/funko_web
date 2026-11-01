@@ -652,3 +652,44 @@ def test_one_address_cannot_click_past_the_hourly_cap():
     assert total == main.MYSTERY_HOURLY_CAP
     assert main.mystery_allowed(buckets, "2.2.2.2", 50, now) == 50    # others keep clicking
     assert main.mystery_allowed(buckets, "1.1.1.1", 50, 10801.0) > 0  # the next hour is a new one
+
+
+def test_menu_tab_appears_only_when_the_countdown_ends(monkeypatch):
+    monkeypatch.setattr(main, "MYSTERY_OPENS", main.time.time() + 60)
+    assert 'href="/mystery"' not in main.render_index([])
+    monkeypatch.setattr(main, "MYSTERY_OPENS", main.time.time() - 60)
+    assert 'href="/mystery"' in main.render_index([])
+
+
+def test_boxes_page_is_not_sent_before_the_goal_without_a_pass(monkeypatch):
+    client = mystery_client(monkeypatch, 10, 0)
+    closed = client.get("/mystery/boxes", follow_redirects=False)
+    assert closed.status_code == 302 and closed.headers["location"] == "/mystery" and "MYSTERY BOXES" not in closed.text
+    assert client.get("/static/mystery_boxes.html", follow_redirects=False).status_code == 301
+
+    forged = main.jwt.encode({"scope": main.MYSTERY_PASS_SCOPE}, "another-key", algorithm=main.ALGORITHM)
+    client.cookies.set(main.MYSTERY_PASS_COOKIE, forged)
+    assert client.get("/mystery/boxes", follow_redirects=False).status_code == 302
+    # an ordinary login token is not a pass
+    client.cookies.set(main.MYSTERY_PASS_COOKIE, main.create_access_token({"sub": "1", "role": "client"}))
+    assert client.get("/mystery/boxes", follow_redirects=False).status_code == 302
+
+    client.cookies.set(main.MYSTERY_PASS_COOKIE, main.create_access_token({"scope": main.MYSTERY_PASS_SCOPE}))
+    opened = client.get("/mystery/boxes", follow_redirects=False)
+    assert opened.status_code == 200 and "MYSTERY BOXES" in opened.text and opened.headers["cache-control"] == "no-store"
+
+
+def test_admin_gets_the_pass_and_everybody_gets_the_page_at_the_goal(monkeypatch):
+    client = mystery_client(monkeypatch, 10, 0)
+    main.app.dependency_overrides[main.require_admin] = lambda: {"role": "admin"}
+    try:
+        cookie = client.get("/api/mystery/admin/boxes").headers["set-cookie"]
+    finally:
+        main.app.dependency_overrides.clear()
+    assert cookie.startswith(main.MYSTERY_PASS_COOKIE + "=") and "HttpOnly" in cookie and "Secure" in cookie and "Path=/mystery" in cookie
+    # the pass opens no API
+    token = main.create_access_token({"scope": main.MYSTERY_PASS_SCOPE})
+    assert client.get("/api/mystery/admin/boxes", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+
+    main.MYSTERY["base"] = 100000
+    assert TestClient(main.app).get("/mystery/boxes", follow_redirects=False).status_code == 200
