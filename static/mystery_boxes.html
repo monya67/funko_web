@@ -29,9 +29,7 @@
         .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 68px; }
         .logo { font: 400 24px/1 'Anton', Impact, sans-serif; letter-spacing: 0.04em; white-space: nowrap; }
         .logo span { color: var(--red); }
-        .menu { display: flex; gap: 32px; font-size: 13px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
-        .menu a:hover, .icons a:hover { color: var(--red); }
-        .menu .on { color: var(--red); }
+        .icons a:hover { color: var(--red); }
         .icons { display: flex; gap: 18px; }
         .icons svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -119,9 +117,7 @@
         @media (max-width: 760px) {
             :root { --s: 150px; }
             .top { height: 56px; }
-            .menu { gap: 14px; font-size: 11px; letter-spacing: 0.08em; }
             .logo { font-size: 20px; }
-            .icons { display: none; }
             .stage { grid-template-columns: auto auto; justify-content: center; column-gap: 0.2em; padding-top: 4px; font-size: 15vw; }
             .scene { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
             .word:first-child { text-align: left; }
@@ -145,11 +141,6 @@
 <body>
 <header class="top">
     <a class="logo" href="/" aria-label="Funko Stop — на главную">FUNKO <span>STOP</span></a>
-    <nav class="menu" aria-label="Меню">
-        <a href="/catalog">Магазин</a>
-        <a class="on" href="/mystery" aria-current="page">Мистери</a>
-        <a href="/#faq-section">FAQ</a>
-    </nav>
     <div class="icons">
         <a href="/catalog" aria-label="Поиск по каталогу"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.6-4.6"></path></svg></a>
         <a href="/orders" aria-label="Профиль"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
