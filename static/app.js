@@ -3240,7 +3240,11 @@ window.proceedToPayment = function(event) {
         hasError = true;
         if (!firstInvalid) firstInvalid = lnInput;
     }
-    if (!phone || phone.length < 6) {
+    // the same rule as normalize_phone on the server
+    let phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length === 11 && /^[78]/.test(phoneDigits)) phoneDigits = phoneDigits.slice(1);
+    const phoneBad = !/^[3-9]\d{9}$/.test(phoneDigits) || new Set(phoneDigits).size === 1;
+    if (phoneBad) {
         phoneInput?.classList.add('field-error');
         hasError = true;
         if (!firstInvalid) firstInvalid = phoneInput;
@@ -3273,6 +3277,9 @@ window.proceedToPayment = function(event) {
         if (errBanner) {
             if (consentInput && !consentInput.checked) {
                 errBanner.textContent = 'Для продолжения необходимо подтвердить согласие на обработку персональных данных (152-ФЗ)!';
+            } else if (phone && phoneBad) {
+                errBanner.textContent = 'Укажите настоящий номер телефона, например +7 999 123-45-67';
+                errBanner.scrollIntoView({ block: 'center' });
             } else {
                 errBanner.textContent = pickup
                     ? 'Обязательно укажите Имя, Фамилию, Телефон, Telegram и почту перед оплатой!'

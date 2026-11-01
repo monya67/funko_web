@@ -1136,9 +1136,11 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
         first_name = parts[0] if parts else ""
         last_name = " ".join(parts[1:]) if len(parts) > 1 else ""
 
-    phone = (checkout.phone or "").strip()
+    phone = normalize_phone(checkout.phone)
     telegram = (checkout.telegram or "").strip()
     email = (checkout.email or "").strip().lower()
+    if not phone:
+        raise HTTPException(status_code=400, detail="Укажите настоящий номер телефона, например +7 999 123-45-67")
 
     if (not first_name and not name) or not phone or not telegram:
         raise HTTPException(status_code=400, detail="Имя, телефон и Telegram обязательны для оформления")
@@ -1194,7 +1196,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
     async with pool.acquire() as db:
         if not client_id:
             existing_client = await db.fetchrow(
-                "SELECT id, password FROM clients WHERE (phone != '' AND phone = $1) OR (full_name != '' AND full_name = $2) LIMIT 1",
+                "SELECT id, password FROM clients WHERE (phone != '' AND right(regexp_replace(phone, '\\D', '', 'g'), 10) = right($1, 10)) OR (full_name != '' AND full_name = $2) LIMIT 1",
                 phone, name
             )
             if existing_client:
@@ -1883,6 +1885,17 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]{2,}$")
 
 def valid_email(value):
     return bool(EMAIL_RE.match((value or "").strip()))
+
+
+def normalize_phone(value):
+    """A number with the +7 country code as +7XXXXXXXXXX, or None. Accepts +7, 8 or no prefix, with any separators.
+    It checks the shape only: whether the number really exists can be confirmed only by an SMS."""
+    digits = re.sub(r"\D", "", value or "")
+    if len(digits) == 11 and digits[0] in "78":
+        digits = digits[1:]
+    if len(digits) != 10 or digits[0] not in "3456789" or len(set(digits)) == 1:
+        return None
+    return "+7" + digits
 
 
 # Extra domains that should 301 to the main one. Opt-in via env so a typo can never lock the site out.

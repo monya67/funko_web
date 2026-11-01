@@ -531,3 +531,11 @@ def test_a_failed_order_email_warns_the_admins_once_and_never_raises(monkeypatch
     assert asyncio.run(main.send_order_email("a@b.ru", order)) is False
     assert asyncio.run(main.send_order_email("a@b.ru", order)) is False
     assert len(sent) == 1 and "Network is unreachable" in sent[0]
+
+
+def test_phone_must_look_like_a_real_number():
+    for good in ("+7 999 123-45-67", "89991234567", "79991234567", "9991234567", "8 (495) 123-45-67", "+77054540001"):
+        assert main.normalize_phone(good) and main.normalize_phone(good).startswith("+7") and len(main.normalize_phone(good)) == 12, good
+    assert main.normalize_phone("8 (999) 123-45-67") == "+79991234567"
+    for bad in ("99999999", "9999999999", "+7 999 999-99-99", "123456", "+375291234567", "1234567890", "", None, "abc"):
+        assert main.normalize_phone(bad) is None, bad
