@@ -541,12 +541,12 @@ def test_phone_must_look_like_a_real_number():
         assert main.normalize_phone(bad) is None, bad
 
 
-def test_mystery_counts_only_before_the_deadline_and_up_to_the_goal():
-    assert main.mystery_room(0, 100000, 1000, 2000) == 100000
-    assert main.mystery_room(99990, 100000, 1000, 2000) == 10
-    assert main.mystery_room(100000, 100000, 1000, 2000) == 0
-    assert main.mystery_room(5, 100000, 2000, 2000) == 0
-    assert main.MYSTERY_DEADLINE == __import__("datetime").datetime.fromisoformat("2026-11-03T14:00:00+00:00").timestamp()
+def test_mystery_counts_only_after_the_opening_and_up_to_the_goal():
+    assert main.mystery_room(0, 100000, 1999, 2000) == 0
+    assert main.mystery_room(0, 100000, 2000, 2000) == 100000
+    assert main.mystery_room(99990, 100000, 3000, 2000) == 10
+    assert main.mystery_room(100000, 100000, 3000, 2000) == 0
+    assert main.MYSTERY_OPENS == __import__("datetime").datetime.fromisoformat("2026-11-03T14:00:00+00:00").timestamp()
 
 
 def test_mystery_limits_clicks_per_address():

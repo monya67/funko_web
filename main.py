@@ -2713,8 +2713,8 @@ async def get_returns():
 # Clicks are added in memory and written to the database every few seconds as a difference: thousands of clicks
 # must not mean thousands of writes on the small server, and two instances during a deploy do not overwrite each other.
 MYSTERY_GOAL = 100000
-MYSTERY_DEADLINE = datetime(2026, 11, 3, 17, 0, tzinfo=timezone(timedelta(hours=3))).timestamp()
-MYSTERY_KEY = "mystery_clicks"
+MYSTERY_OPENS = datetime(2026, 11, 3, 17, 0, tzinfo=timezone(timedelta(hours=3))).timestamp()  # the countdown ends, the clicker opens
+MYSTERY_KEY = "mystery_clicks_v2"  # a new key: everything clicked before the opening does not count
 MYSTERY_RATE = 15       # clicks a second one address can add...
 MYSTERY_BURST = 60      # ...with this much saved up
 MYSTERY_MAX_BATCH = 50
@@ -2733,9 +2733,9 @@ def mystery_allowed(buckets, ip, wanted, now):
     return allowed
 
 
-def mystery_room(count, goal, now, deadline):
-    """How many more clicks count: none after the deadline or past the goal."""
-    return 0 if now >= deadline else max(0, goal - count)
+def mystery_room(count, goal, now, opens):
+    """How many more clicks count: none before the opening or past the goal."""
+    return 0 if now < opens else max(0, goal - count)
 
 
 async def mystery_load():
@@ -2778,8 +2778,8 @@ async def mystery_flush_loop():
 def mystery_state():
     now = time.time()
     count = min(MYSTERY_GOAL, MYSTERY["base"] + MYSTERY["pending"])
-    return {"count": count, "goal": MYSTERY_GOAL, "deadline": MYSTERY_DEADLINE, "now": now,
-            "reached": count >= MYSTERY_GOAL, "closed": now >= MYSTERY_DEADLINE}
+    return {"count": count, "goal": MYSTERY_GOAL, "opens": MYSTERY_OPENS, "now": now,
+            "open": now >= MYSTERY_OPENS, "reached": count >= MYSTERY_GOAL}
 
 
 class MysteryClickIn(BaseModel):
@@ -2788,19 +2788,23 @@ class MysteryClickIn(BaseModel):
 
 @app.get("/api/mystery")
 async def mystery_get():
-    await mystery_load()
-    MYSTERY["seen"] = time.time()
+    # the countdown needs no database, so waiting visitors do not keep it awake
+    if time.time() >= MYSTERY_OPENS:
+        await mystery_load()
+        MYSTERY["seen"] = time.time()
     return Response(content=json.dumps(mystery_state()), media_type="application/json", headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/mystery/click")
 async def mystery_click(request: Request, body: MysteryClickIn):
-    await mystery_load()
     now = time.time()
+    if now < MYSTERY_OPENS:
+        return Response(content=json.dumps(mystery_state()), media_type="application/json", headers={"Cache-Control": "no-store"})
+    await mystery_load()
     MYSTERY["seen"] = now
     wanted = max(0, min(MYSTERY_MAX_BATCH, body.n))
     count = MYSTERY["base"] + MYSTERY["pending"]
-    wanted = min(wanted, mystery_room(count, MYSTERY_GOAL, now, MYSTERY_DEADLINE))
+    wanted = min(wanted, mystery_room(count, MYSTERY_GOAL, now, MYSTERY_OPENS))
     MYSTERY["pending"] += mystery_allowed(MYSTERY_BUCKETS, client_ip(request), wanted, now)
     return Response(content=json.dumps(mystery_state()), media_type="application/json", headers={"Cache-Control": "no-store"})
 
