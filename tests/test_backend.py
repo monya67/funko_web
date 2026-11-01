@@ -604,7 +604,7 @@ def test_mystery_boxes_stay_closed_until_the_goal(monkeypatch):
 
     main.MYSTERY["base"] = 100000
     res = client.get("/api/mystery/boxes")
-    assert res.status_code == 200 and res.json()["price"] == 3500 and res.json()["total"] == 30 and res.json()["cells"] == []
+    assert res.status_code == 200 and res.json()["price"] == 3650 and res.json()["total"] == 30 and res.json()["cells"] == []
     assert "MYSTERY BOXES" in client.get("/mystery").text
 
 

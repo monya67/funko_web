@@ -2727,7 +2727,7 @@ async def get_returns():
 # Clicks are added in memory and written to the database every few seconds as a difference: thousands of clicks
 # must not mean thousands of writes on the small server, and two instances during a deploy do not overwrite each other.
 MYSTERY_GOAL = 100000
-MYSTERY_BOX_PRICE = 3500
+MYSTERY_BOX_PRICE = 3650
 MYSTERY_BOX_SLOTS = 30
 MYSTERY_OPENS = datetime(2026, 11, 3, 17, 0, tzinfo=timezone(timedelta(hours=3))).timestamp()  # the countdown ends, the clicker opens
 MYSTERY_KEY = "mystery_clicks_v2"  # a new key: everything clicked before the opening does not count
