@@ -29,9 +29,6 @@
         .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 68px; }
         .logo { font: 400 24px/1 'Anton', Impact, sans-serif; letter-spacing: 0.04em; white-space: nowrap; }
         .logo span { color: var(--red); }
-        .icons a:hover { color: var(--red); }
-        .icons { display: flex; gap: 18px; }
-        .icons svg { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
         /* MYSTERY [the box] BOXES */
         .stage {
@@ -142,11 +139,6 @@
 <body>
 <header class="top">
     <a class="logo" href="/" aria-label="Funko Stop — на главную">FUNKO <span>STOP</span></a>
-    <div class="icons">
-        <a href="/catalog" aria-label="Поиск по каталогу"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.6-4.6"></path></svg></a>
-        <a href="/orders" aria-label="Профиль"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></a>
-        <a href="/catalog" aria-label="Каталог и корзина"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l1.2 13H4.8L6 8z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path></svg></a>
-    </div>
 </header>
 <main>
     <h1 class="stage" aria-label="MYSTERY BOXES">
