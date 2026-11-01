@@ -858,7 +858,7 @@ def seo_basics(page):
         errors.append(f"canonical is {canon!r}")
     ld = page.evaluate('''() => JSON.parse(document.querySelector('script[type="application/ld+json"]').textContent)''')
     same = ld.get("sameAs") or []
-    for needle in ("t.me/Funko_Stop", "t.me/FunkoStopReviews", "avito.ru/user/b48abaa746bfb44d73cc6536bb0c91f6"):
+    for needle in ("t.me/Funko_Stop", "t.me/FunkoStopReviews", "avito.ru/brands/a6a14fad8b3a1fc5b6a6f0afc4e4d277"):
         if not any(needle in u for u in same):
             errors.append(f"JSON-LD sameAs lacks {needle}")
     if not ld.get("knowsAbout") and not ld.get("makesOffer"):

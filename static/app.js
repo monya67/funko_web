@@ -2609,8 +2609,7 @@ productForm?.addEventListener('submit', async (e) => {
         final_price: finalPrice,
         category: document.getElementById('product-category').value.trim(),
         series: document.getElementById('product-series').value.trim(),
-        // an order from 2000 ₽ gives 3 game packs: a product at that price shows it unless the admin set another number
-        packs_count: (parseInt(document.getElementById('product-packs').value) || 0) || (finalPrice >= 2000 ? 3 : 0),
+        packs_count: parseInt(document.getElementById('product-packs').value) || 0,
         photo_id: document.getElementById('product-photo-id').value.trim(),
         in_stock: document.getElementById('product-availability').value === 'instock',
         badge: (document.getElementById('product-badge')?.value || '').trim(),
