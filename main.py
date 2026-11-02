@@ -2837,11 +2837,37 @@ async def mystery_click(request: Request, body: MysteryClickIn):
     return Response(content=json.dumps(mystery_state()), media_type="application/json", headers={"Cache-Control": "no-store"})
 
 
+MYSTERY_LOGOS = {}
+
+
+def has_transparent_corner(data):
+    """A logo on a transparent background: it is shown whole, while a photo fills its cell."""
+    img = Image.open(io.BytesIO(data))
+    if "A" not in img.getbands() and "transparency" not in img.info:
+        return False
+    img = img.convert("RGBA")
+    w, h = img.size
+    return any(img.getpixel(xy)[3] < 200 for xy in ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)))
+
+
+async def mystery_is_logo(photo_id):
+    # decided here, not in the browser: some phone browsers do not let a page read its pictures
+    if photo_id not in MYSTERY_LOGOS:
+        try:
+            MYSTERY_LOGOS[photo_id] = await asyncio.to_thread(has_transparent_corner, await telegram_photo_bytes(photo_id))
+        except Exception as exc:
+            print(f"mystery logo check failed for {photo_id[:12]}: {exc!r}")
+            return False
+    return MYSTERY_LOGOS[photo_id]
+
+
 async def mystery_boxes_data():
     async with pool.acquire() as db:
         rows = await db.fetch("SELECT slot, photo_id FROM mystery_cells ORDER BY slot")
+    rows = [r for r in rows if 1 <= r["slot"] <= MYSTERY_BOX_SLOTS]
+    logos = await asyncio.gather(*(mystery_is_logo(r["photo_id"]) for r in rows))
     return {"price": MYSTERY_BOX_PRICE, "total": MYSTERY_BOX_SLOTS, "reached": mystery_state()["reached"],
-            "cells": [{"slot": r["slot"], "photo": r["photo_id"]} for r in rows if 1 <= r["slot"] <= MYSTERY_BOX_SLOTS]}
+            "cells": [{"slot": r["slot"], "photo": r["photo_id"], "logo": logo} for r, logo in zip(rows, logos)]}
 
 
 async def mystery_goal_reached():
@@ -2897,7 +2923,7 @@ async def mystery_set_cell(slot: int, body: MysteryCellIn, admin: dict = Depends
     async with pool.acquire() as db:
         await db.execute("INSERT INTO mystery_cells (slot, photo_id) VALUES ($1, $2) "
                          "ON CONFLICT (slot) DO UPDATE SET photo_id = EXCLUDED.photo_id", slot, photo_id)
-    return {"status": "success"}
+    return {"status": "success", "logo": await mystery_is_logo(photo_id)}
 
 
 @app.delete("/api/mystery/admin/cells/{slot}")

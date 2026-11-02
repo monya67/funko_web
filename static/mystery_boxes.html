@@ -183,32 +183,19 @@
     const auth = token ? { Authorization: `Bearer ${token}` } : {};
     const state = { total: 30, cells: new Map(), admin: false, busy: new Set(), slot: 0 };
 
-    // a photo fills its cell; a logo on a transparent background is shown whole
-    function hasTransparentCorner(img) {
-        try {
-            const canvas = document.createElement('canvas');
-            canvas.width = canvas.height = 8;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, 8, 8);
-            const alpha = ctx.getImageData(0, 0, 8, 8).data;
-            return [3, 31, 227, 255].some(i => alpha[i] < 200);
-        } catch (e) {
-            return false;
-        }
-    }
-
     function cellContent(cell, slot) {
         const no = document.createElement('span');
         no.className = 'no';
         no.textContent = String(slot).padStart(2, '0');
         cell.append(no);
-        const photo = state.cells.get(slot);
-        if (photo) {
+        const filled = state.cells.get(slot);
+        if (filled) {
             const img = document.createElement('img');
-            img.src = `/api/photos/${encodeURIComponent(photo)}`;
+            img.src = `/api/photos/${encodeURIComponent(filled.photo)}`;
             img.alt = `Серия ${slot}`;
             img.loading = 'lazy';
-            img.addEventListener('load', () => img.classList.toggle('logo-fit', hasTransparentCorner(img)));
+            // a photo fills its cell; a logo on a transparent background is shown whole
+            if (filled.logo) img.classList.add('logo-fit');
             cell.append(img);
             cell.classList.add('filled');
         } else {
@@ -260,7 +247,7 @@
 
     function apply(data) {
         state.total = data.total;
-        state.cells = new Map(data.cells.map(c => [c.slot, c.photo]));
+        state.cells = new Map(data.cells.map(c => [c.slot, { photo: c.photo, logo: !!c.logo }]));
         $('price').textContent = `${data.price.toLocaleString('ru-RU').replace(/ /g, ' ')} ₽`;
         render();
     }
@@ -288,7 +275,8 @@
                 method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ photo_id })
             });
             if (!res.ok) throw new Error(await failure(res, 'Не удалось сохранить фото'));
-            state.cells.set(slot, photo_id);
+            const saved = await res.json();
+            state.cells.set(slot, { photo: photo_id, logo: !!saved.logo });
         } catch (e) {
             showError(`Ячейка ${slot}: ${e.message}`);
         } finally {

@@ -590,10 +590,29 @@ class FakeMysteryPool:
         return Ctx()
 
 
+def mystery_picture(transparent):
+    from PIL import Image as PILImage, ImageDraw
+    img = PILImage.new("RGBA" if transparent else "RGB", (120, 60), (0, 0, 0, 0) if transparent else (250, 250, 250))
+    ImageDraw.Draw(img).rectangle((20, 15, 100, 45), fill=(240, 170, 0))
+    buf = __import__("io").BytesIO()
+    img.save(buf, "WEBP" if transparent else "JPEG")
+    return buf.getvalue()
+
+
+def test_logo_detection_by_transparent_corners():
+    assert main.has_transparent_corner(mystery_picture(transparent=True)) is True
+    assert main.has_transparent_corner(mystery_picture(transparent=False)) is False
+
+
 def mystery_client(monkeypatch, base, opens):
     monkeypatch.setattr(main, "pool", FakeMysteryPool(FakeMysteryDb()))
     monkeypatch.setattr(main, "MYSTERY_OPENS", opens)
     monkeypatch.setattr(main, "MYSTERY", {"loaded": True, "base": base, "pending": 0, "seen": 0.0})
+    monkeypatch.setattr(main, "MYSTERY_LOGOS", {})
+
+    async def photo(photo_id):
+        return mystery_picture(transparent=photo_id.startswith("logo"))
+    monkeypatch.setattr(main, "telegram_photo_bytes", photo)
     return TestClient(main.app)
 
 
@@ -621,7 +640,11 @@ def test_only_admins_change_mystery_cells(monkeypatch):
         assert client.put("/api/mystery/admin/cells/7", json={"photo_id": " "}).status_code == 400
         assert client.put("/api/mystery/admin/cells/7", json={"photo_id": "file1"}).status_code == 200
         assert client.put("/api/mystery/admin/cells/7", json={"photo_id": "file2"}).status_code == 200
-        assert client.get("/api/mystery/boxes").json()["cells"] == [{"slot": 7, "photo": "file2"}]
+        assert client.get("/api/mystery/boxes").json()["cells"] == [{"slot": 7, "photo": "file2", "logo": False}]
+        res = client.put("/api/mystery/admin/cells/8", json={"photo_id": "logo1"})
+        assert res.json()["logo"] is True
+        assert client.get("/api/mystery/boxes").json()["cells"][1] == {"slot": 8, "photo": "logo1", "logo": True}
+        assert client.delete("/api/mystery/admin/cells/8").status_code == 200
         assert client.delete("/api/mystery/admin/cells/7").status_code == 200
         assert client.get("/api/mystery/admin/boxes").json()["cells"] == []
     finally:
