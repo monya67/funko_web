@@ -68,7 +68,7 @@
         .deal > div + div { border-left: 1px solid var(--line); }
         .deal small { display: block; margin-bottom: 8px; font-size: 12px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.72; }
         .deal strong { display: block; font: 400 clamp(30px, 4.4vw, 52px)/1.1 'Anton', Impact, sans-serif; letter-spacing: 0.02em; white-space: nowrap; }
-        .soon { color: var(--red); text-shadow: 0 0 22px rgba(255, 32, 44, 0.85); animation: pulse 2.4s ease-in-out infinite; }
+        .drop-date { color: var(--red); text-shadow: 0 0 22px rgba(255, 32, 44, 0.85); animation: pulse 2.4s ease-in-out infinite; }
         @keyframes pulse { 50% { text-shadow: 0 0 6px rgba(255, 32, 44, 0.4); } }
 
         .series-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 44px 0 12px; }
@@ -120,8 +120,10 @@
             .scene { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
             .word:first-child { text-align: left; }
             .tag { margin-top: 6px; font-size: 10.5px; letter-spacing: 0.22em; }
+            .deal { grid-template-columns: 1fr 1fr; }
             .deal > div { padding: 14px 4px 16px; }
             .deal small { font-size: 9.5px; letter-spacing: 0.08em; }
+            .deal > div:last-child { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
             .series-head { padding-top: 32px; }
             .grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
             .cell .no { font-size: 17px; }
@@ -130,7 +132,7 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .cube { animation: none; transform: rotateX(-20deg) rotateY(-35deg); }
-            .soon { animation: none; }
+            .drop-date { animation: none; }
             button.cell, .progress i { transition: none; }
         }
         [hidden] { display: none !important; }
@@ -160,7 +162,7 @@
     <section class="deal" aria-label="Условия">
         <div><small>Цена бокса</small><strong id="price">&nbsp;</strong></div>
         <div><small>Всего боксов</small><strong id="total">30</strong></div>
-        <div><small>Первое раскрытие</small><strong class="soon">SOON</strong></div>
+        <div><small>Дата дропа</small><strong class="drop-date">XX.11.2026</strong></div>
     </section>
     <div class="series-head">
         <h2>Серии</h2>
