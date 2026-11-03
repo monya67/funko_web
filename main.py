@@ -64,6 +64,10 @@ MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "Funko Stop")
 MAIL_FROM = os.getenv("MAIL_FROM", "").strip() or SMTP_USER
 MAIL_REPLY_TO = os.getenv("MAIL_REPLY_TO", "").strip()
 SITE_URL = os.getenv("SITE_URL", "https://funkostop.org").rstrip("/")
+# A server in Russia reaches Telegram and Groq through a relay abroad: these point at it, the key opens it
+TELEGRAM_API = os.getenv("TELEGRAM_API_BASE", "https://api.telegram.org").rstrip("/")
+GROQ_API = os.getenv("GROQ_API_BASE", "https://api.groq.com").rstrip("/")
+RELAY_HEADERS = {"X-Relay-Key": os.getenv("RELAY_KEY")} if os.getenv("RELAY_KEY") else {}
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 365  # 1 year (persistent login)
@@ -89,11 +93,11 @@ async def notify_admins(text: str):
     if not BOT_TOKEN or not ADMIN_IDS:
         print("TG notify skipped: BOT_TOKEN or ADMIN_IDS not set")
         return
-    async with httpx.AsyncClient(verify=SSL_VERIFY) as client:
+    async with httpx.AsyncClient(verify=SSL_VERIFY, headers=RELAY_HEADERS) as client:
         for admin_id in ADMIN_IDS:
             try:
                 res = await client.post(
-                    f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                    f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
                     json={"chat_id": admin_id, "text": text, "parse_mode": "Markdown"},
                     timeout=15,
                 )
@@ -813,15 +817,15 @@ async def create_order(order: OrderCreate, admin: dict = Depends(require_admin))
         if client["user_tg_id"] and BOT_TOKEN:
             try:
                 msg = f"🎉 **У вас новый заказ!**\n\n🆔 Заказ #{new_id}\n🛒 Позиции:\n{order.items}\n\n💰 Стоимость: {order.total_price}\n✅ Оплачено: {order.paid_amount}"
-                async with httpx.AsyncClient() as http_client:
+                async with httpx.AsyncClient(headers=RELAY_HEADERS) as http_client:
                     if order.photo_id:
                         await http_client.post(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendPhoto",
                             data={"chat_id": client["user_tg_id"], "photo": order.photo_id, "caption": msg, "parse_mode": "Markdown"}
                         )
                     else:
                         await http_client.post(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
                             json={"chat_id": client["user_tg_id"], "text": msg, "parse_mode": "Markdown"}
                         )
             except Exception as e:
@@ -877,15 +881,15 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
             msg += f"🚚 **Текущий статус:**\n_{order.status}_"
             
             try:
-                async with httpx.AsyncClient() as http_client:
+                async with httpx.AsyncClient(headers=RELAY_HEADERS) as http_client:
                     if order.photo_id:
                         await http_client.post(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendPhoto",
                             data={"chat_id": old_data["user_tg_id"], "photo": order.photo_id, "caption": msg, "parse_mode": "Markdown"}
                         )
                     else:
                         await http_client.post(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
                             json={"chat_id": old_data["user_tg_id"], "text": msg, "parse_mode": "Markdown"}
                         )
             except Exception as e:
@@ -1113,15 +1117,15 @@ async def create_order_from_product(product_id: int, order_data: QuickOrderCreat
         if client["user_tg_id"] and BOT_TOKEN:
             try:
                 msg = f"🎉 **У вас новый заказ!**\n\n🆔 Заказ #{new_order_id}\n🛒 Позиции:\n{item_title}\n\n💰 Стоимость: {order_price} ₽\n✅ Оплачено: {order_data.paid_amount} ₽"
-                async with httpx.AsyncClient() as http_client:
+                async with httpx.AsyncClient(headers=RELAY_HEADERS) as http_client:
                     if first_photo_id(product["photo_id"]):
                         await http_client.post(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendPhoto",
                             data={"chat_id": client["user_tg_id"], "photo": first_photo_id(product["photo_id"]), "caption": msg, "parse_mode": "Markdown"}
                         )
                     else:
                         await http_client.post(
-                            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
                             json={"chat_id": client["user_tg_id"], "text": msg, "parse_mode": "Markdown"}
                         )
             except Exception as e:
@@ -1761,11 +1765,11 @@ async def ai_describe(body: DescribeIn, admin: dict = Depends(require_admin)):
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Сначала укажите название товара")
     text = ""
-    async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(45.0, connect=10.0)) as client:
+    async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(45.0, connect=10.0), headers=RELAY_HEADERS) as client:
         for model in GROQ_MODELS:
             try:
                 r = await client.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
+                    f"{GROQ_API}/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                     json={"model": model, "temperature": 0.2, "max_tokens": 900 if model.startswith("qwen") else 2500, "reasoning_effort": "medium" if not model.startswith("qwen") else "none",
                           "messages": [{"role": "system", "content": DESCRIBE_SYSTEM_PROMPT},
@@ -2587,12 +2591,12 @@ async def telegram_photo_bytes(photo_id):
         if not BOT_TOKEN:
             raise HTTPException(status_code=500, detail="BOT_TOKEN not configured")
         try:
-            async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(20.0, connect=8.0)) as client:
-                res = await client.get(f"https://api.telegram.org/bot{BOT_TOKEN}/getFile", params={"file_id": photo_id})
+            async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(20.0, connect=8.0), headers=RELAY_HEADERS) as client:
+                res = await client.get(f"{TELEGRAM_API}/bot{BOT_TOKEN}/getFile", params={"file_id": photo_id})
                 info = res.json()
                 if not info.get("ok"):
                     raise HTTPException(status_code=404, detail="Photo not found in Telegram")
-                photo_res = await client.get(f"https://api.telegram.org/file/bot{BOT_TOKEN}/{info['result']['file_path']}")
+                photo_res = await client.get(f"{TELEGRAM_API}/file/bot{BOT_TOKEN}/{info['result']['file_path']}")
         except HTTPException:
             raise
         except Exception as exc:
@@ -2654,13 +2658,13 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
 
     try:
         # a few MB to Telegram can take longer than httpx's default 5 s
-        async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(60.0, connect=15.0)) as client:
+        async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(60.0, connect=15.0), headers=RELAY_HEADERS) as client:
             # Sent as an opaque .bin on purpose: sendPhoto recompresses to 1280px JPEG, and a
             # .webp via sendDocument comes back as a sticker (no "document" key, may be shrunk).
             files = {"document": ("photo.bin", content, "application/octet-stream")}
             storage_chat = PHOTO_STORAGE_CHAT_ID or ADMIN_IDS[0]
             data = {"chat_id": storage_chat, "disable_notification": "true"}
-            res = await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
+            res = await client.post(f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendDocument", data=data, files=files)
             res_data = res.json()
             if not res_data.get("ok"):
                 raise HTTPException(status_code=502, detail=f"Telegram не принял фото: {res_data.get('description', 'неизвестная ошибка')}")
@@ -2669,7 +2673,7 @@ async def upload_photo(file: UploadFile = File(...), admin: dict = Depends(requi
             # In an admin's personal chat the storage message is deleted at once; a storage channel keeps it
             if not PHOTO_STORAGE_CHAT_ID:
                 try:
-                    await client.post(f"https://api.telegram.org/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": storage_chat, "message_id": message["message_id"]})
+                    await client.post(f"{TELEGRAM_API}/bot{BOT_TOKEN}/deleteMessage", json={"chat_id": storage_chat, "message_id": message["message_id"]})
                 except Exception:
                     pass
     except HTTPException:

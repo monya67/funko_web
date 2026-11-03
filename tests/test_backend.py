@@ -716,3 +716,10 @@ def test_admin_gets_the_pass_and_everybody_gets_the_page_at_the_goal(monkeypatch
 
     main.MYSTERY["base"] = 100000
     assert TestClient(main.app).get("/mystery/boxes", follow_redirects=False).status_code == 200
+
+
+def test_telegram_and_groq_go_through_the_configured_addresses():
+    src = open(main.__file__, encoding="utf-8").read()
+    assert "https://api.telegram.org/" not in src.replace('"https://api.telegram.org")', "")
+    assert "https://api.groq.com/" not in src
+    assert src.count("headers=RELAY_HEADERS") >= 7

@@ -35,6 +35,8 @@ done
 echo "[3/4] Устанавливаем в системное хранилище..."
 cp russian_trusted_root_ca.pem /usr/local/share/ca-certificates/russian_trusted_root_ca.crt
 cp russian_trusted_sub_ca.pem /usr/local/share/ca-certificates/russian_trusted_sub_ca.crt
+# without a final line break the system bundle glues two certificates together and stops loading
+for f in /usr/local/share/ca-certificates/russian_trusted_*.crt; do [ -n "$(tail -c1 "$f")" ] && echo >> "$f"; done
 update-ca-certificates
 echo "  Системные сертификаты обновлены."
 
