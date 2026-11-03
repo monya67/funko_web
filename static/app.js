@@ -676,7 +676,7 @@ function updateStatusBtn(btnId, selectedStatuses) {
 
 function makePhotoCell(photoId) {
     if (photoId) {
-        return `<td><img src="/api/photos/${photoId}" style="width:48px;height:48px;object-fit:cover;border-radius:5px;cursor:pointer;transition:transform 0.2s;" onclick="viewPhoto('${photoId}')" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"></td>`;
+        return `<td><img src="/api/photos/${photoId}" style="width:48px;height:48px;object-fit:contain;background:var(--img-bg);border-radius:5px;cursor:pointer;transition:transform 0.2s;" onclick="viewPhoto('${photoId}')" onmouseover="this.style.transform='scale(1.15)'" onmouseout="this.style.transform='scale(1)'"></td>`;
     }
     return `<td style="color:var(--gray-light);">—</td>`;
 }
@@ -1169,7 +1169,7 @@ function renderAccounting() {
         tr.className = 'row-animate';
         tr.style.animationDelay = `${i * 0.02}s`;
         const photoHtml = order.photo_id
-            ? `<img src="/api/photos/${order.photo_id}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer;flex-shrink:0;" onclick="viewPhoto('${order.photo_id}')">`
+            ? `<img src="/api/photos/${order.photo_id}" style="width:44px;height:44px;object-fit:contain;background:var(--img-bg);border-radius:5px;cursor:pointer;flex-shrink:0;" onclick="viewPhoto('${order.photo_id}')">`
             : `<div style="width:44px;height:44px;border-radius:5px;background:var(--card);flex-shrink:0;"></div>`;
 
         tr.innerHTML = `
