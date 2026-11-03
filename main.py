@@ -2799,6 +2799,37 @@ MYSTERY_HOURLY_CAP = 5000   # more than a person clicks in an hour, so one autoc
 MYSTERY_MAX_BATCH = 50
 MYSTERY = {"loaded": False, "base": 0, "pending": 0, "seen": 0.0}
 MYSTERY_BUCKETS = {}
+MYSTERY_TRAFFIC = {}   # address -> [(time, clicks sent, clicks counted)] for the last minute, for the admins' panel
+MYSTERY_WINDOW = 60
+
+
+def mystery_track(traffic, ip, sent, counted, now):
+    rows = [r for r in traffic.get(ip, []) if now - r[0] < MYSTERY_WINDOW]
+    rows.append((now, sent, counted))
+    traffic[ip] = rows
+    if len(traffic) > 20000:
+        for key in [k for k, v in traffic.items() if now - v[-1][0] >= MYSTERY_WINDOW]:
+            del traffic[key]
+
+
+def mask_ip(ip):
+    """Enough to tell addresses apart, not to identify a person."""
+    if ":" in ip:
+        return ":".join(ip.split(":")[:3]) + ":…"
+    parts = ip.split(".")
+    return ".".join(parts[:2] + ["x", parts[-1]]) if len(parts) == 4 else ip[:8] + "…"
+
+
+def mystery_traffic_stats(traffic, now):
+    people = []
+    for ip, rows in traffic.items():
+        rows = [r for r in rows if now - r[0] < MYSTERY_WINDOW]
+        if rows:
+            people.append({"address": mask_ip(ip), "sent": sum(r[1] for r in rows), "counted": sum(r[2] for r in rows)})
+    people.sort(key=lambda p: p["counted"], reverse=True)
+    counted = sum(p["counted"] for p in people)
+    return {"window": MYSTERY_WINDOW, "addresses": len(people), "counted": counted, "per_second": round(counted / MYSTERY_WINDOW, 1),
+            "limited": sum(1 for p in people if p["sent"] > p["counted"]), "top": people[:10]}
 
 
 def mystery_allowed(buckets, ip, wanted, now):
@@ -2888,7 +2919,10 @@ async def mystery_click(request: Request, body: MysteryClickIn):
     wanted = max(0, min(MYSTERY_MAX_BATCH, body.n))
     count = MYSTERY["base"] + MYSTERY["pending"]
     wanted = min(wanted, mystery_room(count, MYSTERY_GOAL, now, MYSTERY_OPENS))
-    MYSTERY["pending"] += mystery_allowed(MYSTERY_BUCKETS, client_ip(request), wanted, now)
+    ip = client_ip(request)
+    counted = mystery_allowed(MYSTERY_BUCKETS, ip, wanted, now)
+    MYSTERY["pending"] += counted
+    mystery_track(MYSTERY_TRAFFIC, ip, max(0, body.n), counted, now)
     return Response(content=json.dumps(mystery_state()), media_type="application/json", headers={"Cache-Control": "no-store"})
 
 
@@ -2950,6 +2984,11 @@ def mystery_pass_ok(request):
     except jwt.PyJWTError:
         return False
     return payload.get("scope") == MYSTERY_PASS_SCOPE
+
+
+@app.get("/api/mystery/admin/traffic")
+async def mystery_admin_traffic(admin: dict = Depends(require_admin)):
+    return mystery_traffic_stats(MYSTERY_TRAFFIC, time.time())
 
 
 @app.get("/api/mystery/admin/boxes")

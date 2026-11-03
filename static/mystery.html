@@ -36,6 +36,10 @@
         }
         .press { transition: transform 0.06s ease-out; }
         .admin-links { position: fixed; left: 12px; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+        .traffic { position: fixed; left: 12px; top: 12px; max-width: min(360px, calc(100vw - 24px)); padding: 10px 12px; border: 1px solid #f3f1ee; border-radius: 6px; background: rgba(58, 0, 2, 0.92); font-size: 12px; line-height: 1.45; text-align: left; }
+        .traffic b { font-size: 13px; }
+        .traffic table { margin-top: 6px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+        .traffic td { padding: 1px 10px 1px 0; }
         .admin { padding: 8px 12px; border: 1px solid #f3f1ee; border-radius: 6px; background: #3a0002; color: #f3f1ee; font-size: 13px; text-decoration: none; }
         .press:active { transform: scale(0.96); }
         .press:focus-visible, .admin:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
@@ -66,6 +70,7 @@
         <button type="button" class="press" id="press">НАЖАТЬ</button>
     </div>
 </main>
+<div class="traffic" id="traffic" hidden></div>
 <div class="admin-links" id="admin" hidden>
     <a class="admin" href="/mystery?preview">Проверить кликер (клики не считаются)</a>
     <a class="admin" href="/mystery/boxes">Страница боксов (видят только админы)</a>
@@ -168,12 +173,37 @@
     setInterval(tick, 1000);
     render();
     sync();
+    // admins see who is clicking right now: addresses are masked, "sent" above "counted" means the limit cut them
+    function watchTraffic(adminToken) {
+        const show = async () => {
+            try {
+                const res = await fetch('/api/mystery/admin/traffic', { headers: { Authorization: `Bearer ${adminToken}` } });
+                if (!res.ok) return;
+                const t = await res.json();
+                const box = $('traffic');
+                box.hidden = false;
+                box.replaceChildren();
+                const head = document.createElement('div');
+                head.innerHTML = `<b>За минуту: ${t.addresses} адр., ${t.counted} кликов (${t.per_second}/с)</b><br>упёрлись в лимит: ${t.limited}`;
+                const table = document.createElement('table');
+                t.top.forEach(p => {
+                    const row = table.insertRow();
+                    [p.address, `${p.counted} засчитано`, p.sent > p.counted ? `прислал ${p.sent}` : ''].forEach(v => { row.insertCell().textContent = v; });
+                });
+                box.append(head, table);
+            } catch (e) {}
+        };
+        show();
+        setInterval(show, 5000);
+    }
+
     let adminToken = null;
     try { adminToken = localStorage.getItem('funko_token'); } catch (e) {}
     if (adminToken) {
         fetch('/api/mystery/admin/boxes', { headers: { Authorization: `Bearer ${adminToken}` } })
             .then(res => {
                 $('admin').hidden = !res.ok;
+                if (res.ok) watchTraffic(adminToken);
                 // an admin tries the clicker before the opening: nothing goes to the server, the last 50 clicks lead to the boxes
                 if (res.ok && new URLSearchParams(location.search).has('preview')) {
                     state.preview = true;

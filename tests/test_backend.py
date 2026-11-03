@@ -723,3 +723,14 @@ def test_telegram_and_groq_go_through_the_configured_addresses():
     assert "https://api.telegram.org/" not in src.replace('"https://api.telegram.org")', "")
     assert "https://api.groq.com/" not in src
     assert src.count("headers=RELAY_HEADERS") >= 7
+
+
+def test_mystery_traffic_shows_the_last_minute_per_address():
+    traffic = {}
+    main.mystery_track(traffic, "10.1.2.3", 50, 50, 100.0)
+    main.mystery_track(traffic, "10.1.2.3", 50, 10, 101.0)
+    main.mystery_track(traffic, "10.9.9.9", 5, 5, 101.0)
+    main.mystery_track(traffic, "10.7.7.7", 9, 9, 30.0)   # more than a minute ago
+    stats = main.mystery_traffic_stats(traffic, 120.0)
+    assert stats["addresses"] == 2 and stats["counted"] == 65 and stats["limited"] == 1
+    assert stats["top"][0] == {"address": "10.1.x.3", "sent": 100, "counted": 60}
