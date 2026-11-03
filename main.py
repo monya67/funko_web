@@ -10,6 +10,7 @@ import jwt
 import httpx
 import ssl
 import hashlib
+import uuid
 from datetime import datetime, timedelta, timezone
 import asyncio
 from fastapi import FastAPI, Depends, HTTPException, status, Request
@@ -49,6 +50,12 @@ PHOTO_STORAGE_CHAT_ID = os.getenv("PHOTO_STORAGE_CHAT_ID", "").strip()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 # Qwen knew the characters best in our tests but has a small per-minute limit; GPT-OSS takes over when it is busy
 GROQ_MODELS = [m.strip() for m in os.getenv("GROQ_MODELS", "qwen/qwen3.8-27b,openai/gpt-oss-120b").split(",") if m.strip()]
+# GigaChat works from a server in Russia, where Groq refuses; with its key set it writes the descriptions.
+# The free plan gives each model its own allowance, so when the best one runs out the next one answers.
+GIGACHAT_AUTH_KEY = os.getenv("GIGACHAT_AUTH_KEY", "").strip()
+GIGACHAT_SCOPE = os.getenv("GIGACHAT_SCOPE", "GIGACHAT_API_PERS").strip()
+GIGACHAT_MODELS = [m.strip() for m in os.getenv("GIGACHAT_MODELS", "GigaChat-2-Max,GigaChat-2-Pro,GigaChat-2").split(",") if m.strip()]
+GIGACHAT_TOKEN = {"value": "", "expires": 0.0}
 
 TBANK_TERMINAL_KEY = os.getenv("TBANK_TERMINAL_KEY", "")
 TBANK_PASSWORD = os.getenv("TBANK_PASSWORD", "")
@@ -1753,18 +1760,62 @@ def describe_user_prompt(p):
 def clean_description(text):
     """Model output -> one tidy paragraph without wrapping quotes or markdown."""
     t = re.sub(r"[*_#`]+", "", (text or "").strip()).strip().strip('"«»').strip()
-    t = re.sub(r"\s*[—–]\s*", ", ", t)  # the shop asked for no dashes; a comma reads naturally in their place
+    t = re.sub(r"\s*[—–]\s*|\s+-\s+", ", ", t)  # the shop asked for no dashes; a comma reads naturally in their place
     t = re.sub(r",\s*,", ",", t)
     return re.sub(r"\s*\n\s*", " ", t)[:2000]
 
 
+async def gigachat_token(client):
+    """An access token lives 30 minutes; a new one is asked for a minute before the old one ends."""
+    if GIGACHAT_TOKEN["value"] and time.time() < GIGACHAT_TOKEN["expires"] - 60:
+        return GIGACHAT_TOKEN["value"]
+    r = await client.post("https://ngw.devices.sberbank.ru:9443/api/v2/oauth", data={"scope": GIGACHAT_SCOPE},
+                          headers={"Authorization": f"Basic {GIGACHAT_AUTH_KEY}", "RqUID": str(uuid.uuid4()), "Accept": "application/json"})
+    data = r.json()
+    if r.status_code != 200 or "access_token" not in data:
+        raise RuntimeError(f"GigaChat auth {r.status_code}: {str(data)[:200]}")
+    GIGACHAT_TOKEN.update(value=data["access_token"], expires=data["expires_at"] / 1000)
+    return GIGACHAT_TOKEN["value"]
+
+
+async def describe_with_gigachat(body):
+    async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(60.0, connect=10.0)) as client:
+        try:
+            token = await gigachat_token(client)
+        except Exception as exc:
+            print(f"GigaChat token failed: {exc!r}")
+            return ""
+        for model in GIGACHAT_MODELS:
+            try:
+                r = await client.post(
+                    "https://gigachat.devices.sberbank.ru/api/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {token}"},
+                    json={"model": model, "temperature": 0.2, "max_tokens": 900,
+                          "messages": [{"role": "system", "content": DESCRIBE_SYSTEM_PROMPT},
+                                       {"role": "user", "content": describe_user_prompt(body)}]})
+                data = r.json()
+                if r.status_code == 200:
+                    text = clean_description(data["choices"][0]["message"]["content"])
+                    if text:
+                        return text
+                else:
+                    print(f"GigaChat {model} error {r.status_code}: {str(data)[:300]}")
+            except Exception as exc:
+                print(f"GigaChat {model} request failed: {exc!r}")
+    return ""
+
+
 @app.post("/api/ai/describe")
 async def ai_describe(body: DescribeIn, admin: dict = Depends(require_admin)):
-    if not GROQ_API_KEY:
-        raise HTTPException(status_code=503, detail="Генерация описаний выключена: на сервере не задан GROQ_API_KEY")
+    if not GIGACHAT_AUTH_KEY and not GROQ_API_KEY:
+        raise HTTPException(status_code=503, detail="Генерация описаний выключена: на сервере не задан GIGACHAT_AUTH_KEY или GROQ_API_KEY")
     if not body.name.strip():
         raise HTTPException(status_code=400, detail="Сначала укажите название товара")
-    text = ""
+    text = await describe_with_gigachat(body) if GIGACHAT_AUTH_KEY else ""
+    if text:
+        return {"description": text}
+    if not GROQ_API_KEY:
+        raise HTTPException(status_code=502, detail="Сервис генерации не ответил, попробуйте ещё раз через минуту")
     async with httpx.AsyncClient(verify=SSL_VERIFY, timeout=httpx.Timeout(45.0, connect=10.0), headers=RELAY_HEADERS) as client:
         for model in GROQ_MODELS:
             try:
