@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1798400000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1798500000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -238,6 +238,7 @@
                         <a href="/site-promos" class="nav-item profile-menu-item admin-only hidden" data-tab="sitepromos">Промокоды сайта</a>
                         <a href="/promocodes" class="nav-item profile-menu-item admin-only hidden" data-tab="promocodes">Промокоды магазинов</a>
                         <button id="sidebar-login-btn" type="button" class="btn primary profile-menu-login">Войти</button>
+                        <button id="my-data-btn" type="button" class="profile-menu-item client-only hidden">Мои данные</button>
                         <button id="logout-btn" type="button" class="profile-menu-item profile-menu-logout hidden">Выйти</button>
                     </div>
                 </div>
@@ -1608,6 +1609,24 @@
             </form>
         </div>
 
+        <div id="my-data-modal" class="glass-panel modal hidden reg-modal">
+            <h3>Мои данные</h3>
+            <form id="my-data-form" novalidate>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="my-first-name">Имя</label><input type="text" id="my-first-name" name="first_name" autocomplete="given-name" required></div>
+                    <div class="input-group"><label for="my-last-name">Фамилия</label><input type="text" id="my-last-name" name="last_name" autocomplete="family-name"></div>
+                </div>
+                <div class="input-group"><label for="my-phone">Телефон</label><input type="tel" id="my-phone" name="phone" autocomplete="tel" placeholder="+7 999 123-45-67" required></div>
+                <div class="input-group"><label for="my-tg">Telegram</label><input type="text" id="my-tg" name="tg_username" placeholder="@username"></div>
+                <div class="input-group"><label for="my-email">Почта</label><input type="email" id="my-email" name="email" autocomplete="email" placeholder="name@mail.ru"></div>
+                <p class="reg-error hidden" id="my-data-error" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline" id="my-data-cancel">Отмена</button>
+                    <button type="submit" class="btn primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+
         <div id="edit-client-modal" class="glass-panel modal hidden">
             <h3>Редактирование клиента #<span id="edit-client-id-display"></span></h3>
             <form id="edit-client-form">
@@ -2293,6 +2312,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1798400000000"></script>
+    <script src="/static/app.js?v=1798500000000"></script>
 </body>
 </html>

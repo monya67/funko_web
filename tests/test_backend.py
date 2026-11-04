@@ -755,3 +755,25 @@ def test_mystery_traffic_shows_the_last_minute_per_address():
     stats = main.mystery_traffic_stats(traffic, 120.0)
     assert stats["addresses"] == 2 and stats["counted"] == 65 and stats["limited"] == 1
     assert stats["top"][0] == {"address": "10.1.x.3", "sent": 100, "counted": 60}
+
+
+def test_client_edits_own_details_with_the_checkout_checks():
+    v = main.clean_self_update(main.ClientSelfUpdate(first_name=" Анна ", last_name="Ли", phone="8 999 123-45-67", tg_username="anna", email=" Anna@Mail.RU "))
+    assert v == {"first_name": "Анна", "last_name": "Ли", "full_name": "Анна Ли", "phone": "+79991234567", "tg_username": "@anna", "email": "anna@mail.ru"}
+    for bad in ({"first_name": "", "phone": "+79991234567"}, {"first_name": "Анна", "phone": "123"},
+                {"first_name": "Анна", "phone": "+79991234567", "email": "not-an-email"}):
+        try:
+            main.clean_self_update(main.ClientSelfUpdate(**bad))
+        except ValueError:
+            continue
+        raise AssertionError(bad)
+
+
+def test_only_a_client_edits_their_details():
+    client = TestClient(main.app)
+    assert client.put("/api/me", json={"first_name": "A", "phone": "+79991234567"}).status_code == 401
+    main.app.dependency_overrides[main.get_current_user] = lambda: {"role": "admin", "id": 1}
+    try:
+        assert client.put("/api/me", json={"first_name": "A", "phone": "+79991234567"}).status_code == 403
+    finally:
+        main.app.dependency_overrides.clear()

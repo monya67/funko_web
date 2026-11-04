@@ -398,6 +398,31 @@ class ClientUpdate(BaseModel):
     tg_username: str = ""
     email: str = ""
 
+class ClientSelfUpdate(BaseModel):
+    first_name: str = ""
+    last_name: str = ""
+    phone: str = ""
+    tg_username: str = ""
+    email: str = ""
+
+
+def clean_self_update(body: ClientSelfUpdate) -> dict:
+    """A client's own contact details, checked as strictly as at checkout."""
+    first, last = body.first_name.strip()[:100], body.last_name.strip()[:100]
+    if not first:
+        raise ValueError("Укажите имя")
+    phone = normalize_phone(body.phone)
+    if not phone:
+        raise ValueError("Укажите настоящий номер телефона, например +7 999 123-45-67")
+    email = body.email.strip().lower()[:200]
+    if email and not valid_email(email):
+        raise ValueError("Укажите корректную электронную почту")
+    tg = body.tg_username.strip()[:64]
+    if tg and not tg.startswith("@") and not tg.startswith("http"):
+        tg = "@" + tg
+    return {"first_name": first, "last_name": last, "full_name": f"{first} {last}".strip(), "phone": phone, "tg_username": tg, "email": email}
+
+
 class OrderCreate(BaseModel):
     client_id: int
     items: str
@@ -741,7 +766,7 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             }
         else:
             client_id = user["id"]
-            client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name, COALESCE(phone, '') as phone, COALESCE(tg_username, '') as tg_username, COALESCE(email, '') as email FROM clients WHERE id = $1", client_id)
+            client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name, COALESCE(first_name, '') as first_name, COALESCE(last_name, '') as last_name, COALESCE(phone, '') as phone, COALESCE(tg_username, '') as tg_username, COALESCE(email, '') as email FROM clients WHERE id = $1", client_id)
             orders = await db.fetch(
                 "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date FROM orders WHERE client_id = $1 AND archived = FALSE AND status <> 'Ожидает оплаты' ORDER BY id DESC",
                 client_id
@@ -754,6 +779,8 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
                 "role": "client",
                 "client_id": client_id,
                 "full_name": client_info["full_name"] if client_info else "",
+                "first_name": client_info["first_name"] if client_info else "",
+                "last_name": client_info["last_name"] if client_info else "",
                 "phone": client_info["phone"] if client_info else "",
                 "tg_username": client_info["tg_username"] if client_info else "",
                 "email": client_info["email"] if client_info else "",
@@ -761,6 +788,28 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
                 "orders": [dict(o) for o in orders],
                 "archived": [dict(o) for o in archived]
             }
+
+@app.put("/api/me")
+async def update_my_data(body: ClientSelfUpdate, user: dict = Depends(get_current_user)):
+    """The client changes their own name and contacts in the cabinet."""
+    if user["role"] != "client":
+        raise HTTPException(status_code=403, detail="Только для покупателей")
+    try:
+        v = clean_self_update(body)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    async with pool.acquire() as db:
+        # checkout attaches orders by phone, so one number belongs to one cabinet
+        taken = await db.fetchval(
+            "SELECT id FROM clients WHERE id <> $1 AND phone <> '' AND right(regexp_replace(phone, '\\D', '', 'g'), 10) = right($2, 10) LIMIT 1",
+            user["id"], v["phone"])
+        if taken:
+            raise HTTPException(status_code=400, detail="Этот телефон уже привязан к другому аккаунту. Напишите нам, если это ваш номер")
+        await db.execute(
+            "UPDATE clients SET first_name = $1, last_name = $2, full_name = $3, phone = $4, tg_username = $5, email = $6 WHERE id = $7",
+            v["first_name"], v["last_name"], v["full_name"], v["phone"], v["tg_username"], v["email"], user["id"])
+    return {"success": True, **v}
+
 
 @app.post("/api/clients")
 async def create_client(client: ClientCreate, admin: dict = Depends(require_admin)):

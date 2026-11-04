@@ -224,6 +224,7 @@ function updateRoleUI(role) {
     } else if (role === 'client') {
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.auth-only').forEach(el => el.classList.remove('hidden'));
+        document.querySelectorAll('.client-only').forEach(el => el.classList.remove('hidden'));
         const nameLabel = window.currentClientFullName ? `${window.currentClientFullName} (#${currentClientId})` : (currentClientId ? `Клиент #${currentClientId}` : 'Личный кабинет');
         if (sidebarUserLabel) sidebarUserLabel.textContent = nameLabel;
         if (sidebarUserChip) {
@@ -248,6 +249,7 @@ function updateRoleUI(role) {
         // Guest mode
         currentRole = 'guest';
         document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.client-only').forEach(el => el.classList.add('hidden'));
         document.querySelectorAll('.auth-only').forEach(el => el.classList.add('hidden'));
         if (sidebarUserChip) sidebarUserChip.classList.add('hidden');
         if (sidebarLoginBtn) sidebarLoginBtn.classList.remove('hidden');
@@ -267,6 +269,49 @@ function updateRoleUI(role) {
         if (input) input.placeholder = role === 'admin' ? 'Поиск (ID, товар, клиент)...' : 'Поиск (номер заказа, товар)...';
     });
 }
+
+// --- The client's own details, from the profile menu ---
+function openMyData() {
+    const form = document.getElementById('my-data-form');
+    if (!form) return;
+    let first = window.currentClientFirstName || '';
+    let last = window.currentClientLastName || '';
+    if (!first && !last && window.currentClientFullName) [first, ...last] = window.currentClientFullName.split(' '), last = last.join(' ');
+    form.elements.first_name.value = first;
+    form.elements.last_name.value = last;
+    form.elements.phone.value = window.currentClientPhone || '';
+    form.elements.tg_username.value = window.currentClientTg || '';
+    form.elements.email.value = window.currentClientEmail || '';
+    document.getElementById('my-data-error').classList.add('hidden');
+    openModal(document.getElementById('my-data-modal'));
+    setTimeout(() => form.elements.first_name.focus(), 30);
+}
+document.getElementById('my-data-btn')?.addEventListener('click', openMyData);
+document.getElementById('my-data-cancel')?.addEventListener('click', () => closeModals());
+document.getElementById('my-data-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const err = document.getElementById('my-data-error');
+    const btn = form.querySelector('button[type=submit]');
+    const body = Object.fromEntries(['first_name', 'last_name', 'phone', 'tg_username', 'email'].map(k => [k, form.elements[k].value.trim()]));
+    btn.disabled = true;
+    try {
+        const saved = await fetchAPI('/me', { method: 'PUT', body: JSON.stringify(body) });
+        window.currentClientFullName = saved.full_name;
+        window.currentClientFirstName = saved.first_name;
+        window.currentClientLastName = saved.last_name;
+        window.currentClientPhone = saved.phone;
+        window.currentClientTg = saved.tg_username;
+        window.currentClientEmail = saved.email;
+        updateRoleUI('client');
+        closeModals();
+    } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.remove('hidden');
+    } finally {
+        btn.disabled = false;
+    }
+});
 
 function handleLogout() {
     token = null;
@@ -590,6 +635,8 @@ async function loadDashboardData() {
         if (data.role === 'client' && data.client_id) {
             currentClientId = data.client_id;
             window.currentClientFullName = data.full_name || '';
+            window.currentClientFirstName = data.first_name || '';
+            window.currentClientLastName = data.last_name || '';
             window.currentClientPhone = data.phone || '';
             window.currentClientTg = data.tg_username || '';
             window.currentClientEmail = data.email || '';
