@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1798300000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1798400000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -235,7 +235,8 @@
                         <a href="/accounting" class="nav-item profile-menu-item admin-only hidden" data-tab="accounting">Бухгалтерия</a>
                         <a href="/clients" class="nav-item profile-menu-item admin-only hidden" data-tab="clients">Клиенты</a>
                         <a href="/purchases" class="nav-item profile-menu-item admin-only hidden" data-tab="purchases">Выкупы</a>
-                        <a href="/promocodes" class="nav-item profile-menu-item admin-only hidden" data-tab="promocodes">Промокоды</a>
+                        <a href="/site-promos" class="nav-item profile-menu-item admin-only hidden" data-tab="sitepromos">Промокоды сайта</a>
+                        <a href="/promocodes" class="nav-item profile-menu-item admin-only hidden" data-tab="promocodes">Промокоды магазинов</a>
                         <button id="sidebar-login-btn" type="button" class="btn primary profile-menu-login">Войти</button>
                         <button id="logout-btn" type="button" class="profile-menu-item profile-menu-logout hidden">Выйти</button>
                     </div>
@@ -255,7 +256,8 @@
             <a href="/clients" class="nav-item" data-tab="clients">Клиенты</a>
             <a href="/products" class="nav-item" data-tab="products">Товары</a>
             <a href="/purchases" class="nav-item" data-tab="purchases">Выкупы</a>
-            <a href="/promocodes" class="nav-item" data-tab="promocodes">Промокоды</a>
+            <a href="/site-promos" class="nav-item" data-tab="sitepromos">Промокоды сайта</a>
+            <a href="/promocodes" class="nav-item" data-tab="promocodes">Промокоды магазинов</a>
         </div>
     </nav>
 
@@ -1037,7 +1039,7 @@
             <!-- PROMO CODES TAB (admin): codes for the shops we buy from -->
             <section id="promocodes-tab" class="tab-content">
                 <div class="header-flex">
-                    <h2>Промокоды</h2>
+                    <h2>Промокоды магазинов</h2>
                     <button type="button" class="btn primary" data-reg-add="promocodes">+ Добавить промокод</button>
                 </div>
                 <div class="products-toolbar">
@@ -1058,6 +1060,32 @@
                     <p class="empty-msg hidden" data-reg-empty="promocodes">Промокодов нет</p>
                 </div>
                 <p class="ledger-hint">Двойной клик по строке — открыть целиком с условием</p>
+            </section>
+
+            <!-- SITE PROMO CODES TAB (admin): codes our customers enter at checkout -->
+            <section id="sitepromos-tab" class="tab-content">
+                <div class="header-flex">
+                    <h2>Промокоды сайта</h2>
+                    <button type="button" class="btn primary" data-reg-add="sitepromos">+ Создать промокод</button>
+                </div>
+                <div class="products-toolbar">
+                    <input type="search" data-reg-search="sitepromos" placeholder="Поиск: промокод, заметка…" aria-label="Поиск по промокодам сайта">
+                    <div class="reg-switch" role="tablist" aria-label="Какие промокоды показать">
+                        <button type="button" class="reg-switch-btn active" data-reg-view="sitepromos" data-view="active">Действуют</button>
+                        <button type="button" class="reg-switch-btn" data-reg-view="sitepromos" data-view="archive">Выключены</button>
+                    </div>
+                </div>
+                <div class="reg-count" data-reg-count="sitepromos"></div>
+                <div class="glass-panel table-container">
+                    <table class="reg-table" data-reg-table="sitepromos">
+                        <thead><tr>
+                            <th>Промокод</th><th>Скидка</th><th>Использован</th><th>Заказ от</th><th style="width:110px;"></th>
+                        </tr></thead>
+                        <tbody></tbody>
+                    </table>
+                    <p class="empty-msg hidden" data-reg-empty="sitepromos">Промокодов нет</p>
+                </div>
+                <p class="ledger-hint">Покупатели вводят код при оформлении заказа в поле «Промокод». Двойной клик по строке — изменить</p>
             </section>
 
             <!-- PRODUCTS TAB (admin) -->
@@ -1555,6 +1583,31 @@
             </form>
         </div>
 
+        <div id="site-promo-modal" class="glass-panel modal hidden reg-modal">
+            <h3 data-reg-title="sitepromos">Промокод сайта</h3>
+            <form data-reg-form="sitepromos" novalidate>
+                <div class="input-group"><label for="sp-code">Промокод</label><input type="text" id="sp-code" name="code" required placeholder="FUNKO300" autocomplete="off"></div>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="sp-value">Скидка</label><input type="number" id="sp-value" name="value" min="1" step="1" placeholder="300"></div>
+                    <div class="input-group"><label for="sp-kind">В чём</label>
+                        <select id="sp-kind" name="value_kind"><option value="rub">₽</option><option value="percent">%</option></select>
+                    </div>
+                </div>
+                <div class="reg-grid">
+                    <div class="input-group"><label for="sp-uses">Сколько раз можно использовать</label><input type="number" id="sp-uses" name="max_uses" min="0" step="1" placeholder="0 — без ограничений"></div>
+                    <div class="input-group"><label for="sp-min">Заказ от, ₽</label><input type="number" id="sp-min" name="min_order" min="0" step="100" placeholder="0"></div>
+                </div>
+                <label class="reg-check"><input type="checkbox" name="active"> Действует</label>
+                <div class="input-group"><label for="sp-note">Заметка для админов</label><textarea id="sp-note" name="note" rows="3" placeholder="Для кого и до какого числа"></textarea></div>
+                <p class="reg-error hidden" role="alert"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn secondary outline reg-delete hidden">Удалить</button>
+                    <button type="button" class="btn secondary outline reg-cancel">Отмена</button>
+                    <button type="submit" class="btn primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+
         <div id="edit-client-modal" class="glass-panel modal hidden">
             <h3>Редактирование клиента #<span id="edit-client-id-display"></span></h3>
             <form id="edit-client-form">
@@ -1726,7 +1779,7 @@
             <!-- Promo code from the Telegram game -->
             <div class="promo-box" id="checkout-promo-box">
                 <div class="promo-row">
-                    <input type="text" id="checkout-promo" placeholder="Промокод из игры в боте" autocomplete="off" maxlength="32" aria-label="Промокод">
+                    <input type="text" id="checkout-promo" placeholder="Промокод" autocomplete="off" maxlength="32" aria-label="Промокод">
                     <button type="button" class="btn secondary outline" id="checkout-promo-apply">Применить</button>
                 </div>
                 <div class="promo-status hidden" id="checkout-promo-status" role="status"></div>
@@ -2240,6 +2293,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1798300000000"></script>
+    <script src="/static/app.js?v=1798400000000"></script>
 </body>
 </html>

@@ -373,7 +373,8 @@ const TAB_ROUTES = {
     clients: '/clients',
     products: '/products',
     purchases: '/purchases',
-    promocodes: '/promocodes'
+    promocodes: '/promocodes',
+    sitepromos: '/site-promos'
 };
 const ROUTE_TO_TAB = {};
 Object.entries(TAB_ROUTES).forEach(([tab, path]) => { ROUTE_TO_TAB[path] = tab; });
@@ -426,7 +427,7 @@ window.switchTab = function(tabName, pushState = true) {
         loadCatalog();
         renderProductsAdmin();
     }
-    if ((tabName === 'purchases' || tabName === 'promocodes') && currentRole === 'admin') {
+    if ((tabName === 'purchases' || tabName === 'promocodes' || tabName === 'sitepromos') && currentRole === 'admin') {
         loadRegister(tabName);
     }
     if (tabName === 'accounting' && currentRole === 'admin') {
@@ -3062,8 +3063,17 @@ window.openCartModal = function() {
 // --- Checkout & Strict Validation Engine ---
 window.currentPaymentOption = '50%';
 window.pendingCheckoutData = null;
-// a game promo code applied in the checkout: { code, amount } (the server checks it again when the order is placed)
+// a promo code applied in the checkout: { code, amount, value, value_kind } (the server checks it again when the order is placed)
 window.checkoutPromo = null;
+
+function checkoutGoods() {
+    return funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
+}
+
+// a percent code follows the cart; rubles stay as they are
+function promoAmountFor(promo, goods) {
+    return promo.value_kind === 'percent' ? Math.round(goods * promo.value / 100) : promo.amount;
+}
 
 function checkoutTotal() {
     const total = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
@@ -3101,14 +3111,14 @@ async function applyCheckoutPromo() {
     if (!code) { input.focus(); return; }
     btn.disabled = true;
     try {
-        const res = await fetch(`${API_BASE}/promo/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) });
+        const goods = checkoutGoods();
+        const res = await fetch(`${API_BASE}/promo/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, total: goods }) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || 'Промокод не подошёл');
-        const goods = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
-        if (data.amount >= goods) throw new Error(`Промокод на ${data.amount} ₽ действует для заказа дороже ${data.amount} ₽`);
-        window.checkoutPromo = { code: data.code, amount: data.amount };
+        window.checkoutPromo = { code: data.code, amount: data.amount, value: data.value, value_kind: data.value_kind };
         input.value = data.code; input.disabled = true; btn.textContent = 'Убрать';
-        showPromoStatus(`Скидка ${data.amount.toLocaleString('ru')} ₽ применена`, true);
+        const what = data.value_kind === 'percent' ? `${data.value}% (${data.amount.toLocaleString('ru')} ₽)` : `${data.amount.toLocaleString('ru')} ₽`;
+        showPromoStatus(`Скидка ${what} применена`, true);
         renderCheckoutAmounts();
     } catch (err) {
         showPromoStatus(err.message, false);
@@ -3165,7 +3175,8 @@ window.openCheckoutModal = function() {
     }
 
     // a code applied earlier stays only while it still fits the cart
-    const goods = funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
+    const goods = checkoutGoods();
+    if (window.checkoutPromo) window.checkoutPromo.amount = promoAmountFor(window.checkoutPromo, goods);
     if (window.checkoutPromo && window.checkoutPromo.amount >= goods) {
         window.checkoutPromo = null;
         const pi = document.getElementById('checkout-promo');
@@ -3800,9 +3811,39 @@ const REGISTERS = {
             }
             await fetchAPI(`/promocodes/${it.id}`, { method: 'PUT', body: JSON.stringify({ ...it, used: act === 'use' }) });
         }
+    },
+    sitepromos: {
+        api: '/site-promos',
+        modal: 'site-promo-modal',
+        newTitle: 'Новый промокод сайта',
+        editTitle: it => `Промокод ${it.code}`,
+        empty: { code: '', value: '', value_kind: 'rub', max_uses: 0, min_order: 0, active: true, note: '' },
+        view: 'active',
+        visible(it, view) { return view === 'archive' ? !it.active : !!it.active; },
+        haystack: it => [it.code, it.note].join(' '),
+        row(it) {
+            const value = it.value_kind === 'percent' ? `${it.value}%` : `${(it.value || 0).toLocaleString('ru')} ₽`;
+            const limit = it.max_uses ? ` из ${it.max_uses}` : '';
+            const pending = it.taken_count - it.used_count;
+            return `
+                <td><span class="reg-code">${escapeHtml(it.code)}</span>${it.note ? `<div class="reg-sub">${escapeHtml(it.note)}</div>` : ''}</td>
+                <td style="white-space:nowrap;"><b>−${value}</b></td>
+                <td style="white-space:nowrap;">${it.used_count}${limit}${pending > 0 ? `<div class="reg-sub">ещё ${pending} ждут оплаты</div>` : ''}</td>
+                <td style="white-space:nowrap;">${it.min_order ? `${it.min_order.toLocaleString('ru')} ₽` : '—'}</td>
+                <td style="text-align:right; white-space:nowrap;"><button type="button" class="btn secondary outline reg-act" data-act="copy">Копировать</button>
+                    <button type="button" class="btn secondary outline reg-act" data-act="${it.active ? 'off' : 'on'}">${it.active ? 'Выключить' : 'Включить'}</button></td>`;
+        },
+        count: (list, all) => `${list.length} из ${all.length}`,
+        async act(it, act) {
+            if (act === 'copy') {
+                try { await navigator.clipboard.writeText(it.code); } catch (e) {}
+                return 'copied';
+            }
+            await fetchAPI(`/site-promos/${it.id}`, { method: 'PUT', body: JSON.stringify({ ...it, active: act === 'on' }) });
+        }
     }
 };
-const registerData = { purchases: [], promocodes: [] };
+const registerData = { purchases: [], promocodes: [], sitepromos: [] };
 let registerEditing = { name: null, item: null };
 
 async function loadRegister(name) {

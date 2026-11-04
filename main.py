@@ -274,6 +274,33 @@ async def startup():
 
         await db.execute("ALTER TABLE promo_codes ADD COLUMN IF NOT EXISTS used BOOLEAN DEFAULT FALSE")
 
+        # Promo codes for this shop, created by the admins; every order that takes one leaves a row in site_promo_uses
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS site_promos (
+                id SERIAL PRIMARY KEY,
+                code TEXT NOT NULL UNIQUE,
+                value INTEGER NOT NULL DEFAULT 0,
+                value_kind TEXT NOT NULL DEFAULT 'rub',
+                max_uses INTEGER NOT NULL DEFAULT 0,
+                min_order INTEGER NOT NULL DEFAULT 0,
+                active BOOLEAN NOT NULL DEFAULT TRUE,
+                note TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS site_promo_uses (
+                id SERIAL PRIMARY KEY,
+                code TEXT NOT NULL,
+                order_id INTEGER,
+                client_id INTEGER,
+                amount INTEGER NOT NULL DEFAULT 0,
+                used BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ DEFAULT now()
+            )
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS site_promo_uses_code ON site_promo_uses (code)")
+
         # Catalog tables
         await db.execute("""
             CREATE TABLE IF NOT EXISTS categories (
@@ -1184,13 +1211,10 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
     promo_discount = 0
     if promo_code:
         async with pool.acquire() as promo_db:
-            amount, message = await lookup_promo(promo_db, promo_code)
+            amount, message = await lookup_site_promo(promo_db, promo_code, total_price)
         if amount is None:
             raise HTTPException(status_code=409, detail=message)
-        try:
-            total_price = apply_promo(total_price, amount)
-        except ValueError as exc:
-            raise HTTPException(status_code=409, detail=str(exc))
+        total_price -= amount
         promo_discount = amount
     paid_amount = round(total_price * 0.5) if checkout.payment_type == "50%" else total_price
     order_date = datetime.now().strftime("%d.%m.%Y")
@@ -1261,14 +1285,19 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                     msg = f"«{row['name']}» распродан" if left <= 0 else f"«{row['name']}»: осталось только {left} шт."
                     raise HTTPException(status_code=409, detail=msg)
 
-        # the code is taken before the order exists: the primary key makes two checkouts with one code impossible
+        # the code is taken before the order exists; the row lock keeps two checkouts from taking its last use
+        promo_use_id = None
         if promo_code:
-            took = await db.fetchval(
-                "INSERT INTO promo_redemptions (code, amount, client_id) VALUES ($1, $2, $3) ON CONFLICT (code) DO NOTHING RETURNING code",
-                promo_code, promo_discount, client_id)
-            if not took:
+            async with db.transaction():
+                promo = await db.fetchrow("SELECT max_uses FROM site_promos WHERE code = $1 AND active FOR UPDATE", promo_code)
+                taken = await db.fetchval("SELECT count(*) FROM site_promo_uses WHERE code = $1", promo_code)
+                if promo and not (promo["max_uses"] and taken >= promo["max_uses"]):
+                    promo_use_id = await db.fetchval(
+                        "INSERT INTO site_promo_uses (code, amount, client_id) VALUES ($1, $2, $3) RETURNING id",
+                        promo_code, promo_discount, client_id)
+            if not promo_use_id:
                 await restore_stock(db, reserved)
-                raise HTTPException(status_code=409, detail="Промокод уже использован")
+                raise HTTPException(status_code=409, detail="Промокод закончился")
 
         status_text = AWAITING_PAYMENT
         snap = await order_snapshot(db, aggregate_cart_qty(checkout.items), {r["id"]: dict(r) for r in rows})
@@ -1290,11 +1319,11 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
           )
         except Exception:
             await restore_stock(db, reserved)
-            if promo_code:
-                await db.execute("DELETE FROM promo_redemptions WHERE code = $1 AND NOT used", promo_code)
+            if promo_use_id:
+                await db.execute("DELETE FROM site_promo_uses WHERE id = $1", promo_use_id)
             raise
-        if promo_code:
-            await db.execute("UPDATE promo_redemptions SET order_id = $1 WHERE code = $2", order_id, promo_code)
+        if promo_use_id:
+            await db.execute("UPDATE site_promo_uses SET order_id = $1 WHERE id = $2", order_id, promo_use_id)
 
         payment_url = None
         if TBANK_TERMINAL_KEY and TBANK_PASSWORD:
@@ -1314,8 +1343,8 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
             except Exception as e:
                 print(f"T-Bank Init exception: {e}")
 
-        if promo_code and not payment_url:
-            await db.execute("UPDATE promo_redemptions SET used = TRUE WHERE code = $1", promo_code)
+        if promo_use_id and not payment_url:
+            await db.execute("UPDATE site_promo_uses SET used = TRUE WHERE id = $1", promo_use_id)
 
         # With an online payment the admins hear about the order only when it is paid (see the T-Bank webhook);
         # without a payment link the order stands as it is and the manager must be told now.
@@ -1396,6 +1425,7 @@ async def tbank_notification(req: Request):
                 asyncio.create_task(send_order_email(email, order, order["checkout_note"]))
                 await reconcile_order(db, oid, note="оплата Т-Банк")
                 await db.execute("UPDATE promo_redemptions SET used = TRUE WHERE order_id = $1", oid)
+                await db.execute("UPDATE site_promo_uses SET used = TRUE WHERE order_id = $1", oid)
         elif tbank_status in ("REJECTED", "CANCELED", "DEADLINE_EXPIRED", "AUTH_FAIL"):
             await db.execute(
                 "UPDATE orders SET payment_status = 'failed' WHERE id = $1", oid
@@ -1500,6 +1530,83 @@ async def update_promocode(item_id: int, p: PromoCodeIn, admin: dict = Depends(r
 async def delete_promocode(item_id: int, admin: dict = Depends(require_admin)):
     async with pool.acquire() as db:
         if await db.execute("DELETE FROM promo_codes WHERE id = $1", item_id) == "DELETE 0":
+            raise HTTPException(status_code=404, detail="Не найдено")
+        return {"success": True}
+
+
+class SitePromoIn(BaseModel):
+    code: str
+    value: int = 0
+    value_kind: str = "rub"  # 'rub' or 'percent'
+    max_uses: int = 0        # 0: as many times as people order
+    min_order: int = 0
+    active: bool = True
+    note: str = ""
+
+
+SITE_PROMO_COLS = ("code", "value", "value_kind", "max_uses", "min_order", "active", "note")
+
+
+def clean_site_promo(p: SitePromoIn) -> dict:
+    code = normalize_promo(p.code)
+    if len(code) < 3:
+        raise ValueError("Промокод: от 3 знаков, латинские буквы и цифры")
+    if p.value_kind not in ("percent", "rub"):
+        raise ValueError("Неверный тип скидки")
+    if p.value <= 0 or (p.value_kind == "percent" and p.value > 90):
+        raise ValueError("Скидка: больше нуля и не больше 90%")
+    if p.max_uses < 0 or p.min_order < 0:
+        raise ValueError("Число использований и сумма заказа не могут быть меньше нуля")
+    return {"code": code, "value": p.value, "value_kind": p.value_kind, "max_uses": p.max_uses,
+            "min_order": p.min_order, "active": bool(p.active), "note": p.note.strip()[:2000]}
+
+
+@app.get("/api/site-promos")
+async def list_site_promos(admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        rows = await db.fetch(
+            "SELECT p.id, " + ", ".join("p." + c for c in SITE_PROMO_COLS) + ", "
+            "(SELECT count(*) FROM site_promo_uses u WHERE u.code = p.code AND u.used) AS used_count, "
+            "(SELECT count(*) FROM site_promo_uses u WHERE u.code = p.code) AS taken_count "
+            "FROM site_promos p ORDER BY p.id DESC")
+        return {"items": [dict(r) for r in rows]}
+
+
+@app.post("/api/site-promos")
+async def create_site_promo(p: SitePromoIn, admin: dict = Depends(require_admin)):
+    v = _valid(clean_site_promo, p)
+    async with pool.acquire() as db:
+        new_id = await db.fetchval(
+            "INSERT INTO site_promos (code, value, value_kind, max_uses, min_order, active, note) "
+            "VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (code) DO NOTHING RETURNING id",
+            *[v[c] for c in SITE_PROMO_COLS])
+        if not new_id:
+            raise HTTPException(status_code=400, detail=f"Промокод {v['code']} уже есть")
+        return {"success": True, "id": new_id}
+
+
+@app.put("/api/site-promos/{item_id}")
+async def update_site_promo(item_id: int, p: SitePromoIn, admin: dict = Depends(require_admin)):
+    v = _valid(clean_site_promo, p)
+    async with pool.acquire() as db:
+        async with db.transaction():
+            old = await db.fetchval("SELECT code FROM site_promos WHERE id = $1", item_id)
+            if old is None:
+                raise HTTPException(status_code=404, detail="Не найдено")
+            if v["code"] != old and await db.fetchval("SELECT 1 FROM site_promos WHERE code = $1", v["code"]):
+                raise HTTPException(status_code=400, detail=f"Промокод {v['code']} уже есть")
+            await db.execute(
+                "UPDATE site_promos SET code = $1, value = $2, value_kind = $3, max_uses = $4, min_order = $5, active = $6, note = $7 WHERE id = $8",
+                *[v[c] for c in SITE_PROMO_COLS], item_id)
+            # a renamed code keeps its history of uses
+            await db.execute("UPDATE site_promo_uses SET code = $1 WHERE code = $2", v["code"], old)
+        return {"success": True}
+
+
+@app.delete("/api/site-promos/{item_id}")
+async def delete_site_promo(item_id: int, admin: dict = Depends(require_admin)):
+    async with pool.acquire() as db:
+        if await db.execute("DELETE FROM site_promos WHERE id = $1", item_id) == "DELETE 0":
             raise HTTPException(status_code=404, detail="Не найдено")
         return {"success": True}
 
@@ -1839,56 +1946,41 @@ async def ai_describe(body: DescribeIn, admin: dict = Depends(require_admin)):
     return {"description": text}
 
 
-# ======================= Game promo codes =======================
-# The bot's game stores prizes in series_codes as "Приз: Скидка 500₽ #<time>". Only these money prizes work on the site.
-PROMO_ALLOWED_AMOUNTS = (300, 500, 1000)
-PROMO_PRIZE_RE = re.compile(r"^\s*Приз:\s*Скидка\s*(\d+)\s*₽", re.I)
-
-
+# ======================= The shop's promo codes =======================
+# Admins create them: rubles or a percent off the goods, optionally limited in uses and by the order sum.
+# Game prizes are no longer taken at checkout.
 def normalize_promo(code):
     return re.sub(r"[^A-Z0-9]", "", (code or "").upper())[:32]
 
 
-def promo_amount(series_slug):
-    """Rubles off for a game prize, or None when the prize is not one of the money discounts the site accepts."""
-    m_ = PROMO_PRIZE_RE.match(series_slug or "")
-    if not m_:
-        return None
-    amount = int(m_.group(1))
-    return amount if amount in PROMO_ALLOWED_AMOUNTS else None
+def promo_discount(value, value_kind, total):
+    return round(total * value / 100) if value_kind == "percent" else value
 
 
-def apply_promo(total, amount):
-    """Order total after the discount; the discount must be smaller than the order."""
+async def lookup_site_promo(db, code, total):
+    """(rubles off, message): rubles off is None with a reason when the code cannot be used for this sum."""
+    row = await db.fetchrow("SELECT value, value_kind, max_uses, min_order, active FROM site_promos WHERE code = $1", normalize_promo(code))
+    if not row or not row["active"]:
+        return None, "Промокод не найден"
+    if row["max_uses"] and await db.fetchval("SELECT count(*) FROM site_promo_uses WHERE code = $1", normalize_promo(code)) >= row["max_uses"]:
+        return None, "Промокод закончился"
+    if total < row["min_order"]:
+        return None, f"Промокод действует для заказа от {row['min_order']:,} ₽".replace(",", " ")
+    amount = promo_discount(row["value"], row["value_kind"], total)
     if amount >= total:
-        raise ValueError(f"Промокод на {amount} ₽ действует для заказа дороже {amount} ₽")
-    return total - amount
-
-
-async def lookup_promo(db, code):
-    """(amount, message): amount is None with a reason when the code cannot be used."""
-    code = normalize_promo(code)
-    if len(code) < 6:
-        return None, "Промокод не найден"
-    row = await db.fetchrow("SELECT series_slug FROM series_codes WHERE upper(code) = $1", code)
-    if not row:
-        return None, "Промокод не найден"
-    amount = promo_amount(row["series_slug"])
-    if amount is None:
-        return None, "Этот промокод не скидка в рублях: на сайте принимаются промокоды на 300, 500 и 1000 ₽. С остальными призами напишите @Funko_Stop"
-    taken = await db.fetchrow("SELECT used FROM promo_redemptions WHERE code = $1", code)
-    if taken:
-        return None, "Промокод уже использован" if taken["used"] else "Промокод уже применён к другому заказу, который ждёт оплаты"
+        return None, f"Промокод на {amount:,} ₽ действует для заказа дороже {amount:,} ₽".replace(",", " ")
     return amount, ""
 
 
 async def release_promo(db, order_id):
-    """An order that will never be paid gives its game code back."""
+    """An order that will never be paid gives its promo code back."""
     await db.execute("DELETE FROM promo_redemptions WHERE order_id = $1 AND NOT used", order_id)
+    await db.execute("DELETE FROM site_promo_uses WHERE order_id = $1 AND NOT used", order_id)
 
 
 class PromoCheckIn(BaseModel):
     code: str
+    total: int = 0
 
 
 @app.post("/api/promo/check")
@@ -1898,12 +1990,13 @@ async def promo_check(request: Request, body: PromoCheckIn):
     async with pool.acquire() as db:
         if await throttle_is_blocked(db, list(keys), now):
             raise HTTPException(status_code=429, detail="Слишком много попыток, попробуйте через 15 минут")
-        amount, message = await lookup_promo(db, body.code)
+        amount, message = await lookup_site_promo(db, body.code, max(0, body.total))
         if amount is None:
             if message == "Промокод не найден":
                 await throttle_register_failure(db, keys, now)
             raise HTTPException(status_code=400, detail=message)
-    return {"code": normalize_promo(body.code), "amount": amount}
+        row = await db.fetchrow("SELECT value, value_kind FROM site_promos WHERE code = $1", normalize_promo(body.code))
+    return {"code": normalize_promo(body.code), "amount": amount, "value": row["value"], "value_kind": row["value_kind"]}
 
 
 @app.get("/api/ledger")
@@ -3079,6 +3172,7 @@ async def spa_products():
 
 @app.get("/purchases")
 @app.get("/promocodes")
+@app.get("/site-promos")
 async def spa_admin_registers():
     return await spa_index()
 

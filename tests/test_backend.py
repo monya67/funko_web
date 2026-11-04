@@ -257,7 +257,7 @@ def test_expire_unpaid_orders_returns_stock_and_skips_orders_paid_meanwhile():
 
     db = FakeDB()
     assert asyncio.run(main.expire_unpaid_orders(db)) == 1
-    assert db.executed == [(2, 5), (1,)]  # stock back, then the order's promo code released
+    assert db.executed == [(2, 5), (1,), (1,)]  # stock back, then the order's promo codes released
 
 
 def test_login_error_does_not_reveal_the_limit():
@@ -430,24 +430,45 @@ def test_index_gets_three_catalog_figures():
     assert "dexter-box" in main.render_index([])
 
 
-def test_only_money_prizes_of_300_500_1000_are_accepted():
-    assert main.promo_amount("Приз: Скидка 300₽ #1787716139") == 300
-    assert main.promo_amount("Приз: Скидка 500₽ #1") == 500
-    assert main.promo_amount("Приз: Скидка 1000₽ #1789912908") == 1000
-    for slug in ("Приз: Скидка 20% #1788173335", "Приз: Скидка 25% #1", "Приз: Funko Pop #1789656606",
-                 "Приз: 10 Бонус Паков #1", "stranger_things", "Приз: Скидка 700₽ #1", ""):
-        assert main.promo_amount(slug) is None, slug
+def test_site_promo_discount_in_rubles_or_percent():
+    assert main.promo_discount(300, "rub", 2550) == 300
+    assert main.promo_discount(10, "percent", 2550) == 255
+    assert main.promo_discount(15, "percent", 1999) == 300
 
 
-def test_promo_discount_must_be_smaller_than_the_order():
-    assert main.apply_promo(2050, 500) == 1550
-    for total in (500, 300):
+def test_site_promo_validation():
+    good = main.clean_site_promo(main.SitePromoIn(code=" funko-300 ", value=300))
+    assert good["code"] == "FUNKO300" and good["value_kind"] == "rub" and good["active"] is True
+    for bad in ({"code": "ab", "value": 300}, {"code": "FUNKO", "value": 0}, {"code": "FUNKO", "value": 95, "value_kind": "percent"},
+                {"code": "FUNKO", "value": 5, "value_kind": "bitcoin"}, {"code": "FUNKO", "value": 5, "max_uses": -1}):
         try:
-            main.apply_promo(total, 500)
-        except ValueError as exc:
-            assert "дороже 500" in str(exc)
-        else:
-            raise AssertionError(total)
+            main.clean_site_promo(main.SitePromoIn(**bad))
+        except ValueError:
+            continue
+        raise AssertionError(bad)
+
+
+class FakePromoDb:
+    def __init__(self, promo, uses=0):
+        self.promo, self.uses = promo, uses
+
+    async def fetchrow(self, sql, *args):
+        return self.promo
+
+    async def fetchval(self, sql, *args):
+        return self.uses
+
+
+def test_site_promo_lookup_checks_activity_uses_and_order_sum():
+    promo = {"value": 300, "value_kind": "rub", "max_uses": 2, "min_order": 2000, "active": True}
+    run = lambda db, total=2550: main.asyncio.run(main.lookup_site_promo(db, "funko300", total))
+    assert run(FakePromoDb(promo)) == (300, "")
+    assert run(FakePromoDb(None))[0] is None
+    assert run(FakePromoDb({**promo, "active": False}))[1] == "Промокод не найден"
+    assert run(FakePromoDb(promo, uses=2))[1] == "Промокод закончился"
+    assert "от 2 000" in run(FakePromoDb(promo), total=1500)[1]
+    assert "дороже" in run(FakePromoDb({**promo, "value": 3000, "min_order": 0}))[1]
+    assert run(FakePromoDb({**promo, "value": 10, "value_kind": "percent", "max_uses": 0}))[0] == 255
 
 
 def test_promo_codes_are_normalised():
