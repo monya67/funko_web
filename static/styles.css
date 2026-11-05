@@ -4654,23 +4654,76 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .login-note { margin: 0 0 16px; padding: 10px 12px; border-radius: var(--r-sm); background: rgba(var(--ink-rgb), 0.05); color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
 
 /* the cabinet: paying the rest of several orders */
-.pay-rest { margin: 0 0 18px; padding: 16px 18px; border: 1px solid rgba(var(--ink-rgb), 0.12); border-radius: var(--r-md, 12px); background: var(--card); }
-.pay-rest-head b { display: block; font-size: 1.05rem; margin-bottom: 4px; }
-.pay-rest-head span { color: var(--muted); font-size: 0.86rem; }
-.pay-rest-list { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
-.pay-rest-item { display: grid; grid-template-columns: auto 44px 1fr auto; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid rgba(var(--ink-rgb), 0.1); border-radius: var(--r-sm, 8px); cursor: pointer; }
-.pay-rest-item:has(input:checked) { border-color: var(--primary); background: rgba(229, 9, 20, 0.04); }
-.pay-rest-item input { width: 18px; height: 18px; accent-color: var(--primary); }
-.pay-rest-item img, .pay-rest-item .ph { width: 44px; height: 44px; border-radius: 6px; object-fit: contain; background: var(--img-bg); }
-.pay-rest-item .what { min-width: 0; font-size: 0.9rem; line-height: 1.3; }
-.pay-rest-item .what small { display: block; color: var(--muted); font-size: 0.78rem; }
-.pay-rest-item .left { font-weight: 700; white-space: nowrap; }
-.pay-rest-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.pay-rest-foot span { font-weight: 600; }
-@media (max-width: 600px) { .pay-rest-foot .btn { width: 100%; } }
 
 /* tying Telegram to the cabinet */
 .tg-link-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 6px 0 4px; padding: 10px 12px; border-radius: var(--r-sm, 8px); background: rgba(var(--ink-rgb), 0.05); font-size: 0.85rem; }
 .tg-link-row.linked span { color: var(--ok, #1a8a3a); font-weight: 600; }
-.tg-link-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 16px; padding: 12px 16px; border: 1px solid rgba(var(--ink-rgb), 0.12); border-radius: var(--r-md, 12px); background: var(--card); font-size: 0.92rem; }
-@media (max-width: 600px) { .tg-link-banner .btn { width: 100%; } }
+
+/* the client's cabinet: orders as cards */
+#orders-tab.client-view > .header-flex,
+#orders-tab.client-view .table-container,
+#orders-tab.client-view #orders-pagination,
+#orders-tab.client-view:not(.show-filters) .filters-bar { display: none; }
+#orders-tab.client-view .filters-bar { margin-bottom: 16px; }
+.cab { --cab-line: rgba(var(--ink-rgb), 0.1); }
+.cab-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.cab-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+.cab-hi { color: var(--muted); font-size: 0.9rem; margin-top: 6px; }
+.cab-top-btns { display: flex; gap: 8px; }
+.cab-tool { border: 1px solid var(--cab-line); background: var(--card); color: var(--ink); border-radius: 10px; padding: 8px 14px; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.cab-tool.on { border-color: var(--ink); }
+.cab-sum { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; max-width: 720px; }
+.cab-sum > div, .cab-tg { background: var(--card); border: 1px solid var(--cab-line); border-radius: 14px; padding: 12px 14px; text-align: left; color: var(--ink); font: inherit; }
+.cab-sum b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; line-height: 1.1; }
+.cab-sum b.red { color: var(--primary); } .cab-sum b.ok { color: var(--ok); }
+.cab-sum span { display: block; font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.cab-tg { cursor: pointer; border-color: var(--primary); }
+.cab-tg b { color: var(--primary); }
+.cab-paybar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--ink); color: var(--paper); border-radius: 16px; padding: 14px 16px; margin-bottom: 16px; }
+.cab-paybar small { display: block; opacity: 0.7; font-size: 0.8rem; }
+.cab-paybar strong { font-size: 1.1rem; }
+.cab-paybar .btn { border-radius: 10px; background: var(--primary); border-color: var(--primary); color: #fff; padding: 11px 26px; }
+.cab-paybar .btn:disabled { opacity: 0.45; }
+.cab-payerr { flex-basis: 100%; margin: 0; color: #ff8a8a; font-size: 0.85rem; }
+.cab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.cab-card { background: var(--card); border: 1px solid var(--cab-line); border-radius: 18px; overflow: hidden; display: flex; flex-direction: column; }
+.cab-head { display: flex; gap: 12px; padding: 12px; flex: 1; }
+.cab-ph { width: 96px; height: 96px; flex: none; border-radius: 12px; background: var(--img-bg); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.cab-ph img { max-width: 88%; max-height: 88%; object-fit: contain; cursor: zoom-in; }
+.cab-noph { font-family: var(--font-display); color: var(--muted); opacity: 0.5; letter-spacing: 1px; }
+.cab-meta { min-width: 0; flex: 1; }
+.cab-no { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78rem; color: var(--muted); }
+.cab-name { font-weight: 700; font-size: 0.98rem; line-height: 1.25; margin: 4px 0 6px; overflow-wrap: anywhere; }
+.cab-more { font-size: 0.8rem; color: var(--muted); line-height: 1.35; margin: -2px 0 8px; overflow-wrap: anywhere; }
+.cab-chip { display: inline-block; font-size: 0.76rem; font-weight: 700; padding: 4px 10px; border-radius: 20px; background: var(--pre-bg); color: var(--pre); line-height: 1.3; }
+.cab-chip.ok { background: var(--ok-bg); color: var(--ok); }
+.cab-steps { display: flex; gap: 4px; padding: 0 12px; }
+.cab-steps i { flex: 1; height: 5px; border-radius: 3px; background: var(--cab-line); }
+.cab-steps i.on { background: var(--primary); }
+.cab-card.ready .cab-steps i.on { background: var(--ok); }
+.cab-stepname { display: flex; justify-content: space-between; gap: 6px; font-size: 0.72rem; color: var(--muted); padding: 6px 12px 0; }
+.cab-stepname b { color: var(--ink); text-align: center; }
+.cab-pay { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; margin-top: 10px; border-top: 1px solid var(--cab-line); }
+.cab-card.done .cab-pay { margin-top: 0; }
+.cab-paid { font-size: 0.85rem; color: var(--muted); }
+.cab-paid b { color: var(--ink); font-size: 1rem; }
+.cab-bar { height: 5px; width: 150px; max-width: 100%; border-radius: 3px; background: var(--cab-line); margin-top: 6px; overflow: hidden; }
+.cab-bar i { display: block; height: 100%; background: var(--ink); }
+.cab-card.ready .cab-bar i { background: var(--ok); }
+.cab-pick { border: 1.5px solid var(--primary); background: transparent; color: var(--primary); border-radius: 10px; padding: 9px 14px; font: inherit; font-weight: 700; font-size: 0.88rem; cursor: pointer; white-space: nowrap; }
+.cab-pick.on { background: var(--primary); color: #fff; }
+.cab-arch { margin-top: 16px; }
+.cab-arch summary { list-style: none; cursor: pointer; padding: 14px; border-radius: 14px; border: 1px dashed rgba(var(--ink-rgb), 0.25); text-align: center; font-weight: 600; color: var(--muted); }
+.cab-arch summary::-webkit-details-marker { display: none; }
+.cab-arch summary::after { content: " ▾"; }
+.cab-arch[open] summary { margin-bottom: 14px; }
+.cab-arch[open] summary::after { content: " ▴"; }
+.cab-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 36px 16px; border-radius: 18px; background: var(--card); color: var(--muted); font-weight: 600; text-align: center; margin: 0; }
+@media (max-width: 600px) {
+    .cab-sum { gap: 8px; }
+    .cab-sum > div, .cab-tg { padding: 10px; }
+    .cab-sum b { font-size: 1.2rem; }
+    .cab-grid { grid-template-columns: 1fr; }
+    .cab-paybar .btn { width: 100%; }
+    .cab-ph { width: 84px; height: 84px; }
+}

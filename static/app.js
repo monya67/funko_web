@@ -316,7 +316,6 @@ document.getElementById('my-data-form')?.addEventListener('submit', async (e) =>
 // --- Tying the client's Telegram to the cabinet: the bot gets a one-time code through the start link ---
 function renderTgLink() {
     const linked = !!window.currentClientTgLinked;
-    document.getElementById('tg-link-banner')?.classList.toggle('hidden', currentRole !== 'client' || linked);
     const row = document.querySelector('.tg-link-row');
     if (row) {
         row.classList.toggle('linked', linked);
@@ -336,7 +335,6 @@ async function openTgLink() {
     }
 }
 document.getElementById('tg-link-btn')?.addEventListener('click', openTgLink);
-document.getElementById('tg-link-banner-btn')?.addEventListener('click', openTgLink);
 // back from Telegram: the cabinet picks up the new state
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && currentRole === 'client' && !window.currentClientTgLinked) loadDashboardData();
@@ -348,52 +346,134 @@ function restToPay(o) {
     return Math.max(0, (o.total_price || 0) - (o.paid_amount || 0));
 }
 
-function updatePayRestSum() {
-    const boxes = [...document.querySelectorAll('#pay-rest-list input:checked')];
-    const sum = boxes.reduce((s, b) => s + parseInt(b.dataset.rest, 10), 0);
-    document.getElementById('pay-rest-sum').textContent = `Выбрано: ${boxes.length} · ${sum.toLocaleString('ru')} ₽`;
-    const btn = document.getElementById('pay-rest-btn');
-    btn.disabled = !boxes.length;
-    btn.textContent = boxes.length ? `Оплатить ${sum.toLocaleString('ru')} ₽` : 'Оплатить';
+// --- The client's cabinet: every order is a card with its photo, how far it got and what is left to pay ---
+const CAB_STEPS = ['Принят', 'Выкуплен', 'Склад США', 'В пути в Россию', 'Готов к выдаче', 'Выдан'];
+const CAB_STEP_OF = {
+    'Ожидает оплаты': 0,
+    'Заказ принят в обработку': 1, 'Ожидает выхода в продажу': 1,
+    'Заказ ожидает отправки из магазина': 2,
+    'Заказ едет на склад США': 3, 'Заказ начал сортировку на складе США': 3, 'Ожидает рассылки из США': 3,
+    'Заказ отправлен из США на наш склад в Россию': 4, 'Заказ проходит таможенное оформление': 4,
+    'Заказ прибыл в магазин и готов к выдаче': 5,
+    'Выдано': 6,
+};
+const cabPick = new Set();   // orders the client chose to pay the rest of
+const cabSeen = new Set();   // a newly due order starts chosen, a deselected one stays deselected
+
+function cabCard(o, archived) {
+    const step = archived ? 6 : (CAB_STEP_OF[o.status] ?? 1);
+    const lines = String(o.items || '').split('\n').map(x => x.trim()).filter(Boolean);
+    const total = o.total_price || 0;
+    const paid = Math.min(total, o.paid_amount || 0);
+    const rest = archived ? 0 : restToPay(o);
+    const card = document.createElement('article');
+    card.className = 'cab-card' + (step >= 5 ? ' ready' : '') + (archived ? ' done' : '');
+    const photo = o.photo_id
+        ? `<img src="/api/photos/${encodeURIComponent(o.photo_id)}" alt="" loading="lazy">`
+        : '<span class="cab-noph">FUNKO</span>';
+    let action = '';
+    if (archived) action = '';
+    else if (o.status === 'Ожидает оплаты') action = '';
+    else if (rest > 0) action = `<button type="button" class="cab-pick${cabPick.has(o.id) ? ' on' : ''}" data-id="${o.id}" aria-pressed="${cabPick.has(o.id)}">${cabPick.has(o.id) ? '✓ ' : ''}Доплатить ${rub(rest)}</button>`;
+    else action = '<span class="cab-chip ok">Оплачен</span>';
+    card.innerHTML = `
+        <div class="cab-head">
+            <div class="cab-ph">${photo}</div>
+            <div class="cab-meta">
+                <div class="cab-no"><span>Заказ #${o.id}</span><span>${formatDisplayDate(o.order_date)}</span></div>
+                <div class="cab-name">${escapeHtml(lines[0] || 'Заказ')}</div>
+                ${lines.length > 1 ? `<div class="cab-more">${lines.slice(1).map(escapeHtml).join('<br>')}</div>` : ''}
+                <span class="cab-chip${step >= 5 ? ' ok' : ''}">${escapeHtml(o.status || '')}</span>
+            </div>
+        </div>
+        ${archived ? '' : `
+        <div class="cab-steps" role="img" aria-label="Этап ${step} из ${CAB_STEPS.length}">${CAB_STEPS.map((_, i) => `<i class="${i < step ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="cab-stepname"><span>Принят</span><b>${step ? CAB_STEPS[step - 1] : 'Ждём оплату'}</b><span>Выдан</span></div>`}
+        <div class="cab-pay">
+            <div class="cab-paid">${archived ? `Сумма <b>${rub(total)}</b>` : `Оплачено <b>${paid.toLocaleString('ru')}</b> из ${rub(total)}
+                <div class="cab-bar"><i style="width:${total ? Math.round(paid * 100 / total) : 0}%"></i></div>`}</div>
+            ${action}
+        </div>`;
+    if (o.photo_id) card.querySelector('.cab-ph img').addEventListener('click', () => window.viewPhoto(o.photo_id));
+    card.querySelector('.cab-pick')?.addEventListener('click', () => {
+        if (cabPick.has(o.id)) cabPick.delete(o.id); else cabPick.add(o.id);
+        renderOrders();
+    });
+    return card;
 }
 
-function renderPayRest() {
-    const box = document.getElementById('pay-rest-box');
-    if (!box) return;
-    const due = currentRole === 'client' ? rawActiveOrders.filter(o => restToPay(o) > 0) : [];
-    box.classList.toggle('hidden', !due.length);
-    if (!due.length) return;
-    const list = document.getElementById('pay-rest-list');
-    list.replaceChildren(...due.map(o => {
-        const label = document.createElement('label');
-        label.className = 'pay-rest-item';
-        const photo = o.photo_id ? `<img src="/api/photos/${encodeURIComponent(o.photo_id)}" alt="" loading="lazy">` : '<span class="ph"></span>';
-        label.innerHTML = `<input type="checkbox" checked data-id="${o.id}" data-rest="${restToPay(o)}">${photo}
-            <span class="what">${escapeHtml(String(o.items || '').split('\n')[0])}<small>Заказ #${o.id} · оплачено ${(o.paid_amount || 0).toLocaleString('ru')} из ${(o.total_price || 0).toLocaleString('ru')} ₽</small></span>
-            <span class="left">${restToPay(o).toLocaleString('ru')} ₽</span>`;
-        label.querySelector('input').addEventListener('change', updatePayRestSum);
-        return label;
-    }));
-    document.getElementById('pay-rest-error').classList.add('hidden');
-    updatePayRestSum();
-}
+function renderClientCabinet(orders) {
+    const root = document.getElementById('client-cabinet');
+    if (!root) return;
+    const due = rawActiveOrders.filter(o => restToPay(o) > 0);
+    due.forEach(o => { if (!cabSeen.has(o.id)) { cabSeen.add(o.id); cabPick.add(o.id); } });
+    [...cabPick].forEach(id => { if (!due.some(o => o.id === id)) cabPick.delete(id); });
+    const owed = due.reduce((sum, o) => sum + restToPay(o), 0);
+    const picked = due.filter(o => cabPick.has(o.id));
+    const pickedSum = picked.reduce((sum, o) => sum + restToPay(o), 0);
+    const name = window.currentClientFirstName || window.currentClientFullName || '';
+    const archOpen = root.querySelector('.cab-arch')?.open;
+    const linked = !!window.currentClientTgLinked;
+    const filtersOn = document.getElementById('orders-tab')?.classList.contains('show-filters');
 
-document.getElementById('pay-rest-btn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('pay-rest-btn');
-    const err = document.getElementById('pay-rest-error');
-    const ids = [...document.querySelectorAll('#pay-rest-list input:checked')].map(b => parseInt(b.dataset.id, 10));
-    if (!ids.length) return;
-    btn.disabled = true;
-    err.classList.add('hidden');
-    try {
-        const data = await fetchAPI('/me/pay-rest', { method: 'POST', body: JSON.stringify({ order_ids: ids }) });
-        if (data.payment_url) window.location.href = data.payment_url;
-    } catch (ex) {
-        err.textContent = ex.message;
-        err.classList.remove('hidden');
-        btn.disabled = false;
-    }
-});
+    root.innerHTML = `
+        <div class="cab-top">
+            <div>
+                <h2 class="cab-title">Мои заказы</h2>
+                <div class="cab-hi">${name ? `Здравствуйте, ${escapeHtml(name)} · ` : ''}кабинет #${currentClientId ?? ''}</div>
+            </div>
+            <div class="cab-top-btns">
+                <button type="button" class="cab-tool" data-act="data">Мои данные</button>
+                <button type="button" class="cab-tool${filtersOn ? ' on' : ''}" data-act="filters">Фильтры</button>
+            </div>
+        </div>
+        <div class="cab-sum">
+            <div><b>${rawActiveOrders.length}</b><span>в работе</span></div>
+            <div><b class="${owed ? 'red' : 'ok'}">${rub(owed)}</b><span>${owed ? 'к доплате' : 'всё оплачено'}</span></div>
+            ${linked
+                ? '<div><b class="ok">✓</b><span>Telegram привязан</span></div>'
+                : '<button type="button" class="cab-tg" data-act="tg"><b>Telegram</b><span>Привязать: статусы придут в бот</span></button>'}
+        </div>
+        ${due.length ? `
+        <div class="cab-paybar">
+            <div><small>${picked.length ? `Выбрано: ${picked.length} из ${due.length}` : 'Отметьте заказы ниже кнопкой «Доплатить»'}</small>
+                <strong>${picked.length ? `Доплатить ${rub(pickedSum)}` : 'Доплата'}</strong></div>
+            <button type="button" class="btn primary cab-paybtn"${picked.length ? '' : ' disabled'}>Оплатить</button>
+            <p class="cab-payerr hidden" role="alert"></p>
+        </div>` : ''}
+        <div class="cab-grid"></div>
+        ${rawArchivedOrders.length ? `<details class="cab-arch"${archOpen ? ' open' : ''}><summary>Выданные заказы (${rawArchivedOrders.length})</summary><div class="cab-grid"></div></details>` : ''}`;
+
+    const grid = root.querySelector('.cab-grid');
+    if (orders.length) grid.replaceChildren(...orders.map(o => cabCard(o, false)));
+    else grid.innerHTML = rawActiveOrders.length
+        ? '<p class="cab-empty">По этим фильтрам заказов нет</p>'
+        : '<div class="cab-empty">Активных заказов нет<button type="button" class="btn primary" data-act="catalog">Перейти в каталог</button></div>';
+    const archGrid = root.querySelector('.cab-arch .cab-grid');
+    if (archGrid) archGrid.replaceChildren(...sortOrders(rawArchivedOrders, { key: 'id', desc: true }).map(o => cabCard(o, true)));
+
+    root.querySelector('[data-act="data"]').addEventListener('click', openMyData);
+    root.querySelector('[data-act="filters"]').addEventListener('click', () => {
+        document.getElementById('orders-tab').classList.toggle('show-filters');
+        renderOrders();
+    });
+    root.querySelector('[data-act="tg"]')?.addEventListener('click', openTgLink);
+    root.querySelector('[data-act="catalog"]')?.addEventListener('click', () => window.switchTab('catalog'));
+    root.querySelector('.cab-paybtn')?.addEventListener('click', async (ev) => {
+        const btn = ev.currentTarget;
+        const err = root.querySelector('.cab-payerr');
+        btn.disabled = true;
+        err.classList.add('hidden');
+        try {
+            const data = await fetchAPI('/me/pay-rest', { method: 'POST', body: JSON.stringify({ order_ids: picked.map(o => o.id) }) });
+            if (data.payment_url) window.location.href = data.payment_url;
+        } catch (ex) {
+            err.textContent = ex.message;
+            err.classList.remove('hidden');
+            btn.disabled = false;
+        }
+    });
+}
 
 function handleLogout() {
     token = null;
@@ -410,6 +490,8 @@ function handleLogout() {
     allOrders = [];
     rawActiveOrders = [];
     rawArchivedOrders = [];
+    cabPick.clear();
+    document.getElementById('client-cabinet')?.replaceChildren();
     updateRoleUI('guest');
     window.switchTab('home');
 }
@@ -728,7 +810,6 @@ async function loadDashboardData() {
         if (data.online_count) updateOnlineBadge(data.online_count);
         rawActiveOrders = data.orders || [];
         rawArchivedOrders = data.archived || [];
-        renderPayRest();
         renderTgLink();
         allOrders = [...rawActiveOrders, ...rawArchivedOrders];
         populateYearFilters(rawActiveOrders, rawArchivedOrders);
@@ -972,11 +1053,8 @@ function updatePaginationUI(tab, totalCount) {
 }
 
 // Render active orders
-function renderOrders() {
-    ordersTableBody.innerHTML = '';
-    const emptyMsg = document.getElementById('no-orders');
-    const role = currentRole;
-
+// the active orders that pass the filters above the list, sorted
+function filterActiveOrders() {
     let orders = [...rawActiveOrders];
     orders = filterByDate(orders, 'orders-year-filter', 'orders-month-filter');
 
@@ -1007,6 +1085,21 @@ function renderOrders() {
     }
 
     orders = sortOrders(orders, ordersSort);
+    return orders;
+}
+
+function renderOrders() {
+    ordersTableBody.innerHTML = '';
+    const emptyMsg = document.getElementById('no-orders');
+    const role = currentRole;
+    document.getElementById('orders-tab')?.classList.toggle('client-view', role === 'client');
+    document.getElementById('client-cabinet')?.classList.toggle('hidden', role !== 'client');
+
+    let orders = filterActiveOrders();
+    if (role === 'client') {
+        renderClientCabinet(orders);
+        return;
+    }
 
     if (orders.length === 0) { 
         emptyMsg.classList.remove('hidden'); 
