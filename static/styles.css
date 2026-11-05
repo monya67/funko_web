@@ -4651,3 +4651,4 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 
 .site-nav-link.site-nav-accent, .site-nav-link.site-nav-accent:hover { color: var(--primary); }
 @media (max-width: 1100px) { .site-nav { gap: 0 14px; } }
+.login-note { margin: 0 0 16px; padding: 10px 12px; border-radius: var(--r-sm); background: rgba(var(--ink-rgb), 0.05); color: var(--muted); font-size: 0.8rem; line-height: 1.45; }

@@ -1909,7 +1909,7 @@ function renderFranchiseChips() {
     const wrap = document.querySelector('.franchise-chips-wrap');
     if (!chipsBar) return;
 
-    const allSeries = catalogMeta.series || [];
+    const allSeries = catalogMeta.series_recent || catalogMeta.series || [];
     if (allSeries.length === 0) {
         if (wrap) wrap.style.display = 'none';
         chipsBar.innerHTML = '';
@@ -3244,20 +3244,19 @@ window.openCheckoutModal = function() {
     const errBanner = document.getElementById('checkout-error-banner');
     if (errBanner) errBanner.classList.add('hidden');
 
-    if (window.currentClientFullName) {
-        const parts = window.currentClientFullName.trim().split(/\s+/);
-        if (fnInput && !fnInput.value) fnInput.value = parts[0] || '';
-        if (lnInput && !lnInput.value) lnInput.value = parts.slice(1).join(' ') || '';
-    }
-    if (window.currentClientPhone && phoneInput && !phoneInput.value) {
-        phoneInput.value = window.currentClientPhone;
-    }
-    if (window.currentClientTg && tgInput && !tgInput.value) {
-        tgInput.value = window.currentClientTg;
-    }
-
+    // the details from the cabinet ("Мои данные"); a guest gets what they typed in their last order on this device
     const emailPre = document.getElementById('checkout-email');
-    if (window.currentClientEmail && emailPre && !emailPre.value) emailPre.value = window.currentClientEmail;
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('funko_checkout_contacts') || '{}'); } catch (e) {}
+    const parts = (window.currentClientFullName || '').trim().split(/\s+/);
+    const known = currentRole === 'client' ? {
+        first: window.currentClientFirstName || parts[0] || '',
+        last: window.currentClientLastName || parts.slice(1).join(' ') || '',
+        phone: window.currentClientPhone || '', tg: window.currentClientTg || '', email: window.currentClientEmail || '',
+    } : saved;
+    [[fnInput, known.first], [lnInput, known.last], [phoneInput, known.phone], [tgInput, known.tg], [emailPre, known.email]].forEach(([el, v]) => {
+        if (el && v && (currentRole === 'client' || !el.value)) el.value = v;
+    });
 
     openModal(document.getElementById('checkout-modal'));
 };
@@ -3473,6 +3472,9 @@ window.confirmOrderPayment = async function() {
         if (!res.ok) {
             throw new Error(data.detail || 'Ошибка создания заказа');
         }
+
+        // the next order on this device starts with these contacts filled in
+        try { localStorage.setItem('funko_checkout_contacts', JSON.stringify({ first: firstName, last: lastName, phone, tg, email })); } catch (e) {}
 
         // Save order info for return from payment
         localStorage.setItem('funko_pending_order', JSON.stringify({

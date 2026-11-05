@@ -163,6 +163,8 @@ async def startup():
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tbank_payment_id TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS checkout_note TEXT DEFAULT ''")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now()")
+        # when a product was last edited: the catalog shows recently changed series first
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ")
         await db.execute("CREATE TABLE IF NOT EXISTS login_throttle (key TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, locked_until DOUBLE PRECISION NOT NULL DEFAULT 0, updated DOUBLE PRECISION NOT NULL DEFAULT 0)")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending'")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS full_name TEXT DEFAULT ''")
@@ -1012,9 +1014,14 @@ async def get_catalog_meta():
     async with pool.acquire() as db:
         cats = await db.fetch("SELECT name FROM categories ORDER BY name ASC")
         sers = await db.fetch("SELECT name FROM series ORDER BY name ASC")
+        # the strip above the catalog: series with a new or just edited product come first
+        recent = await db.fetch(
+            "SELECT s.name FROM series s LEFT JOIN products p ON lower(p.series) = lower(s.name) AND NOT coalesce(p.hidden, FALSE) "
+            "GROUP BY s.name ORDER BY max(coalesce(p.updated_at, p.created_at::timestamptz)) DESC NULLS LAST, s.name ASC")
         return {
             "categories": [r["name"] for r in cats],
-            "series": [r["name"] for r in sers]
+            "series": [r["name"] for r in sers],
+            "series_recent": [r["name"] for r in recent],
         }
 
 PRODUCT_COLUMNS = ("id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, "
@@ -1120,7 +1127,7 @@ async def update_product(product_id: int, product: ProductUpdate, admin: dict = 
         res = await db.execute(
             """UPDATE products 
                SET name = $1, figure_number = $2, price = $3, discount_percent = $4, final_price = $5,
-                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10, badge = $11, description = $12, stock_qty = $13, hidden = $14, link_key = COALESCE(NULLIF(link_key, ''), $15) 
+                   category = $6, series = $7, packs_count = $8, photo_id = $9, in_stock = $10, badge = $11, description = $12, stock_qty = $13, hidden = $14, link_key = COALESCE(NULLIF(link_key, ''), $15) , updated_at = now()
                WHERE id = $16""",
             product.name.strip(), product.figure_number.strip(), product.price, discount, final_price,
             cat, ser, product.packs_count, product.photo_id.strip(), product.in_stock, badge, product.description.strip(), product.stock_qty, product.hidden, make_link_key(), product_id
