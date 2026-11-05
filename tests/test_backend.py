@@ -777,3 +777,35 @@ def test_only_a_client_edits_their_details():
         assert client.put("/api/me", json={"first_name": "A", "phone": "+79991234567"}).status_code == 403
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_a_discount_is_split_over_the_orders_of_a_purchase():
+    assert main.split_discount([2550, 2550, 1000], 300) == [126, 125, 49]
+    assert sum(main.split_discount([999, 1, 1], 100)) == 100
+    assert main.split_discount([2550], 255) == [255]
+    assert main.split_discount([100, 200], 0) == [0, 0]
+
+
+def test_checkout_makes_one_order_per_product():
+    items = [main.CartItem(id=1, name="x"), main.CartItem(id=2, name="y", qty=2), main.CartItem(id=1, name="x")]
+    products = {1: {"name": "Talia", "figure_number": "2599", "price": 2550, "final_price": 0, "photo_id": "A,B"},
+                2: {"name": "Lucy", "figure_number": "2416", "price": 3000, "final_price": 2700, "photo_id": ""}}
+    lines = main.checkout_lines(items, products)
+    assert [(ln["pid"], ln["qty"], ln["total"], ln["text"], ln["photo"]) for ln in lines] == [
+        (1, 2, 5100, "2599 - Talia x2", "A"), (2, 2, 5400, "2416 - Lucy x2", "")]
+
+
+def test_one_purchase_reads_as_one_order_in_the_alert():
+    rows = [{"id": 551, "items": "2599 - Talia", "total_price": 2250, "paid_amount": 1125, "client_id": 7},
+            {"id": 552, "items": "2416 - Lucy", "total_price": 2700, "paid_amount": 1350, "client_id": 7}]
+    p = main.combine_orders(rows)
+    assert p["id"] == "551, #552" and p["items"] == "2599 - Talia\n2416 - Lucy" and p["total_price"] == 4950 and p["paid_amount"] == 2475
+    assert main.paid_order_title(p["id"]) == "✅ **ОПЛАЧЕН: заказ #551, #552**"
+
+
+def test_what_is_left_to_pay():
+    base = {"archived": False, "status": "Заказ принят в обработку", "total_price": 2550, "paid_amount": 1275}
+    assert main.rest_to_pay(base) == 1275
+    assert main.rest_to_pay({**base, "paid_amount": 2550}) == 0
+    assert main.rest_to_pay({**base, "archived": True}) == 0
+    assert main.rest_to_pay({**base, "status": main.AWAITING_PAYMENT}) == 0

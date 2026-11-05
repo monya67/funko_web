@@ -313,6 +313,88 @@ document.getElementById('my-data-form')?.addEventListener('submit', async (e) =>
     }
 });
 
+// --- Tying the client's Telegram to the cabinet: the bot gets a one-time code through the start link ---
+function renderTgLink() {
+    const linked = !!window.currentClientTgLinked;
+    document.getElementById('tg-link-banner')?.classList.toggle('hidden', currentRole !== 'client' || linked);
+    const row = document.querySelector('.tg-link-row');
+    if (row) {
+        row.classList.toggle('linked', linked);
+        document.getElementById('tg-link-state').textContent = linked
+            ? 'Telegram привязан ✓ Статусы заказов приходят в бот @funkostop_bot'
+            : 'Telegram не привязан: статусы заказов приходят только на почту';
+        document.getElementById('tg-link-btn').textContent = linked ? 'Привязать другой' : 'Привязать Telegram';
+    }
+}
+
+async function openTgLink() {
+    try {
+        const data = await fetchAPI('/me/telegram-link', { method: 'POST' });
+        window.open(data.url, '_blank', 'noopener');
+    } catch (ex) {
+        alert('Не получилось: ' + ex.message);
+    }
+}
+document.getElementById('tg-link-btn')?.addEventListener('click', openTgLink);
+document.getElementById('tg-link-banner-btn')?.addEventListener('click', openTgLink);
+// back from Telegram: the cabinet picks up the new state
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && currentRole === 'client' && !window.currentClientTgLinked) loadDashboardData();
+});
+
+// --- The cabinet: paying the rest of chosen orders (the server checks every order and sum again) ---
+function restToPay(o) {
+    if (o.status === 'Ожидает оплаты') return 0;
+    return Math.max(0, (o.total_price || 0) - (o.paid_amount || 0));
+}
+
+function updatePayRestSum() {
+    const boxes = [...document.querySelectorAll('#pay-rest-list input:checked')];
+    const sum = boxes.reduce((s, b) => s + parseInt(b.dataset.rest, 10), 0);
+    document.getElementById('pay-rest-sum').textContent = `Выбрано: ${boxes.length} · ${sum.toLocaleString('ru')} ₽`;
+    const btn = document.getElementById('pay-rest-btn');
+    btn.disabled = !boxes.length;
+    btn.textContent = boxes.length ? `Оплатить ${sum.toLocaleString('ru')} ₽` : 'Оплатить';
+}
+
+function renderPayRest() {
+    const box = document.getElementById('pay-rest-box');
+    if (!box) return;
+    const due = currentRole === 'client' ? rawActiveOrders.filter(o => restToPay(o) > 0) : [];
+    box.classList.toggle('hidden', !due.length);
+    if (!due.length) return;
+    const list = document.getElementById('pay-rest-list');
+    list.replaceChildren(...due.map(o => {
+        const label = document.createElement('label');
+        label.className = 'pay-rest-item';
+        const photo = o.photo_id ? `<img src="/api/photos/${encodeURIComponent(o.photo_id)}" alt="" loading="lazy">` : '<span class="ph"></span>';
+        label.innerHTML = `<input type="checkbox" checked data-id="${o.id}" data-rest="${restToPay(o)}">${photo}
+            <span class="what">${escapeHtml(String(o.items || '').split('\n')[0])}<small>Заказ #${o.id} · оплачено ${(o.paid_amount || 0).toLocaleString('ru')} из ${(o.total_price || 0).toLocaleString('ru')} ₽</small></span>
+            <span class="left">${restToPay(o).toLocaleString('ru')} ₽</span>`;
+        label.querySelector('input').addEventListener('change', updatePayRestSum);
+        return label;
+    }));
+    document.getElementById('pay-rest-error').classList.add('hidden');
+    updatePayRestSum();
+}
+
+document.getElementById('pay-rest-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('pay-rest-btn');
+    const err = document.getElementById('pay-rest-error');
+    const ids = [...document.querySelectorAll('#pay-rest-list input:checked')].map(b => parseInt(b.dataset.id, 10));
+    if (!ids.length) return;
+    btn.disabled = true;
+    err.classList.add('hidden');
+    try {
+        const data = await fetchAPI('/me/pay-rest', { method: 'POST', body: JSON.stringify({ order_ids: ids }) });
+        if (data.payment_url) window.location.href = data.payment_url;
+    } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.remove('hidden');
+        btn.disabled = false;
+    }
+});
+
 function handleLogout() {
     token = null;
     currentRole = 'guest';
@@ -640,11 +722,14 @@ async function loadDashboardData() {
             window.currentClientPhone = data.phone || '';
             window.currentClientTg = data.tg_username || '';
             window.currentClientEmail = data.email || '';
+            window.currentClientTgLinked = !!data.tg_linked;
         }
         updateRoleUI(data.role);
         if (data.online_count) updateOnlineBadge(data.online_count);
         rawActiveOrders = data.orders || [];
         rawArchivedOrders = data.archived || [];
+        renderPayRest();
+        renderTgLink();
         allOrders = [...rawActiveOrders, ...rawArchivedOrders];
         populateYearFilters(rawActiveOrders, rawArchivedOrders);
         updateOrdersBadge();

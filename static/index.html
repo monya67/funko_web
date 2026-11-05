@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1798600000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1798800000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -771,6 +771,26 @@
                     <button id="new-order-btn" class="btn primary admin-only hidden">+ Новый заказ</button>
                 </div>
                 
+                <!-- a client without Telegram tied to the cabinet is offered to tie it -->
+                <div id="tg-link-banner" class="tg-link-banner hidden">
+                    <span>Получайте статусы заказов в Telegram: привяжите его к личному кабинету</span>
+                    <button type="button" class="btn primary" id="tg-link-banner-btn">Привязать Telegram</button>
+                </div>
+
+                <!-- the client pays the rest of chosen orders at once -->
+                <div id="pay-rest-box" class="pay-rest hidden">
+                    <div class="pay-rest-head">
+                        <b>Доплата</b>
+                        <span>Отметьте заказы, за которые хотите внести оставшуюся часть, и оплатите одним платежом</span>
+                    </div>
+                    <div id="pay-rest-list" class="pay-rest-list"></div>
+                    <div class="pay-rest-foot">
+                        <span id="pay-rest-sum">Выбрано: 0 ₽</span>
+                        <button type="button" id="pay-rest-btn" class="btn primary" disabled>Оплатить</button>
+                    </div>
+                    <p id="pay-rest-error" class="reg-error hidden" role="alert"></p>
+                </div>
+
                 <!-- Mass Edit Action Bar -->
                 
     <div class="mass-action-bar admin-only hidden" id="orders-mass-edit-panel" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 18px; background: rgba(229, 9, 20, 0.12); border: 1px solid rgba(229, 9, 20, 0.35); border-radius: 12px; margin-bottom: 14px; flex-wrap: wrap;">
@@ -1619,6 +1639,10 @@
                 <div class="input-group"><label for="my-phone">Телефон</label><input type="tel" id="my-phone" name="phone" autocomplete="tel" placeholder="+7 999 123-45-67" required></div>
                 <div class="input-group"><label for="my-tg">Telegram</label><input type="text" id="my-tg" name="tg_username" placeholder="@username"></div>
                 <div class="input-group"><label for="my-email">Почта</label><input type="email" id="my-email" name="email" autocomplete="email" placeholder="name@mail.ru"></div>
+                <div class="tg-link-row">
+                    <span id="tg-link-state">Telegram не привязан: статусы заказов приходят только на почту</span>
+                    <button type="button" class="btn secondary outline" id="tg-link-btn">Привязать Telegram</button>
+                </div>
                 <p class="reg-error hidden" id="my-data-error" role="alert"></p>
                 <div class="modal-actions">
                     <button type="button" class="btn secondary outline" id="my-data-cancel">Отмена</button>
@@ -2313,6 +2337,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1798600000000"></script>
+    <script src="/static/app.js?v=1798800000000"></script>
 </body>
 </html>
