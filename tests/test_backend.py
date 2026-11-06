@@ -786,13 +786,14 @@ def test_a_discount_is_split_over_the_orders_of_a_purchase():
     assert main.split_discount([100, 200], 0) == [0, 0]
 
 
-def test_checkout_makes_one_order_per_product():
+def test_checkout_makes_one_order_per_figure():
     items = [main.CartItem(id=1, name="x"), main.CartItem(id=2, name="y", qty=2), main.CartItem(id=1, name="x")]
     products = {1: {"name": "Talia", "figure_number": "2599", "price": 2550, "final_price": 0, "photo_id": "A,B"},
                 2: {"name": "Lucy", "figure_number": "2416", "price": 3000, "final_price": 2700, "photo_id": ""}}
     lines = main.checkout_lines(items, products)
     assert [(ln["pid"], ln["qty"], ln["total"], ln["text"], ln["photo"]) for ln in lines] == [
-        (1, 2, 5100, "2599 - Talia x2", "A"), (2, 2, 5400, "2416 - Lucy x2", "")]
+        (1, 1, 2550, "2599 - Talia", "A"), (1, 1, 2550, "2599 - Talia", "A"),
+        (2, 1, 2700, "2416 - Lucy", ""), (2, 1, 2700, "2416 - Lucy", "")]
 
 
 def test_one_purchase_reads_as_one_order_in_the_alert():

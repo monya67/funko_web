@@ -1407,7 +1407,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 line_paid = round(line_total * 0.5) if checkout.payment_type == "50%" else line_total
                 paid_amount += line_paid
                 snap = await order_snapshot(db, {ln["pid"]: ln["qty"]}, products_map)
-                stock = [(ln["pid"], reserved_by_pid[ln["pid"]])] if ln["pid"] in reserved_by_pid else []
+                stock = [(ln["pid"], ln["qty"])] if ln["pid"] in reserved_by_pid else []
                 new_id = await db.fetchval(
                     """INSERT INTO orders
                        (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items, checkout_note,
@@ -2328,14 +2328,15 @@ def aggregate_cart_qty(items):
 
 
 def checkout_lines(items, products_by_id):
-    """One line per product of the cart (repeated lines merged, cart order kept): becomes one order each."""
+    """One line per figure of the cart (two of the same are two lines, cart order kept): becomes one order each."""
     qty = aggregate_cart_qty(items)
     lines = []
     for pid in dict.fromkeys(it.id for it in items):
         product = products_by_id[pid]
         unit = product["final_price"] if (product["final_price"] or 0) > 0 else product["price"]
-        lines.append({"pid": pid, "qty": qty[pid], "text": order_line_text(product, qty[pid]),
-                      "total": unit * qty[pid], "photo": first_photo_id(product.get("photo_id"))})
+        line = {"pid": pid, "qty": 1, "text": order_line_text(product, 1),
+                "total": unit, "photo": first_photo_id(product.get("photo_id"))}
+        lines.extend(dict(line) for _ in range(qty[pid]))
     return lines
 
 
