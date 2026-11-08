@@ -313,6 +313,31 @@ document.getElementById('my-data-form')?.addEventListener('submit', async (e) =>
     }
 });
 
+// --- "Forgot my ID or password": the server mails them to the e-mail on file ---
+document.getElementById('login-forgot-link')?.addEventListener('click', () => {
+    const box = document.getElementById('login-forgot');
+    box.classList.toggle('hidden');
+    if (!box.classList.contains('hidden')) document.getElementById('login-forgot-email').focus();
+});
+document.getElementById('login-forgot-send')?.addEventListener('click', async () => {
+    const btn = document.getElementById('login-forgot-send');
+    const msg = document.getElementById('login-forgot-msg');
+    const email = document.getElementById('login-forgot-email').value.trim();
+    if (!email) { msg.textContent = 'Введите почту'; return; }
+    btn.disabled = true;
+    try {
+        // a guest has no session: a plain request, like the login itself
+        const res = await fetch(`${API_BASE}/login/remind`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || 'Не получилось, попробуйте ещё раз');
+        msg.textContent = data.message;
+    } catch (ex) {
+        msg.textContent = ex.message;
+    } finally {
+        btn.disabled = false;
+    }
+});
+
 // --- Tying the client's Telegram to the cabinet: the bot gets a one-time code through the start link ---
 function renderTgLink() {
     const linked = !!window.currentClientTgLinked;

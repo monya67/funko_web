@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1798900000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1799000000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -2200,7 +2200,7 @@
             <div class="logo"><h1>FUNKO <span>STOP</span></h1></div>
             <h3 style="margin-top: 6px; font-size: 1.3rem;">Вход в Личный Кабинет</h3>
             <p style="color: var(--gray); font-size: 0.85rem; margin-bottom: 10px;">Введите ваш логин или ID Клиента</p>
-            <p class="login-note">Личный кабинет появляется после первого заказа: оформите заказ, и мы пришлём ID и пароль на почту и покажем их на экране</p>
+            <p class="login-note">Личный кабинет появляется после первого заказа: ID и пароль показываем на экране после оформления и присылаем на почту вместе с письмом о заказе</p>
             <form id="login-form">
                 <div class="input-group">
                     <input type="text" id="username" placeholder="Логин или ID Клиента" required autocomplete="off">
@@ -2209,6 +2209,15 @@
                     <input type="password" id="password" placeholder="Пароль" required>
                 </div>
                 <p id="login-error" class="error-msg" style="margin-bottom: 10px;"></p>
+                <button type="button" class="login-forgot-link" id="login-forgot-link">Забыли ID или пароль?</button>
+                <div class="login-forgot hidden" id="login-forgot">
+                    <p>Введите почту, которую указывали при заказе: пришлём на неё ID и пароль</p>
+                    <div class="login-forgot-row">
+                        <input type="email" id="login-forgot-email" placeholder="Почта" autocomplete="email">
+                        <button type="button" class="btn primary" id="login-forgot-send">Прислать</button>
+                    </div>
+                    <p class="login-forgot-msg" id="login-forgot-msg" role="status"></p>
+                </div>
                 <div class="modal-actions" style="margin-top: 10px;">
                     <button type="button" class="btn secondary outline close-modal" style="flex: 1;">Отмена</button>
                     <button type="submit" class="btn primary" style="flex: 1.4;">Войти</button>
@@ -2320,6 +2329,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1798900000000"></script>
+    <script src="/static/app.js?v=1799000000000"></script>
 </body>
 </html>

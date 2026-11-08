@@ -836,6 +836,42 @@ async def update_my_data(body: ClientSelfUpdate, user: dict = Depends(get_curren
 BOT_USERNAME = os.getenv("BOT_USERNAME", "funkostop_bot").strip().lstrip("@")
 
 
+class LoginReminderIn(BaseModel):
+    email: str = ""
+
+
+LOGIN_REMINDERS = {}  # e-mail or address -> times of recent requests
+
+
+def reminder_allowed(key, limit, window, now=None):
+    now = now or time.time()
+    recent = [t for t in LOGIN_REMINDERS.get(key, []) if now - t < window]
+    if len(recent) >= limit:
+        LOGIN_REMINDERS[key] = recent
+        return False
+    LOGIN_REMINDERS[key] = recent + [now]
+    return True
+
+
+@app.post("/api/login/remind")
+async def login_reminder(body: LoginReminderIn, request: Request):
+    """Sends the cabinet ID and password to the e-mail on file. The answer is the same whether the address is known or not."""
+    email = (body.email or "").strip().lower()
+    if not valid_email(email):
+        raise HTTPException(status_code=400, detail="Введите почту, которую указывали при заказе")
+    ip = request.client.host if request.client else ""
+    answer = {"success": True, "message": "Если эта почта есть у нас, письмо с ID и паролем придёт в течение пары минут. Проверьте и «Спам»."}
+    if not reminder_allowed("ip:" + ip, 5, 3600) or not reminder_allowed("mail:" + email, 1, 600):
+        return answer
+    async with pool.acquire() as db:
+        rows = await db.fetch(
+            "SELECT id, password FROM clients WHERE lower(trim(email)) = $1 AND COALESCE(password, '') <> '' ORDER BY id", email)
+    if rows:
+        subject, html, text = login_reminder_email([(r["id"], r["password"]) for r in rows])
+        asyncio.create_task(send_client_email(email, subject, html, text))
+    return answer
+
+
 @app.post("/api/me/telegram-link")
 async def telegram_link(user: dict = Depends(get_current_user)):
     """A link into the bot: opening it ties the client's Telegram to this cabinet, and order statuses come there."""
@@ -1505,9 +1541,11 @@ async def tbank_notification(req: Request):
                 payment_id, oid)]
             if newly:
                 purchase = combine_orders(group)
-                email = await db.fetchval("SELECT email FROM clients WHERE id = $1", purchase["client_id"])
+                who = await db.fetchrow("SELECT email, password FROM clients WHERE id = $1", purchase["client_id"])
+                email = who["email"] if who else None
                 await notify_admins(paid_alert_text(purchase, purchase["client_id"], email, purchase["checkout_note"]))
-                asyncio.create_task(send_order_email(email, purchase, purchase["checkout_note"]))
+                login = (purchase["client_id"], who["password"]) if who and who["password"] else None
+                asyncio.create_task(send_order_email(email, purchase, purchase["checkout_note"], login))
                 tg_id = await db.fetchval("SELECT user_tg_id FROM clients WHERE id = $1", purchase["client_id"])
                 if tg_id:
                     asyncio.create_task(notify_client_tg(tg_id, f"✅ Оплата получена: заказ #{purchase['id']} принят в работу.\nСтатус будет приходить сюда и виден в личном кабинете на funkostop.org"))
@@ -2382,8 +2420,25 @@ def _h(text):
     return _html.escape(str(text if text is not None else ""))
 
 
-def order_email(order, note=""):
-    """(subject, html, plain text) of the 'order placed' e-mail. Order facts first, the client's details at the end."""
+def login_box_html(login, ink="#141414", muted="#6B6B6B"):
+    """The cabinet login (client id and password) as an e-mail block; empty without a login."""
+    if not login:
+        return ""
+    cid, pwd = login
+    cell = f'padding:4px 0;font:15px Arial,sans-serif;color:{ink};'
+    return f"""<tr><td style="padding:18px 28px 4px;">
+    <div style="border:2px solid {ink};border-radius:12px;padding:14px 16px;">
+      <div style="font:bold 12px Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;color:{muted};margin-bottom:8px;">Вход в личный кабинет</div>
+      <table role="presentation" cellpadding="0" cellspacing="0">
+        <tr><td style="{cell}color:{muted};width:90px;">ID</td><td style="{cell}font-weight:bold;">{_h(str(cid))}</td></tr>
+        <tr><td style="{cell}color:{muted};">Пароль</td><td style="{cell}font-weight:bold;font-family:monospace;">{_h(str(pwd or ""))}</td></tr>
+      </table>
+      <div style="margin-top:8px;font:13px/1.4 Arial,sans-serif;color:{muted};">Войдите на <a href="{SITE_URL}/orders" style="color:{ink};">funkostop.org</a> → «Войти»: там статусы заказов и доплата.</div>
+    </div></td></tr>"""
+
+
+def order_email(order, note="", login=None):
+    """(subject, html, plain text) of the 'order placed' e-mail. Order facts first, then the cabinet login, the client's details at the end."""
     oid = order["id"]
     total = int(order["total_price"] or 0)
     paid = int(order["paid_amount"] or 0)
@@ -2430,6 +2485,7 @@ def order_email(order, note=""):
   <tr><td align="center" style="padding:22px 28px 6px;">
     <a href="{SITE_URL}/orders" style="display:inline-block;padding:14px 30px;background:{ink};color:#FFFFFF;border-radius:999px;font:bold 15px Arial,sans-serif;text-decoration:none;">Открыть личный кабинет</a>
   </td></tr>
+  {login_box_html(login, ink, muted)}
   <tr><td style="padding:22px 28px 6px;"><div style="font:bold 12px Arial,sans-serif;letter-spacing:1px;text-transform:uppercase;color:{muted};margin-bottom:6px;">Ваши данные</div>
     <table role="presentation" cellpadding="0" cellspacing="0">{details_rows}</table></td></tr>
   <tr><td style="padding:20px 28px 26px;font:12px/1.5 Arial,sans-serif;color:{muted};border-top:1px solid {line};">
@@ -2441,9 +2497,35 @@ def order_email(order, note=""):
         f"Заказ #{oid} оформлен. Спасибо! Оплата получена, заказ ушёл в работу.", "",
         *lines, "",
         f"Сумма заказа: {total} ₽", f"Оплачено: {paid} ₽", *([f"Осталось доплатить: {left} ₽"] if left else []), "",
-        f"Личный кабинет: {SITE_URL}/orders", "Вопросы: Telegram @Funko_Stop",
+        f"Личный кабинет: {SITE_URL}/orders",
+        *([f"Вход: ID {login[0]}, пароль {login[1]}"] if login else []),
+        "Вопросы: Telegram @Funko_Stop",
     ])
     return f"Заказ #{oid} оформлен — Funko Stop", html, text
+
+
+def login_reminder_email(logins):
+    """(subject, html, plain text) of 'your cabinet login' for every client with this e-mail."""
+    red, ink, muted = "#B3121B", "#141414", "#6B6B6B"
+    boxes = "".join(login_box_html(x, ink, muted) for x in logins)
+    html = f"""<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Вход в личный кабинет</title></head>
+<body style="margin:0;padding:0;background:#EFEBE5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EFEBE5;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border-radius:16px;overflow:hidden;">
+  <tr><td style="background:{red};padding:28px 28px 26px;">
+    <div style="font:normal 24px/1 Impact,'Arial Narrow',Arial,sans-serif;letter-spacing:1px;color:#FFFFFF;">FUNKO STOP</div>
+    <div style="margin-top:22px;font:normal 30px/1.05 Impact,'Arial Narrow',Arial,sans-serif;text-transform:uppercase;color:#FFFFFF;">Данные для входа</div>
+    <div style="margin-top:10px;font:15px/1.5 Arial,sans-serif;color:#FFE3E3;">Вы запросили ID и пароль от личного кабинета на funkostop.org.</div>
+  </td></tr>
+  {boxes}
+  <tr><td style="padding:20px 28px 26px;font:12px/1.5 Arial,sans-serif;color:{muted};">
+    Если вы не запрашивали это письмо, просто удалите его. Вопросы — менеджеру в Telegram <a href="https://t.me/Funko_Stop" style="color:{red};">@Funko_Stop</a>.
+  </td></tr>
+</table></td></tr></table></body></html>"""
+    text = "\n".join(["Данные для входа в личный кабинет на funkostop.org:", "",
+                      *[f"ID {cid}, пароль {pwd}" for cid, pwd in logins], "",
+                      f"Вход: {SITE_URL}/orders", "Вопросы: Telegram @Funko_Stop"])
+    return "Вход в личный кабинет — Funko Stop", html, text
 
 
 def _smtp_send(to_addr, subject, html, text):
@@ -2555,7 +2637,7 @@ async def send_client_email(to_addr, subject, html, text):
         return False
 
 
-async def send_order_email(to_addr, order, note=""):
+async def send_order_email(to_addr, order, note="", login=None):
     """Best effort: a failed e-mail is logged and never breaks the payment flow."""
     if not (SMTP_USER and SMTP_PASSWORD):
         print("order e-mail skipped: SMTP_USER / SMTP_PASSWORD not set")
@@ -2563,7 +2645,7 @@ async def send_order_email(to_addr, order, note=""):
     if not to_addr or not valid_email(to_addr):
         return False
     try:
-        subject, html, text = order_email(order, note)
+        subject, html, text = order_email(order, note, login)
         await asyncio.to_thread(_smtp_send, to_addr, subject, html, text)
         return True
     except Exception as e:

@@ -319,6 +319,30 @@ def test_order_email_puts_the_order_first_and_escapes_client_text():
     assert "Осталось доплатить" not in main.order_email({**order, "paid_amount": 6000})[1]
 
 
+def test_order_email_carries_the_cabinet_login():
+    order = {"id": 577, "items": "1614 - Death Gambit", "total_price": 4350, "paid_amount": 2175,
+             "customer_name": "Ксения", "customer_phone": "+79990000000", "photo_id": ""}
+    subject, html, text = main.order_email(order, "", (216, "<482913>"))
+    assert "Вход в личный кабинет" in html and ">216<" in html and "&lt;482913&gt;" in html
+    assert "Вход: ID 216, пароль <482913>" in text
+    assert "Вход в личный кабинет" not in main.order_email(order)[1]
+
+
+def test_login_reminder_lists_every_cabinet_of_the_address():
+    subject, html, text = main.login_reminder_email([(12, "111111"), (216, "222222")])
+    assert "Вход в личный кабинет" in subject
+    assert "ID 12, пароль 111111" in text and "ID 216, пароль 222222" in text
+    assert html.count(">Вход в личный кабинет</div>") == 2
+
+
+def test_login_reminders_are_rate_limited():
+    main.LOGIN_REMINDERS.clear()
+    assert main.reminder_allowed("mail:a@b.ru", 1, 600, now=1000)
+    assert not main.reminder_allowed("mail:a@b.ru", 1, 600, now=1100)
+    assert main.reminder_allowed("mail:a@b.ru", 1, 600, now=1700)
+    main.LOGIN_REMINDERS.clear()
+
+
 def test_order_email_is_skipped_without_smtp_settings(monkeypatch):
     import asyncio
     monkeypatch.setattr(main, "SMTP_USER", "")

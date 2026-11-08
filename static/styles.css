@@ -4727,3 +4727,12 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
     .cab-paybar .btn { width: 100%; }
     .cab-ph { width: 84px; height: 84px; }
 }
+
+/* "forgot my ID or password" in the login window */
+.login-forgot-link { display: block; margin: 0 auto 6px; background: none; border: 0; padding: 4px; color: var(--muted); font: inherit; font-size: 0.85rem; text-decoration: underline; cursor: pointer; }
+.login-forgot { margin: 4px 0 8px; padding: 12px; border-radius: 10px; background: rgba(var(--ink-rgb), 0.05); text-align: left; }
+.login-forgot p { margin: 0 0 8px; font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
+.login-forgot-row { display: flex; gap: 8px; }
+.login-forgot-row input { flex: 1; min-width: 0; }
+.login-forgot .login-forgot-msg { margin: 8px 0 0; color: var(--ink); }
+.login-forgot .login-forgot-msg:empty { display: none; }
