@@ -934,22 +934,9 @@ async def create_order(order: OrderCreate, admin: dict = Depends(require_admin))
         
         # Send Telegram notification if client is linked to TG
         if client["user_tg_id"] and BOT_TOKEN:
-            try:
-                msg = f"🎉 **У вас новый заказ!**\n\n🆔 Заказ #{new_id}\n🛒 Позиции:\n{order.items}\n\n💰 Стоимость: {order.total_price}\n✅ Оплачено: {order.paid_amount}"
-                async with httpx.AsyncClient(headers=RELAY_HEADERS) as http_client:
-                    if order.photo_id:
-                        await http_client.post(
-                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendPhoto",
-                            data={"chat_id": client["user_tg_id"], "photo": order.photo_id, "caption": msg, "parse_mode": "Markdown"}
-                        )
-                    else:
-                        await http_client.post(
-                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
-                            json={"chat_id": client["user_tg_id"], "text": msg, "parse_mode": "Markdown"}
-                        )
-            except Exception as e:
-                print(f"Error sending TG notification: {e}")
-                
+            msg = f"🎉 **У вас новый заказ!**\n\n🆔 Заказ #{new_id}\n🛒 Позиции:\n{order.items}\n\n💰 Стоимость: {order.total_price}\n✅ Оплачено: {order.paid_amount}"
+            asyncio.create_task(send_client_order_tg(client["user_tg_id"], msg, order.photo_id))
+
         return {"success": True, "id": new_id}
 
 @app.put("/api/orders/{order_id}")
@@ -998,22 +985,8 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
             msg += f"✅ **Оплачено:** {order.paid_amount}\n"
             msg += f"❗️ **Осталось доплатить:** {debt if debt > 0 else 0}\n\n"
             msg += f"🚚 **Текущий статус:**\n_{order.status}_"
-            
-            try:
-                async with httpx.AsyncClient(headers=RELAY_HEADERS) as http_client:
-                    if order.photo_id:
-                        await http_client.post(
-                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendPhoto",
-                            data={"chat_id": old_data["user_tg_id"], "photo": order.photo_id, "caption": msg, "parse_mode": "Markdown"}
-                        )
-                    else:
-                        await http_client.post(
-                            f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
-                            json={"chat_id": old_data["user_tg_id"], "text": msg, "parse_mode": "Markdown"}
-                        )
-            except Exception as e:
-                print(f"Error sending TG notification for status update: {e}")
-                
+            asyncio.create_task(send_client_order_tg(old_data["user_tg_id"], msg, order.photo_id))
+
         return {"success": True}
 
 @app.post("/api/orders/{order_id}/archive")
@@ -1553,6 +1526,35 @@ async def tbank_notification(req: Request):
                 await release_promo(db, order_row["id"])
 
     return Response(content="OK")
+
+
+async def send_client_order_tg(chat_id, text, photo_id=""):
+    """Order news in the client's Telegram. Product photos are mostly stored as Telegram documents (ids 'BQAC...'),
+    which sendPhoto refuses, and then the whole message used to be lost: the photo goes as an uploaded JPEG, and when
+    anything fails the client still gets the text (without Markdown if the items break it)."""
+    base = f"{TELEGRAM_API}/bot{BOT_TOKEN}"
+    plain = text.replace("**", "").replace("_", "")
+    try:
+        async with httpx.AsyncClient(verify=SSL_VERIFY, headers=RELAY_HEADERS, timeout=60) as client:
+            if photo_id and len(text) <= 1000:
+                try:
+                    jpeg = await asyncio.to_thread(webp_to_mail_jpeg, await telegram_photo_bytes(photo_id), 800)
+                    for caption, mode in ((text, {"parse_mode": "Markdown"}), (plain, {})):
+                        r = await client.post(f"{base}/sendPhoto", data={"chat_id": str(chat_id), "caption": caption, **mode},
+                                              files={"photo": ("order.jpg", jpeg, "image/jpeg")})
+                        if r.status_code == 200 and r.json().get("ok"):
+                            return True
+                        print(f"client Telegram photo refused: {r.text[:200]}")
+                except Exception as exc:
+                    print(f"client Telegram photo failed: {exc!r}")
+            for payload in ({"text": text, "parse_mode": "Markdown"}, {"text": plain}):
+                r = await client.post(f"{base}/sendMessage", json={"chat_id": chat_id, **payload})
+                if r.status_code == 200 and r.json().get("ok"):
+                    return True
+                print(f"client Telegram message refused: {r.text[:200]}")
+    except Exception as exc:
+        print(f"client Telegram message failed: {exc!r}")
+    return False
 
 
 async def notify_client_tg(chat_id, text):
