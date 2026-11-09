@@ -100,17 +100,24 @@ async def notify_admins(text: str):
     if not BOT_TOKEN or not ADMIN_IDS:
         print("TG notify skipped: BOT_TOKEN or ADMIN_IDS not set")
         return
+    # a client's nick or e-mail with "_" or "*" breaks Markdown and Telegram refuses the whole message:
+    # then the same alert goes again as plain text
+    plain = text.replace("**", "")
     async with httpx.AsyncClient(verify=SSL_VERIFY, headers=RELAY_HEADERS) as client:
         for admin_id in ADMIN_IDS:
             try:
-                res = await client.post(
-                    f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
-                    json={"chat_id": admin_id, "text": text, "parse_mode": "Markdown"},
-                    timeout=15,
-                )
-                data = res.json()
-                if not data.get("ok"):
+                for payload in ({"text": text, "parse_mode": "Markdown"}, {"text": plain}):
+                    res = await client.post(
+                        f"{TELEGRAM_API}/bot{BOT_TOKEN}/sendMessage",
+                        json={"chat_id": admin_id, **payload},
+                        timeout=15,
+                    )
+                    data = res.json()
+                    if data.get("ok"):
+                        break
                     print(f"TG notify {admin_id} rejected: {data.get('description')}")
+                    if "parse entities" not in str(data.get("description")):
+                        break
             except Exception as e:
                 print(f"TG notify {admin_id} failed: {e}")
 

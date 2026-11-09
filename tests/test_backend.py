@@ -834,3 +834,38 @@ def test_what_is_left_to_pay():
     assert main.rest_to_pay({**base, "paid_amount": 2550}) == 0
     assert main.rest_to_pay({**base, "archived": True}) == 0
     assert main.rest_to_pay({**base, "status": main.AWAITING_PAYMENT}) == 0
+
+
+def test_admin_alert_goes_as_plain_text_when_markdown_breaks(monkeypatch):
+    import asyncio
+    sent = []
+
+    class FakeResponse:
+        def __init__(self, ok):
+            self.ok = ok
+
+        def json(self):
+            return {"ok": True} if self.ok else {"ok": False, "description": "Bad Request: can't parse entities: offset 153"}
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, json=None, timeout=None):
+            sent.append(json)
+            return FakeResponse("parse_mode" not in json)
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(main, "BOT_TOKEN", "t")
+    monkeypatch.setattr(main, "ADMIN_IDS", [1])
+    asyncio.run(main.notify_admins("✅ **ОПЛАЧЕН**: заказ #580, Telegram: @maxim_ok"))
+    assert len(sent) == 2
+    assert sent[0]["parse_mode"] == "Markdown"
+    assert "parse_mode" not in sent[1] and sent[1]["text"] == "✅ ОПЛАЧЕН: заказ #580, Telegram: @maxim_ok"
+
