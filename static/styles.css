@@ -4702,7 +4702,8 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .cab-steps i.on { background: var(--primary); }
 .cab-card.ready .cab-steps i.on { background: var(--ok); }
 .cab-stepname { display: flex; justify-content: space-between; gap: 6px; font-size: 0.72rem; color: var(--muted); padding: 6px 12px 0; }
-.cab-stepname b { color: var(--ink); text-align: center; }
+.cab-stepname b { color: var(--ink); }
+.cab-stepname span:last-child:not(:first-child) { text-align: right; }
 .cab-pay { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px; margin-top: 10px; border-top: 1px solid var(--cab-line); }
 .cab-card.done .cab-pay { margin-top: 0; }
 .cab-paid { font-size: 0.85rem; color: var(--muted); }

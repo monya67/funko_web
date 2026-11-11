@@ -413,7 +413,7 @@ function cabCard(o, archived) {
         </div>
         ${archived ? '' : `
         <div class="cab-steps" role="img" aria-label="Этап ${step} из ${CAB_STEPS.length}">${CAB_STEPS.map((_, i) => `<i class="${i < step ? 'on' : ''}"></i>`).join('')}</div>
-        <div class="cab-stepname"><span>Принят</span><b>${step ? CAB_STEPS[step - 1] : 'Ждём оплату'}</b><span>Выдан</span></div>`}
+        <div class="cab-stepname"><span>Сейчас: <b>${step ? CAB_STEPS[step - 1] : 'Ждём оплату'}</b></span>${step < CAB_STEPS.length ? `<span>Дальше: ${CAB_STEPS[step]}</span>` : ''}</div>`}
         <div class="cab-pay">
             <div class="cab-paid">${archived ? `Сумма <b>${rub(total)}</b>` : `Оплачено <b>${paid.toLocaleString('ru')}</b> из ${rub(total)}
                 <div class="cab-bar"><i style="width:${total ? Math.round(paid * 100 / total) : 0}%"></i></div>`}</div>
