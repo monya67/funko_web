@@ -462,6 +462,7 @@ class OrderCreate(BaseModel):
     delivery_cost: int = 0
 
 class OrderUpdate(BaseModel):
+    client_id: Optional[int] = None  # the cabinet the order belongs to; empty keeps the current one
     items: str
     total_price: int
     paid_amount: int
@@ -1005,6 +1006,11 @@ async def update_order(order_id: int, order: OrderUpdate, admin: dict = Depends(
         )
         if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Order not found")
+        if order.client_id:
+            # the order moves to another cabinet: only an existing client can take it
+            if not await db.fetchval("SELECT 1 FROM clients WHERE id = $1", order.client_id):
+                raise HTTPException(status_code=400, detail=f"Кабинета #{order.client_id} нет")
+            await db.execute("UPDATE orders SET client_id = $1 WHERE id = $2", order.client_id, order_id)
             
         # the month of the profit is the month the order was handed over
         if order.status == FINAL_STATUS and (not old_data or old_data["status"] != FINAL_STATUS):

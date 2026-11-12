@@ -1709,6 +1709,7 @@ window.openEditModal = function(orderId) {
     if (!order) return;
     document.getElementById('edit-order-id-display').textContent = order.id;
     document.getElementById('edit-order-id').value = order.id;
+    document.getElementById('edit-order-client-id').value = order.client_id || '';
     document.getElementById('edit-order-items').value = order.items;
     document.getElementById('edit-order-price').value = order.total_price;
     document.getElementById('edit-order-paid').value = order.paid_amount;
@@ -1726,6 +1727,7 @@ editOrderForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const orderId = document.getElementById('edit-order-id').value;
     const payload = {
+        client_id: parseInt(document.getElementById('edit-order-client-id').value) || null,
         items: document.getElementById('edit-order-items').value,
         total_price: parseInt(document.getElementById('edit-order-price').value),
         paid_amount: parseInt(document.getElementById('edit-order-paid').value),

@@ -1701,6 +1701,9 @@
             <h3>Редактирование заказа #<span id="edit-order-id-display"></span></h3>
             <form id="edit-order-form">
                 <input type="hidden" id="edit-order-id">
+                <div class="input-group flex-row">
+                    <div style="width:100%;"><label>Кабинет (ID клиента)</label><input type="number" id="edit-order-client-id" min="1" required></div>
+                </div>
                 <div class="input-group"><label>Товары</label><textarea id="edit-order-items" required></textarea></div>
                 <div class="input-group flex-row">
                     <div style="width:100%;"><label>Дата оформления</label><input type="date" id="edit-order-date"></div>
