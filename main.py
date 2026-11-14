@@ -441,7 +441,7 @@ def clean_self_update(body: ClientSelfUpdate) -> dict:
         raise ValueError("Укажите имя")
     phone = normalize_phone(body.phone)
     if not phone:
-        raise ValueError("Укажите настоящий номер телефона, например +7 999 123-45-67")
+        raise ValueError("Укажите настоящий номер телефона с кодом страны, например +7 999 123-45-67 или +375 29 123-45-67")
     email = body.email.strip().lower()[:200]
     if email and not valid_email(email):
         raise ValueError("Укажите корректную электронную почту")
@@ -1297,7 +1297,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
     telegram = (checkout.telegram or "").strip()
     email = (checkout.email or "").strip().lower()
     if not phone:
-        raise HTTPException(status_code=400, detail="Укажите настоящий номер телефона, например +7 999 123-45-67")
+        raise HTTPException(status_code=400, detail="Укажите настоящий номер телефона с кодом страны, например +7 999 123-45-67 или +375 29 123-45-67")
 
     if (not first_name and not name) or not phone or not telegram:
         raise HTTPException(status_code=400, detail="Имя, телефон и Telegram обязательны для оформления")
@@ -2288,15 +2288,27 @@ def valid_email(value):
     return bool(EMAIL_RE.match((value or "").strip()))
 
 
+# country codes of clients from nearby countries who may type their number without the "+"
+FOREIGN_PHONE_CODES = ("375", "380", "374", "994", "995", "996", "998", "992", "993", "373", "370", "371", "372")
+
+
 def normalize_phone(value):
-    """A number with the +7 country code as +7XXXXXXXXXX, or None. Accepts +7, 8 or no prefix, with any separators.
+    """+7XXXXXXXXXX for Russia and Kazakhstan (accepts +7, 8 or no prefix), +<code><number> for other countries
+    (Belarus and others, written with "+" or with the country code), or None. Any separators are fine.
     It checks the shape only: whether the number really exists can be confirmed only by an SMS."""
-    digits = re.sub(r"\D", "", value or "")
-    if len(digits) == 11 and digits[0] in "78":
-        digits = digits[1:]
-    if len(digits) != 10 or digits[0] not in "3456789" or len(set(digits)) == 1:
+    raw = (value or "").strip()
+    digits = re.sub(r"\D", "", raw)
+    if len(set(digits)) <= 1:
         return None
-    return "+7" + digits
+    if len(digits) == 11 and digits[0] in "78":
+        local = digits[1:]
+    else:
+        local = digits
+    if len(local) == 10 and local[0] in "3456789" and len(set(local)) > 1:
+        return "+7" + local
+    if (raw.startswith("+") or digits.startswith(FOREIGN_PHONE_CODES)) and 11 <= len(digits) <= 15 and digits[0] not in "078":
+        return "+" + digits
+    return None
 
 
 # Extra domains that should 301 to the main one. Opt-in via env so a typo can never lock the site out.

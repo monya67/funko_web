@@ -582,8 +582,16 @@ def test_phone_must_look_like_a_real_number():
     for good in ("+7 999 123-45-67", "89991234567", "79991234567", "9991234567", "8 (495) 123-45-67", "+77054540001"):
         assert main.normalize_phone(good) and main.normalize_phone(good).startswith("+7") and len(main.normalize_phone(good)) == 12, good
     assert main.normalize_phone("8 (999) 123-45-67") == "+79991234567"
-    for bad in ("99999999", "9999999999", "+7 999 999-99-99", "123456", "+375291234567", "1234567890", "", None, "abc"):
+    for bad in ("99999999", "9999999999", "+7 999 999-99-99", "123456", "1234567890", "+375 111", "", None, "abc"):
         assert main.normalize_phone(bad) is None, bad
+
+
+def test_phone_from_belarus_and_other_countries_is_accepted():
+    assert main.normalize_phone("+375 29 123-45-67") == "+375291234567"
+    assert main.normalize_phone("375291234567") == "+375291234567"
+    assert main.normalize_phone("+380 67 123 4567") == "+380671234567"
+    assert main.normalize_phone("+49 151 2345 6789") == "+4915123456789"
+    assert main.normalize_phone("8 999 123-45-67") == "+79991234567"
 
 
 def test_mystery_counts_only_after_the_opening_and_up_to_the_goal():

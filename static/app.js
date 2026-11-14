@@ -2273,6 +2273,10 @@ async function loadCatalogMeta() {
     try {
         const meta = await fetchAPI('/catalog/meta');
         catalogMeta = meta || { categories: [], series: [] };
+        // one series typed two ways ("Cartoon Network" and "CARTOON NETWORK") is one chip: the first spelling stays
+        const uniqueCI = arr => { const seen = new Set(); return (arr || []).filter(x => { const k = String(x).trim().toLowerCase(); if (!k || seen.has(k)) return false; seen.add(k); return true; }); };
+        catalogMeta.series = uniqueCI(catalogMeta.series);
+        if (catalogMeta.series_recent) catalogMeta.series_recent = uniqueCI(catalogMeta.series_recent);
 
         // Categories datalist
         const catDatalist = document.getElementById('categories-datalist');
