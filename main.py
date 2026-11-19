@@ -1400,129 +1400,136 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
     logged_in = bool(client_id)
     is_new_client = False
     async with pool.acquire() as db:
-        if not client_id:
-            existing_client = await db.fetchrow(
-                "SELECT id, password FROM clients WHERE (phone != '' AND right(regexp_replace(phone, '\\D', '', 'g'), 10) = right($1, 10)) OR (full_name != '' AND full_name = $2) LIMIT 1",
-                phone, name
-            )
-            if existing_client:
-                # A guest who typed someone's phone or name is not proof of identity: the order joins that
-                # cabinet, but neither the password nor a login token is handed out.
-                client_id = existing_client["id"]
-            else:
-                is_new_client = True
-                generated_pwd = str(100000 + secrets.randbelow(900000))
-                client_id = await db.fetchval(
-                    "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username, email, marketing_consent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
-                    generated_pwd, name, first_name, last_name, phone, telegram, email, checkout.marketing_consent
-                )
-            if is_new_client:
-                new_token = create_access_token(data={"sub": str(client_id), "role": "client"})
-        else:
-            await db.execute(
-                """UPDATE clients 
-                   SET full_name = COALESCE(NULLIF(full_name, ''), $1),
-                       first_name = COALESCE(NULLIF(first_name, ''), $2),
-                       last_name = COALESCE(NULLIF(last_name, ''), $3),
-                       phone = COALESCE(NULLIF(phone, ''), $4),
-                       tg_username = COALESCE(NULLIF(tg_username, ''), $5),
-                       email = COALESCE(NULLIF(email, ''), $6),
-                       marketing_consent = COALESCE(marketing_consent, FALSE) OR $7
-                   WHERE id = $8""",
-                name, first_name, last_name, phone, telegram, email, checkout.marketing_consent, client_id
-            )
-
-        # the cabinet remembers the delivery choice (not when a guest only typed somebody's phone)
-        if logged_in or is_new_client:
-            await db.execute("UPDATE clients SET delivery_method = $1, delivery_address = $2 WHERE id = $3",
-                             (checkout.delivery_method or "")[:100], (checkout.comment or "").strip()[:300], client_id)
-
-        # a product limited per cabinet: paid orders and fresh unpaid ones of this cabinet count
-        for pid, qty in qty_by_pid.items():
-            limit = rules.get(pid, {}).get("max_per_client")
-            if not limit:
-                continue
-            already = await db.fetchval(
-                "SELECT count(*) FROM orders WHERE client_id = $1 AND product_id = $2 "
-                "AND (payment_status = 'paid' OR (payment_status = 'pending' AND created_at > now() - interval '1 hour'))",
-                client_id, pid)
-            if already + qty > limit:
-                left = max(0, limit - already)
-                more = f"можно ещё {left} шт." if left else "вы уже оформили максимум"
-                raise HTTPException(status_code=409, detail=f"«{rules[pid]['name']}»: не больше {limit} шт. на один аккаунт, {more}")
-
-        # Reserve limited stock atomically; a failed UPDATE means not enough left. The transaction rolls
-        # back earlier reservations of this same request when we raise.
-        reserved = []
-        async with db.transaction():
-            for pid, qty in aggregate_cart_qty(checkout.items).items():
-                got = await db.fetchrow(
-                    "UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2 AND stock_qty IS NOT NULL AND stock_qty >= $1 RETURNING name",
-                    qty, pid)
-                if got:
-                    reserved.append((pid, qty))
-                    continue
-                row = await db.fetchrow("SELECT name, stock_qty FROM products WHERE id = $1", pid)
-                if row and row["stock_qty"] is not None:
-                    left = row["stock_qty"]
-                    msg = f"«{row['name']}» распродан" if left <= 0 else f"«{row['name']}»: осталось только {left} шт."
-                    raise HTTPException(status_code=409, detail=msg)
-
-        # the code is taken before the order exists; the row lock keeps two checkouts from taking its last use
-        promo_use_id = None
-        if promo_code:
-            async with db.transaction():
-                promo = await db.fetchrow("SELECT max_uses FROM site_promos WHERE code = $1 AND active FOR UPDATE", promo_code)
-                taken = await db.fetchval("SELECT count(*) FROM site_promo_uses WHERE code = $1", promo_code)
-                if promo and not (promo["max_uses"] and taken >= promo["max_uses"]):
-                    promo_use_id = await db.fetchval(
-                        "INSERT INTO site_promo_uses (code, amount, client_id) VALUES ($1, $2, $3) RETURNING id",
-                        promo_code, promo_discount, client_id)
-            if not promo_use_id:
-                await restore_stock(db, reserved)
-                raise HTTPException(status_code=409, detail="Промокод закончился")
-
-        status_text = AWAITING_PAYMENT
-        products_map = {r["id"]: dict(r) for r in rows}
-        lines = checkout_lines(checkout.items, products_map)
-        shares = split_discount([0 if rules[ln["pid"]]["no_promo"] and not promo_all else ln["total"] for ln in lines], promo_discount)
-        reserved_by_pid = dict(reserved)
-        checkout_note = f"📦 Доставка: {checkout.delivery_method or 'Не указан'}"
-        if checkout.comment:
-            checkout_note += f"\n💬 Комментарий: {checkout.comment}"
-        if promo_code:
-            checkout_note += f"\n🏷 Промокод {promo_code}: −{promo_discount} ₽"
-        order_ids = []
-        paid_amount = 0
+        # one buyer pressing "Оформить" twice at the same moment: the second checkout waits for the first, then finds
+        # the same cabinet and its order. Without it both created a cabinet and both passed the per-cabinet limit.
+        buyer_key = re.sub(r"\D", "", phone)[-10:]
+        await db.execute("SELECT pg_advisory_lock(7301, hashtext($1))", buyer_key)
         try:
-            for ln, share in zip(lines, shares):
-                line_total = ln["total"] - share
-                line_paid = round(line_total * 0.5) if checkout.payment_type == "50%" else line_total
-                paid_amount += line_paid
-                snap = await order_snapshot(db, {ln["pid"]: ln["qty"]}, products_map)
-                stock = [(ln["pid"], ln["qty"])] if ln["pid"] in reserved_by_pid else []
-                new_id = await db.fetchval(
-                    """INSERT INTO orders
-                       (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items, checkout_note,
-                        planned_purchase_cost, planned_shipping, purchase_usd, fx_rate, product_kind, promo_code, promo_discount, product_id)
-                       VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id""",
-                    client_id, ln["text"], line_total, line_paid, status_text, ln["photo"], order_date,
-                    name, phone, telegram, checkout.payment_type, dump_stock_items(stock) if stock else "", checkout_note,
-                    snap["planned_purchase_cost"], snap["planned_shipping"], snap["purchase_usd"], snap["fx_rate"], snap["product_kind"],
-                    promo_code if share else "", share, ln["pid"]
+            if not client_id:
+                existing_client = await db.fetchrow(
+                    "SELECT id, password FROM clients WHERE (phone != '' AND right(regexp_replace(phone, '\\D', '', 'g'), 10) = right($1, 10)) OR (full_name != '' AND full_name = $2) LIMIT 1",
+                    phone, name
                 )
-                order_ids.append(new_id)
-            order_id = order_ids[0]
-            if len(order_ids) > 1:
-                checkout_note += f"\n🧾 Одна покупка: заказы {orders_label(order_ids)}"
-            await db.execute("UPDATE orders SET group_id = $1, checkout_note = $2 WHERE id = ANY($3::int[])", order_id, checkout_note, order_ids)
-        except Exception:
-            if order_ids:
-                await db.execute("DELETE FROM orders WHERE id = ANY($1::int[])", order_ids)
-            await restore_stock(db, reserved)
-            if promo_use_id:
-                await db.execute("DELETE FROM site_promo_uses WHERE id = $1", promo_use_id)
-            raise
+                if existing_client:
+                    # A guest who typed someone's phone or name is not proof of identity: the order joins that
+                    # cabinet, but neither the password nor a login token is handed out.
+                    client_id = existing_client["id"]
+                else:
+                    is_new_client = True
+                    generated_pwd = str(100000 + secrets.randbelow(900000))
+                    client_id = await db.fetchval(
+                        "INSERT INTO clients (password, full_name, first_name, last_name, phone, tg_username, email, marketing_consent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+                        generated_pwd, name, first_name, last_name, phone, telegram, email, checkout.marketing_consent
+                    )
+                if is_new_client:
+                    new_token = create_access_token(data={"sub": str(client_id), "role": "client"})
+            else:
+                await db.execute(
+                    """UPDATE clients 
+                       SET full_name = COALESCE(NULLIF(full_name, ''), $1),
+                           first_name = COALESCE(NULLIF(first_name, ''), $2),
+                           last_name = COALESCE(NULLIF(last_name, ''), $3),
+                           phone = COALESCE(NULLIF(phone, ''), $4),
+                           tg_username = COALESCE(NULLIF(tg_username, ''), $5),
+                           email = COALESCE(NULLIF(email, ''), $6),
+                           marketing_consent = COALESCE(marketing_consent, FALSE) OR $7
+                       WHERE id = $8""",
+                    name, first_name, last_name, phone, telegram, email, checkout.marketing_consent, client_id
+                )
+
+            # the cabinet remembers the delivery choice (not when a guest only typed somebody's phone)
+            if logged_in or is_new_client:
+                await db.execute("UPDATE clients SET delivery_method = $1, delivery_address = $2 WHERE id = $3",
+                                 (checkout.delivery_method or "")[:100], (checkout.comment or "").strip()[:300], client_id)
+
+            # a product limited per cabinet: paid orders and fresh unpaid ones of this cabinet count
+            for pid, qty in qty_by_pid.items():
+                limit = rules.get(pid, {}).get("max_per_client")
+                if not limit:
+                    continue
+                already = await db.fetchval(
+                    "SELECT count(*) FROM orders WHERE client_id = $1 AND product_id = $2 "
+                    "AND (payment_status = 'paid' OR (payment_status = 'pending' AND created_at > now() - interval '1 hour'))",
+                    client_id, pid)
+                if already + qty > limit:
+                    left = max(0, limit - already)
+                    more = f"можно ещё {left} шт." if left else "вы уже оформили максимум"
+                    raise HTTPException(status_code=409, detail=f"«{rules[pid]['name']}»: не больше {limit} шт. на один аккаунт, {more}")
+
+            # Reserve limited stock atomically; a failed UPDATE means not enough left. The transaction rolls
+            # back earlier reservations of this same request when we raise.
+            reserved = []
+            async with db.transaction():
+                for pid, qty in aggregate_cart_qty(checkout.items).items():
+                    got = await db.fetchrow(
+                        "UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2 AND stock_qty IS NOT NULL AND stock_qty >= $1 RETURNING name",
+                        qty, pid)
+                    if got:
+                        reserved.append((pid, qty))
+                        continue
+                    row = await db.fetchrow("SELECT name, stock_qty FROM products WHERE id = $1", pid)
+                    if row and row["stock_qty"] is not None:
+                        left = row["stock_qty"]
+                        msg = f"«{row['name']}» распродан" if left <= 0 else f"«{row['name']}»: осталось только {left} шт."
+                        raise HTTPException(status_code=409, detail=msg)
+
+            # the code is taken before the order exists; the row lock keeps two checkouts from taking its last use
+            promo_use_id = None
+            if promo_code:
+                async with db.transaction():
+                    promo = await db.fetchrow("SELECT max_uses FROM site_promos WHERE code = $1 AND active FOR UPDATE", promo_code)
+                    taken = await db.fetchval("SELECT count(*) FROM site_promo_uses WHERE code = $1", promo_code)
+                    if promo and not (promo["max_uses"] and taken >= promo["max_uses"]):
+                        promo_use_id = await db.fetchval(
+                            "INSERT INTO site_promo_uses (code, amount, client_id) VALUES ($1, $2, $3) RETURNING id",
+                            promo_code, promo_discount, client_id)
+                if not promo_use_id:
+                    await restore_stock(db, reserved)
+                    raise HTTPException(status_code=409, detail="Промокод закончился")
+
+            status_text = AWAITING_PAYMENT
+            products_map = {r["id"]: dict(r) for r in rows}
+            lines = checkout_lines(checkout.items, products_map)
+            shares = split_discount([0 if rules[ln["pid"]]["no_promo"] and not promo_all else ln["total"] for ln in lines], promo_discount)
+            reserved_by_pid = dict(reserved)
+            checkout_note = f"📦 Доставка: {checkout.delivery_method or 'Не указан'}"
+            if checkout.comment:
+                checkout_note += f"\n💬 Комментарий: {checkout.comment}"
+            if promo_code:
+                checkout_note += f"\n🏷 Промокод {promo_code}: −{promo_discount} ₽"
+            order_ids = []
+            paid_amount = 0
+            try:
+                for ln, share in zip(lines, shares):
+                    line_total = ln["total"] - share
+                    line_paid = round(line_total * 0.5) if checkout.payment_type == "50%" else line_total
+                    paid_amount += line_paid
+                    snap = await order_snapshot(db, {ln["pid"]: ln["qty"]}, products_map)
+                    stock = [(ln["pid"], ln["qty"])] if ln["pid"] in reserved_by_pid else []
+                    new_id = await db.fetchval(
+                        """INSERT INTO orders
+                           (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items, checkout_note,
+                            planned_purchase_cost, planned_shipping, purchase_usd, fx_rate, product_kind, promo_code, promo_discount, product_id)
+                           VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id""",
+                        client_id, ln["text"], line_total, line_paid, status_text, ln["photo"], order_date,
+                        name, phone, telegram, checkout.payment_type, dump_stock_items(stock) if stock else "", checkout_note,
+                        snap["planned_purchase_cost"], snap["planned_shipping"], snap["purchase_usd"], snap["fx_rate"], snap["product_kind"],
+                        promo_code if share else "", share, ln["pid"]
+                    )
+                    order_ids.append(new_id)
+                order_id = order_ids[0]
+                if len(order_ids) > 1:
+                    checkout_note += f"\n🧾 Одна покупка: заказы {orders_label(order_ids)}"
+                await db.execute("UPDATE orders SET group_id = $1, checkout_note = $2 WHERE id = ANY($3::int[])", order_id, checkout_note, order_ids)
+            except Exception:
+                if order_ids:
+                    await db.execute("DELETE FROM orders WHERE id = ANY($1::int[])", order_ids)
+                await restore_stock(db, reserved)
+                if promo_use_id:
+                    await db.execute("DELETE FROM site_promo_uses WHERE id = $1", promo_use_id)
+                raise
+        finally:
+            await db.execute("SELECT pg_advisory_unlock(7301, hashtext($1))", buyer_key)
         if promo_use_id:
             await db.execute("UPDATE site_promo_uses SET order_id = $1 WHERE id = $2", order_id, promo_use_id)
         total_price = sum(ln["total"] for ln in lines) - promo_discount
