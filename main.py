@@ -193,6 +193,8 @@ async def startup():
         await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ")
         # sale rules of a product (drops, mystery boxes): a limit per cabinet, no promo codes, full prepayment only
         await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS max_per_client INTEGER")
+        # a promo code that works even on products where promo codes are turned off
+        await db.execute("ALTER TABLE site_promos ADD COLUMN IF NOT EXISTS all_products BOOLEAN NOT NULL DEFAULT FALSE")
         # the last delivery choice of a client: the next checkout starts with it filled in
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS delivery_method TEXT DEFAULT ''")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS delivery_address TEXT DEFAULT ''")
@@ -1363,7 +1365,12 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
     promo_goods = sum(unit_price(rules[pid]) * q for pid, q in qty_by_pid.items() if pid in rules and not rules[pid]["no_promo"])
     promo_code = normalize_promo(checkout.promo_code)
     promo_discount = 0
+    promo_all = False
     if promo_code:
+        async with pool.acquire() as promo_db:
+            promo_all = bool(await promo_db.fetchval("SELECT all_products FROM site_promos WHERE code = $1", promo_code))
+        if promo_all:
+            promo_goods = sum(unit_price(rules[pid]) * q for pid, q in qty_by_pid.items() if pid in rules)
         if promo_goods <= 0:
             raise HTTPException(status_code=409, detail="Промокоды не действуют на товары в корзине")
         async with pool.acquire() as promo_db:
@@ -1478,7 +1485,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
         status_text = AWAITING_PAYMENT
         products_map = {r["id"]: dict(r) for r in rows}
         lines = checkout_lines(checkout.items, products_map)
-        shares = split_discount([0 if rules[ln["pid"]]["no_promo"] else ln["total"] for ln in lines], promo_discount)
+        shares = split_discount([0 if rules[ln["pid"]]["no_promo"] and not promo_all else ln["total"] for ln in lines], promo_discount)
         reserved_by_pid = dict(reserved)
         checkout_note = f"📦 Доставка: {checkout.delivery_method or 'Не указан'}"
         if checkout.comment:
@@ -1852,9 +1859,10 @@ class SitePromoIn(BaseModel):
     min_order: int = 0
     active: bool = True
     note: str = ""
+    all_products: bool = False  # also on products marked "промокоды не действуют"
 
 
-SITE_PROMO_COLS = ("code", "value", "value_kind", "max_uses", "min_order", "active", "note")
+SITE_PROMO_COLS = ("code", "value", "value_kind", "max_uses", "min_order", "active", "note", "all_products")
 
 
 def clean_site_promo(p: SitePromoIn) -> dict:
@@ -1868,7 +1876,8 @@ def clean_site_promo(p: SitePromoIn) -> dict:
     if p.max_uses < 0 or p.min_order < 0:
         raise ValueError("Число использований и сумма заказа не могут быть меньше нуля")
     return {"code": code, "value": p.value, "value_kind": p.value_kind, "max_uses": p.max_uses,
-            "min_order": p.min_order, "active": bool(p.active), "note": p.note.strip()[:2000]}
+            "min_order": p.min_order, "active": bool(p.active), "note": p.note.strip()[:2000],
+            "all_products": bool(p.all_products)}
 
 
 @app.get("/api/site-promos")
@@ -1887,8 +1896,8 @@ async def create_site_promo(p: SitePromoIn, admin: dict = Depends(require_admin)
     v = _valid(clean_site_promo, p)
     async with pool.acquire() as db:
         new_id = await db.fetchval(
-            "INSERT INTO site_promos (code, value, value_kind, max_uses, min_order, active, note) "
-            "VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (code) DO NOTHING RETURNING id",
+            "INSERT INTO site_promos (code, value, value_kind, max_uses, min_order, active, note, all_products) "
+            "VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (code) DO NOTHING RETURNING id",
             *[v[c] for c in SITE_PROMO_COLS])
         if not new_id:
             raise HTTPException(status_code=400, detail=f"Промокод {v['code']} уже есть")
@@ -1906,7 +1915,7 @@ async def update_site_promo(item_id: int, p: SitePromoIn, admin: dict = Depends(
             if v["code"] != old and await db.fetchval("SELECT 1 FROM site_promos WHERE code = $1", v["code"]):
                 raise HTTPException(status_code=400, detail=f"Промокод {v['code']} уже есть")
             await db.execute(
-                "UPDATE site_promos SET code = $1, value = $2, value_kind = $3, max_uses = $4, min_order = $5, active = $6, note = $7 WHERE id = $8",
+                "UPDATE site_promos SET code = $1, value = $2, value_kind = $3, max_uses = $4, min_order = $5, active = $6, note = $7, all_products = $8 WHERE id = $9",
                 *[v[c] for c in SITE_PROMO_COLS], item_id)
             # a renamed code keeps its history of uses
             await db.execute("UPDATE site_promo_uses SET code = $1 WHERE code = $2", v["code"], old)
@@ -2290,7 +2299,8 @@ async def release_promo(db, order_id):
 
 class PromoCheckIn(BaseModel):
     code: str
-    total: int = 0
+    total: int = 0       # goods the promo codes may discount
+    total_all: int = 0   # every product in the cart (for codes that work on all products)
 
 
 @app.post("/api/promo/check")
@@ -2300,15 +2310,18 @@ async def promo_check(request: Request, body: PromoCheckIn):
     async with pool.acquire() as db:
         if await throttle_is_blocked(db, list(keys), now):
             raise HTTPException(status_code=429, detail="Слишком много попыток, попробуйте через 15 минут")
-        if body.total <= 0:
+        all_products = bool(await db.fetchval("SELECT all_products FROM site_promos WHERE code = $1", normalize_promo(body.code)))
+        goods = max(body.total, body.total_all) if all_products else body.total
+        if goods <= 0:
             raise HTTPException(status_code=400, detail="Промокоды не действуют на товары в корзине")
-        amount, message = await lookup_site_promo(db, body.code, max(0, body.total))
+        amount, message = await lookup_site_promo(db, body.code, max(0, goods))
         if amount is None:
             if message == "Промокод не найден":
                 await throttle_register_failure(db, keys, now)
             raise HTTPException(status_code=400, detail=message)
         row = await db.fetchrow("SELECT value, value_kind FROM site_promos WHERE code = $1", normalize_promo(body.code))
-    return {"code": normalize_promo(body.code), "amount": amount, "value": row["value"], "value_kind": row["value_kind"]}
+    return {"code": normalize_promo(body.code), "amount": amount, "value": row["value"], "value_kind": row["value_kind"],
+            "all_products": all_products}
 
 
 @app.get("/api/ledger")

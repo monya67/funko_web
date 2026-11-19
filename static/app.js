@@ -3416,11 +3416,10 @@ async function applyCheckoutPromo() {
     if (!code) { input.focus(); return; }
     btn.disabled = true;
     try {
-        const goods = promoGoods();
-        const res = await fetch(`${API_BASE}/promo/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, total: goods }) });
+        const res = await fetch(`${API_BASE}/promo/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, total: promoGoods(), total_all: checkoutGoods() }) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || 'Промокод не подошёл');
-        window.checkoutPromo = { code: data.code, amount: data.amount, value: data.value, value_kind: data.value_kind };
+        window.checkoutPromo = { code: data.code, amount: data.amount, value: data.value, value_kind: data.value_kind, all_products: !!data.all_products };
         input.value = data.code; input.disabled = true; btn.textContent = 'Убрать';
         const what = data.value_kind === 'percent' ? `${data.value}% (${data.amount.toLocaleString('ru')} ₽)` : `${data.amount.toLocaleString('ru')} ₽`;
         showPromoStatus(`Скидка ${what} применена`, true);
@@ -3484,7 +3483,7 @@ window.openCheckoutModal = function() {
     }
 
     // a code applied earlier stays only while it still fits the cart
-    const goods = promoGoods();
+    const goods = window.checkoutPromo?.all_products ? checkoutGoods() : promoGoods();
     if (window.checkoutPromo) window.checkoutPromo.amount = promoAmountFor(window.checkoutPromo, goods);
     if (window.checkoutPromo && window.checkoutPromo.amount >= goods) {
         window.checkoutPromo = null;
@@ -4135,7 +4134,7 @@ const REGISTERS = {
         modal: 'site-promo-modal',
         newTitle: 'Новый промокод сайта',
         editTitle: it => `Промокод ${it.code}`,
-        empty: { code: '', value: '', value_kind: 'rub', max_uses: 0, min_order: 0, active: true, note: '' },
+        empty: { code: '', value: '', value_kind: 'rub', max_uses: 0, min_order: 0, active: true, note: '', all_products: false },
         view: 'active',
         visible(it, view) { return view === 'archive' ? !it.active : !!it.active; },
         haystack: it => [it.code, it.note].join(' '),
@@ -4144,7 +4143,7 @@ const REGISTERS = {
             const limit = it.max_uses ? ` из ${it.max_uses}` : '';
             const pending = it.taken_count - it.used_count;
             return `
-                <td><span class="reg-code">${escapeHtml(it.code)}</span>${it.note ? `<div class="reg-sub">${escapeHtml(it.note)}</div>` : ''}</td>
+                <td><span class="reg-code">${escapeHtml(it.code)}</span>${it.all_products ? '<div class="reg-sub">и на дропы</div>' : ''}${it.note ? `<div class="reg-sub">${escapeHtml(it.note)}</div>` : ''}</td>
                 <td style="white-space:nowrap;"><b>−${value}</b></td>
                 <td style="white-space:nowrap;">${it.used_count}${limit}${pending > 0 ? `<div class="reg-sub">ещё ${pending} ждут оплаты</div>` : ''}</td>
                 <td style="white-space:nowrap;">${it.min_order ? `${it.min_order.toLocaleString('ru')} ₽` : '—'}</td>
