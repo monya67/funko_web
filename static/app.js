@@ -830,6 +830,8 @@ async function loadDashboardData() {
             window.currentClientTg = data.tg_username || '';
             window.currentClientEmail = data.email || '';
             window.currentClientTgLinked = !!data.tg_linked;
+            window.currentClientDelivery = data.delivery_method || '';
+            window.currentClientAddress = data.delivery_address || '';
         }
         updateRoleUI(data.role);
         if (data.online_count) updateOnlineBadge(data.online_count);
@@ -2598,6 +2600,19 @@ window.openProductDetail = function(productId) {
     const st = stockInfo(p);
     if (st.sold) document.getElementById('pp-stock').innerHTML = '<span style="color:var(--pre);">● Распродан</span>';
     else if (st.few) document.getElementById('pp-stock').innerHTML = `<span style="color:var(--warn);">● Осталось ${st.qty} шт.</span>`;
+    document.getElementById('pp-rules')?.remove();
+    const ruleLines = [
+        p.max_per_client ? `Не больше ${p.max_per_client} шт. на один аккаунт` : '',
+        p.full_prepay ? 'Только 100% предоплата' : '',
+        p.no_promo ? 'Промокоды не действуют' : '',
+    ].filter(Boolean);
+    if (ruleLines.length) {
+        const ul = document.createElement('ul');
+        ul.id = 'pp-rules';
+        ul.className = 'pp-rules';
+        ul.innerHTML = ruleLines.map(t => `<li>• ${t}</li>`).join('');
+        document.getElementById('pp-stock').after(ul);
+    }
     const addBtn = `<button type="button" class="btn primary pp-btn" ${st.sold ? 'disabled' : ''} onclick="window.addToCart(${p.id},1)">${st.sold ? 'Распродан' : 'В корзину'}</button>`;
     if (role === 'admin') {
         actions.innerHTML = `
@@ -2709,6 +2724,9 @@ window.openAddProductModal = function() {
     document.getElementById('product-availability').value = 'preorder';
     document.getElementById('product-stock-qty').value = '';
     document.getElementById('product-hidden').checked = false;
+    document.getElementById('product-max-per-client').value = '';
+    document.getElementById('product-no-promo').checked = false;
+    document.getElementById('product-full-prepay').checked = false;
     document.getElementById('product-discount').value = '0';
     document.getElementById('product-badge').value = '';
     document.getElementById('product-photo-id').value = '';
@@ -2788,6 +2806,9 @@ window.openEditProductModal = function(id) {
     document.getElementById('product-final-price').value = p.final_price || p.price;
     document.getElementById('product-stock-qty').value = (p.stock_qty === null || p.stock_qty === undefined) ? '' : p.stock_qty;
     document.getElementById('product-hidden').checked = !!p.hidden;
+    document.getElementById('product-max-per-client').value = p.max_per_client || '';
+    document.getElementById('product-no-promo').checked = !!p.no_promo;
+    document.getElementById('product-full-prepay').checked = !!p.full_prepay;
     document.getElementById('product-availability').value = p.in_stock ? 'instock' : 'preorder';
     document.getElementById('product-photo-id').value = p.photo_id || '';
     document.getElementById('product-badge').value = p.badge || '';
@@ -2890,6 +2911,9 @@ productForm?.addEventListener('submit', async (e) => {
         badge: (document.getElementById('product-badge')?.value || '').trim(),
         description: (document.getElementById('product-description')?.value || '').trim(),
         hidden: !!document.getElementById('product-hidden')?.checked,
+        max_per_client: parseInt(document.getElementById('product-max-per-client')?.value, 10) || null,
+        no_promo: !!document.getElementById('product-no-promo')?.checked,
+        full_prepay: !!document.getElementById('product-full-prepay')?.checked,
         stock_qty: (document.getElementById('product-stock-qty')?.value ?? '') === '' ? null : Math.max(0, parseInt(document.getElementById('product-stock-qty').value, 10) || 0),
         ...readProductFinance()
     };
@@ -3145,6 +3169,9 @@ function refreshCartItem(item, product) {
     item.price = product.price;
     item.final_price = product.final_price || product.price;
     item.photo_id = photoIds(product.photo_id)[0] || '';
+    item.max_per_client = product.max_per_client || null;
+    item.no_promo = !!product.no_promo;
+    item.full_prepay = !!product.full_prepay;
 }
 
 function syncCartWithCatalog() {
@@ -3174,6 +3201,14 @@ window.addToCart = function(productId, qty = 1) {
         return;
     }
     const existing = funkoCart.find(item => item.id === productId);
+    if (product.max_per_client) {
+        const inCart = existing ? existing.qty : 0;
+        if (inCart + qty > product.max_per_client) {
+            window.showToast(`Не больше ${product.max_per_client} шт. на один аккаунт`);
+            if (inCart >= product.max_per_client) return;
+            qty = product.max_per_client - inCart;
+        }
+    }
     if (st.tracked) {
         const inCart = existing ? existing.qty : 0;
         if (inCart + qty > st.qty) {
@@ -3193,6 +3228,9 @@ window.addToCart = function(productId, qty = 1) {
             price: product.price,
             final_price: product.final_price || product.price,
             photo_id: photoIds(product.photo_id)[0] || '',
+            max_per_client: product.max_per_client || null,
+            no_promo: !!product.no_promo,
+            full_prepay: !!product.full_prepay,
             qty: qty
         });
     }
@@ -3214,6 +3252,10 @@ window.quickBuy = function(productId) {
 window.updateCartItemQty = function(productId, delta) {
     const item = funkoCart.find(i => i.id === productId);
     if (!item) return;
+    if (delta > 0 && item.max_per_client && item.qty + delta > item.max_per_client) {
+        window.showToast(`Не больше ${item.max_per_client} шт. на один аккаунт`);
+        return;
+    }
     item.qty += delta;
     if (item.qty <= 0) {
         funkoCart = funkoCart.filter(i => i.id !== productId);
@@ -3326,6 +3368,13 @@ function checkoutGoods() {
     return funkoCart.reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
 }
 
+// the goods a promo code may discount: products marked "промокоды не действуют" are left out
+function promoGoods() {
+    return funkoCart.filter(i => !i.no_promo).reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
+}
+
+const cartNeedsFullPrepay = () => funkoCart.some(i => i.full_prepay);
+
 // a percent code follows the cart; rubles stay as they are
 function promoAmountFor(promo, goods) {
     return promo.value_kind === 'percent' ? Math.round(goods * promo.value / 100) : promo.amount;
@@ -3367,7 +3416,7 @@ async function applyCheckoutPromo() {
     if (!code) { input.focus(); return; }
     btn.disabled = true;
     try {
-        const goods = checkoutGoods();
+        const goods = promoGoods();
         const res = await fetch(`${API_BASE}/promo/check`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, total: goods }) });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.detail || 'Промокод не подошёл');
@@ -3386,6 +3435,10 @@ document.getElementById('checkout-promo-apply')?.addEventListener('click', apply
 document.getElementById('checkout-promo')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyCheckoutPromo(); } });
 
 window.selectPaymentOption = function(type) {
+    const forced = cartNeedsFullPrepay();
+    if (forced) type = '100%';
+    document.getElementById('option-prepay-50')?.classList.toggle('rule-off', forced);
+    document.getElementById('prepay-rule-note')?.classList.toggle('hidden', !forced);
     window.currentPaymentOption = type;
     const card50 = document.getElementById('option-prepay-50');
     const card100 = document.getElementById('option-prepay-100');
@@ -3431,7 +3484,7 @@ window.openCheckoutModal = function() {
     }
 
     // a code applied earlier stays only while it still fits the cart
-    const goods = checkoutGoods();
+    const goods = promoGoods();
     if (window.checkoutPromo) window.checkoutPromo.amount = promoAmountFor(window.checkoutPromo, goods);
     if (window.checkoutPromo && window.checkoutPromo.amount >= goods) {
         window.checkoutPromo = null;
@@ -3462,10 +3515,17 @@ window.openCheckoutModal = function() {
         first: window.currentClientFirstName || parts[0] || '',
         last: window.currentClientLastName || parts.slice(1).join(' ') || '',
         phone: window.currentClientPhone || '', tg: window.currentClientTg || '', email: window.currentClientEmail || '',
+        delivery: window.currentClientDelivery || saved.delivery || '', address: window.currentClientAddress || saved.address || '',
     } : saved;
-    [[fnInput, known.first], [lnInput, known.last], [phoneInput, known.phone], [tgInput, known.tg], [emailPre, known.email]].forEach(([el, v]) => {
+    const deliveryPre = document.getElementById('checkout-delivery');
+    const addressPre = document.getElementById('checkout-comment');
+    [[fnInput, known.first], [lnInput, known.last], [phoneInput, known.phone], [tgInput, known.tg], [emailPre, known.email], [addressPre, known.address]].forEach(([el, v]) => {
         if (el && v && (currentRole === 'client' || !el.value)) el.value = v;
     });
+    if (deliveryPre && known.delivery && [...deliveryPre.options].some(o => o.value === known.delivery)) {
+        deliveryPre.value = known.delivery;
+        deliveryPre.dispatchEvent(new Event('change'));
+    }
 
     openModal(document.getElementById('checkout-modal'));
 };
@@ -3683,7 +3743,7 @@ window.confirmOrderPayment = async function() {
         }
 
         // the next order on this device starts with these contacts filled in
-        try { localStorage.setItem('funko_checkout_contacts', JSON.stringify({ first: firstName, last: lastName, phone, tg, email })); } catch (e) {}
+        try { localStorage.setItem('funko_checkout_contacts', JSON.stringify({ first: firstName, last: lastName, phone, tg, email, delivery: deliveryInput?.value || '', address: (commentInput?.value || '').trim() })); } catch (e) {}
 
         // Save order info for return from payment
         localStorage.setItem('funko_pending_order', JSON.stringify({

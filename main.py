@@ -191,6 +191,15 @@ async def startup():
         """)
         # when a product was last edited: the catalog shows recently changed series first
         await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ")
+        # sale rules of a product (drops, mystery boxes): a limit per cabinet, no promo codes, full prepayment only
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS max_per_client INTEGER")
+        # the last delivery choice of a client: the next checkout starts with it filled in
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS delivery_method TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS delivery_address TEXT DEFAULT ''")
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS no_promo BOOLEAN DEFAULT FALSE")
+        await db.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS full_prepay BOOLEAN DEFAULT FALSE")
+        # the product of an order (one figure per order since checkouts split): the per-cabinet limit counts these
+        await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS product_id INTEGER")
         await db.execute("CREATE TABLE IF NOT EXISTS login_throttle (key TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, locked_until DOUBLE PRECISION NOT NULL DEFAULT 0, updated DOUBLE PRECISION NOT NULL DEFAULT 0)")
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'pending'")
         await db.execute("ALTER TABLE clients ADD COLUMN IF NOT EXISTS full_name TEXT DEFAULT ''")
@@ -255,6 +264,8 @@ async def startup():
         await db.execute("CREATE TABLE IF NOT EXISTS site_counters (key TEXT PRIMARY KEY, value BIGINT NOT NULL DEFAULT 0)")
         # The photos in the cells of the mystery boxes page
         await db.execute("CREATE TABLE IF NOT EXISTS mystery_cells (slot INTEGER PRIMARY KEY, photo_id TEXT NOT NULL)")
+        # the mystery boxes drop: its time, whether buyers see the countdown, and the product the "Купить" button opens
+        await db.execute("CREATE TABLE IF NOT EXISTS mystery_drop (id INTEGER PRIMARY KEY, drop_at TIMESTAMPTZ, public BOOLEAN DEFAULT FALSE, buy_url TEXT DEFAULT '')")
 
         # Promo codes from the Telegram bot's game (table series_codes belongs to the bot and is only read here)
         await db.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code TEXT DEFAULT ''")
@@ -491,6 +502,9 @@ class ProductCreate(BaseModel):
     planned_shipping_rub: Optional[int] = None
     purchase_source: Optional[str] = None
     product_kind: Optional[str] = None
+    max_per_client: Optional[int] = None
+    no_promo: Optional[bool] = None
+    full_prepay: Optional[bool] = None
 
 class ProductUpdate(BaseModel):
     name: str
@@ -511,6 +525,9 @@ class ProductUpdate(BaseModel):
     planned_shipping_rub: Optional[int] = None
     purchase_source: Optional[str] = None
     product_kind: Optional[str] = None
+    max_per_client: Optional[int] = None
+    no_promo: Optional[bool] = None
+    full_prepay: Optional[bool] = None
 
 ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -795,7 +812,7 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
             }
         else:
             client_id = user["id"]
-            client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name, COALESCE(first_name, '') as first_name, COALESCE(last_name, '') as last_name, COALESCE(phone, '') as phone, COALESCE(tg_username, '') as tg_username, COALESCE(email, '') as email, user_tg_id IS NOT NULL as tg_linked FROM clients WHERE id = $1", client_id)
+            client_info = await db.fetchrow("SELECT COALESCE(full_name, '') as full_name, COALESCE(first_name, '') as first_name, COALESCE(last_name, '') as last_name, COALESCE(phone, '') as phone, COALESCE(tg_username, '') as tg_username, COALESCE(email, '') as email, user_tg_id IS NOT NULL as tg_linked, COALESCE(delivery_method, '') as delivery_method, COALESCE(delivery_address, '') as delivery_address FROM clients WHERE id = $1", client_id)
             orders = await db.fetch(
                 "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date FROM orders WHERE client_id = $1 AND archived = FALSE AND status <> 'Ожидает оплаты' ORDER BY id DESC",
                 client_id
@@ -814,6 +831,8 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
                 "tg_username": client_info["tg_username"] if client_info else "",
                 "email": client_info["email"] if client_info else "",
                 "tg_linked": bool(client_info and client_info["tg_linked"]),
+                "delivery_method": client_info["delivery_method"] if client_info else "",
+                "delivery_address": client_info["delivery_address"] if client_info else "",
                 "online_count": online,
                 "orders": [dict(o) for o in orders],
                 "archived": [dict(o) for o in archived]
@@ -1081,7 +1100,8 @@ async def get_catalog_meta():
         }
 
 PRODUCT_COLUMNS = ("id, name, figure_number, price, discount_percent, final_price, category, series, packs_count, "
-                   "photo_id, in_stock, badge, description, stock_qty, hidden, link_key, created_at")
+                   "photo_id, in_stock, badge, description, stock_qty, hidden, link_key, created_at, "
+                   "max_per_client, COALESCE(no_promo, FALSE) AS no_promo, COALESCE(full_prepay, FALSE) AS full_prepay")
 
 
 @app.get("/api/catalog")
@@ -1153,8 +1173,21 @@ def product_finance_values(product):
     return out
 
 
+def product_rule_values(product):
+    """The sale rules the admin form sent: a limit per cabinet (empty or 0 = none), no promo codes, full prepayment."""
+    sent = getattr(product, "model_fields_set", set())
+    out = {}
+    if "max_per_client" in sent:
+        v = product.max_per_client
+        out["max_per_client"] = int(v) if v is not None and int(v) > 0 else None
+    for f in ("no_promo", "full_prepay"):
+        if f in sent:
+            out[f] = bool(getattr(product, f))
+    return out
+
+
 async def save_product_finance(db, product_id, product):
-    vals = product_finance_values(product)
+    vals = {**product_finance_values(product), **product_rule_values(product)}
     if not vals:
         return
     sets = ", ".join(f"{k} = ${i}" for i, k in enumerate(vals, start=1))
@@ -1310,7 +1343,9 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
     wanted_ids = sorted({it.id for it in checkout.items})
     async with pool.acquire() as price_db:
         rows = await price_db.fetch(
-            "SELECT id, name, figure_number, price, final_price, photo_id, purchase_usd, planned_shipping_rub, product_kind FROM products WHERE id = ANY($1::int[])",
+            "SELECT id, name, figure_number, price, final_price, photo_id, purchase_usd, planned_shipping_rub, product_kind, "
+            "max_per_client, COALESCE(no_promo, FALSE) AS no_promo, COALESCE(full_prepay, FALSE) AS full_prepay "
+            "FROM products WHERE id = ANY($1::int[])",
             wanted_ids,
         )
     try:
@@ -1319,11 +1354,20 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
         raise HTTPException(status_code=409, detail=str(exc))
 
     items_text = "\n".join(item_lines)
+    rules = {r["id"]: dict(r) for r in rows}
+    full_prepay_names = [rules[pid]["name"] for pid in wanted_ids if rules.get(pid, {}).get("full_prepay")]
+    if full_prepay_names and checkout.payment_type != "100%":
+        raise HTTPException(status_code=409, detail=f"«{full_prepay_names[0]}» оформляется только по 100% предоплате")
+    # promo codes count only the goods they are allowed for
+    qty_by_pid = aggregate_cart_qty(checkout.items)
+    promo_goods = sum(unit_price(rules[pid]) * q for pid, q in qty_by_pid.items() if pid in rules and not rules[pid]["no_promo"])
     promo_code = normalize_promo(checkout.promo_code)
     promo_discount = 0
     if promo_code:
+        if promo_goods <= 0:
+            raise HTTPException(status_code=409, detail="Промокоды не действуют на товары в корзине")
         async with pool.acquire() as promo_db:
-            amount, message = await lookup_site_promo(promo_db, promo_code, total_price)
+            amount, message = await lookup_site_promo(promo_db, promo_code, promo_goods)
         if amount is None:
             raise HTTPException(status_code=409, detail=message)
         total_price -= amount
@@ -1346,6 +1390,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
         except Exception:
             client_id = None
 
+    logged_in = bool(client_id)
     is_new_client = False
     async with pool.acquire() as db:
         if not client_id:
@@ -1379,6 +1424,25 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                    WHERE id = $8""",
                 name, first_name, last_name, phone, telegram, email, checkout.marketing_consent, client_id
             )
+
+        # the cabinet remembers the delivery choice (not when a guest only typed somebody's phone)
+        if logged_in or is_new_client:
+            await db.execute("UPDATE clients SET delivery_method = $1, delivery_address = $2 WHERE id = $3",
+                             (checkout.delivery_method or "")[:100], (checkout.comment or "").strip()[:300], client_id)
+
+        # a product limited per cabinet: paid orders and fresh unpaid ones of this cabinet count
+        for pid, qty in qty_by_pid.items():
+            limit = rules.get(pid, {}).get("max_per_client")
+            if not limit:
+                continue
+            already = await db.fetchval(
+                "SELECT count(*) FROM orders WHERE client_id = $1 AND product_id = $2 "
+                "AND (payment_status = 'paid' OR (payment_status = 'pending' AND created_at > now() - interval '1 hour'))",
+                client_id, pid)
+            if already + qty > limit:
+                left = max(0, limit - already)
+                more = f"можно ещё {left} шт." if left else "вы уже оформили максимум"
+                raise HTTPException(status_code=409, detail=f"«{rules[pid]['name']}»: не больше {limit} шт. на один аккаунт, {more}")
 
         # Reserve limited stock atomically; a failed UPDATE means not enough left. The transaction rolls
         # back earlier reservations of this same request when we raise.
@@ -1414,7 +1478,7 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
         status_text = AWAITING_PAYMENT
         products_map = {r["id"]: dict(r) for r in rows}
         lines = checkout_lines(checkout.items, products_map)
-        shares = split_discount([ln["total"] for ln in lines], promo_discount)
+        shares = split_discount([0 if rules[ln["pid"]]["no_promo"] else ln["total"] for ln in lines], promo_discount)
         reserved_by_pid = dict(reserved)
         checkout_note = f"📦 Доставка: {checkout.delivery_method or 'Не указан'}"
         if checkout.comment:
@@ -1433,12 +1497,12 @@ async def process_checkout(req: Request, checkout: CheckoutRequest):
                 new_id = await db.fetchval(
                     """INSERT INTO orders
                        (client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, customer_name, customer_phone, customer_tg, payment_type, payment_status, stock_items, checkout_note,
-                        planned_purchase_cost, planned_shipping, purchase_usd, fx_rate, product_kind, promo_code, promo_discount)
-                       VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13, $14, $15, $16, $17, $18, $19, $20) RETURNING id""",
+                        planned_purchase_cost, planned_shipping, purchase_usd, fx_rate, product_kind, promo_code, promo_discount, product_id)
+                       VALUES ($1, $2, $3, $4, $5, $6, FALSE, $7, 0, 0, $8, $9, $10, $11, 'pending', $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) RETURNING id""",
                     client_id, ln["text"], line_total, line_paid, status_text, ln["photo"], order_date,
                     name, phone, telegram, checkout.payment_type, dump_stock_items(stock) if stock else "", checkout_note,
                     snap["planned_purchase_cost"], snap["planned_shipping"], snap["purchase_usd"], snap["fx_rate"], snap["product_kind"],
-                    promo_code if share else "", share
+                    promo_code if share else "", share, ln["pid"]
                 )
                 order_ids.append(new_id)
             order_id = order_ids[0]
@@ -2236,6 +2300,8 @@ async def promo_check(request: Request, body: PromoCheckIn):
     async with pool.acquire() as db:
         if await throttle_is_blocked(db, list(keys), now):
             raise HTTPException(status_code=429, detail="Слишком много попыток, попробуйте через 15 минут")
+        if body.total <= 0:
+            raise HTTPException(status_code=400, detail="Промокоды не действуют на товары в корзине")
         amount, message = await lookup_site_promo(db, body.code, max(0, body.total))
         if amount is None:
             if message == "Промокод не найден":
@@ -2709,6 +2775,11 @@ def new_order_title(order_id, payment_pending):
 
 def paid_order_title(order_id):
     return f"✅ **ОПЛАЧЕН: заказ #{order_id}**"
+
+
+def unit_price(product):
+    """The price of one piece: the sale price when there is one."""
+    return product["final_price"] if (product["final_price"] or 0) > 0 else product["price"]
 
 
 def price_cart(items, products_by_id):
@@ -3383,12 +3454,26 @@ async def mystery_is_logo(photo_id):
     return MYSTERY_LOGOS[photo_id]
 
 
-async def mystery_boxes_data():
+MSK = timezone(timedelta(hours=3))
+MYSTERY_DROP_DEFAULT = datetime(2026, 11, 22, 18, 0, tzinfo=MSK)
+
+
+def mystery_drop_payload(row):
+    """The drop as the page needs it: the moment (ISO, Moscow time), whether buyers see it, the product link."""
+    at = (row["drop_at"] if row and row["drop_at"] else MYSTERY_DROP_DEFAULT).astimezone(MSK)
+    return {"at": at.isoformat(), "public": bool(row and row["public"]), "buy_url": (row["buy_url"] if row else "") or ""}
+
+
+async def mystery_boxes_data(admin=False):
     async with pool.acquire() as db:
         rows = await db.fetch("SELECT slot, photo_id FROM mystery_cells ORDER BY slot")
+        drop_row = await db.fetchrow("SELECT drop_at, public, buy_url FROM mystery_drop WHERE id = 1")
     rows = [r for r in rows if 1 <= r["slot"] <= MYSTERY_BOX_SLOTS]
     logos = await asyncio.gather(*(mystery_is_logo(r["photo_id"]) for r in rows))
+    drop = mystery_drop_payload(drop_row)
     return {"price": MYSTERY_BOX_PRICE, "total": MYSTERY_BOX_SLOTS, "reached": mystery_state()["reached"],
+            # buyers see the drop only after an admin turns it on
+            "drop": drop if admin or drop["public"] else None,
             "cells": [{"slot": r["slot"], "photo": r["photo_id"], "logo": logo} for r, logo in zip(rows, logos)]}
 
 
@@ -3429,7 +3514,36 @@ async def mystery_admin_boxes(response: Response, admin: dict = Depends(require_
     await mystery_goal_reached()
     response.set_cookie(MYSTERY_PASS_COOKIE, create_access_token({"scope": MYSTERY_PASS_SCOPE}), max_age=12 * 3600,
                         path="/mystery", httponly=True, secure=True, samesite="lax")
-    return await mystery_boxes_data()
+    return await mystery_boxes_data(admin=True)
+
+
+class MysteryDropIn(BaseModel):
+    at: str            # "2026-11-22T18:00", Moscow time
+    public: bool = False
+    buy_url: str = ""
+
+
+def clean_drop(body):
+    try:
+        at = datetime.fromisoformat(body.at.strip())
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Укажите дату и время дропа")
+    at = at if at.tzinfo else at.replace(tzinfo=MSK)
+    url = body.buy_url.strip()
+    if url and not (url.startswith("/") or url.startswith("https://")):
+        raise HTTPException(status_code=400, detail="Ссылка на товар должна начинаться с https:// или /")
+    return at, url[:500]
+
+
+@app.put("/api/mystery/admin/drop")
+async def mystery_set_drop(body: MysteryDropIn, admin: dict = Depends(require_admin)):
+    at, url = clean_drop(body)
+    async with pool.acquire() as db:
+        await db.execute(
+            "INSERT INTO mystery_drop (id, drop_at, public, buy_url) VALUES (1, $1, $2, $3) "
+            "ON CONFLICT (id) DO UPDATE SET drop_at = $1, public = $2, buy_url = $3", at, body.public, url)
+        row = await db.fetchrow("SELECT drop_at, public, buy_url FROM mystery_drop WHERE id = 1")
+    return mystery_drop_payload(row)
 
 
 class MysteryCellIn(BaseModel):

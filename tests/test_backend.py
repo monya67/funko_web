@@ -613,18 +613,24 @@ def test_mystery_limits_clicks_per_address():
 class FakeMysteryDb:
     def __init__(self):
         self.cells = {}
+        self.drop = None
 
     async def fetch(self, query, *args):
         return [{"slot": s, "photo_id": p} for s, p in sorted(self.cells.items())]
 
     async def execute(self, query, *args):
-        if query.startswith("DELETE"):
+        if "mystery_drop" in query:
+            self.drop = {"drop_at": args[0], "public": args[1], "buy_url": args[2]}
+        elif query.startswith("DELETE"):
             self.cells.pop(args[0], None)
         else:
             self.cells[args[0]] = args[1]
 
     async def fetchval(self, query, *args):
         return 0
+
+    async def fetchrow(self, query, *args):
+        return self.drop if "mystery_drop" in query else None
 
 
 class FakeMysteryPool:
@@ -702,6 +708,32 @@ def test_only_admins_change_mystery_cells(monkeypatch):
         assert client.get("/api/mystery/admin/boxes").json()["cells"] == []
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_mystery_drop_is_for_admins_until_they_show_it(monkeypatch):
+    client = mystery_client(monkeypatch, 100000, 0)
+    drop = {"at": "2026-11-22T18:00", "public": False, "buy_url": ""}
+    assert client.put("/api/mystery/admin/drop", json=drop).status_code == 401
+    assert client.get("/api/mystery/boxes").json()["drop"] is None
+    main.app.dependency_overrides[main.require_admin] = lambda: {"role": "admin"}
+    try:
+        assert client.get("/api/mystery/admin/boxes").json()["drop"]["at"].startswith("2026-11-22T18:00")
+        assert client.put("/api/mystery/admin/drop", json={**drop, "at": "завтра"}).status_code == 400
+        assert client.put("/api/mystery/admin/drop", json={**drop, "buy_url": "javascript:alert(1)"}).status_code == 400
+        assert client.put("/api/mystery/admin/drop", json=drop).json()["public"] is False
+        assert client.get("/api/mystery/boxes").json()["drop"] is None
+        saved = client.put("/api/mystery/admin/drop", json={**drop, "public": True, "buy_url": "/product/77"}).json()
+        assert saved == {"at": "2026-11-22T18:00:00+03:00", "public": True, "buy_url": "/product/77"}
+        assert client.get("/api/mystery/boxes").json()["drop"]["buy_url"] == "/product/77"
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_product_sale_rules_are_saved_only_when_sent():
+    sent = main.ProductUpdate(name="Box", price=3650, max_per_client=2, no_promo=True, full_prepay=True)
+    assert main.product_rule_values(sent) == {"max_per_client": 2, "no_promo": True, "full_prepay": True}
+    assert main.product_rule_values(main.ProductUpdate(name="Box", price=3650, max_per_client=0)) == {"max_per_client": None}
+    assert main.product_rule_values(main.ProductUpdate(name="Box", price=3650)) == {}
 
 
 def test_pages_have_short_addresses_and_old_links_redirect():

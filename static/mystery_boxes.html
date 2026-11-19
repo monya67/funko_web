@@ -69,6 +69,23 @@
         .deal small { display: block; margin-bottom: 8px; font-size: 12px; letter-spacing: 0.24em; text-transform: uppercase; opacity: 0.72; }
         .deal strong { display: block; font: 400 clamp(30px, 4.4vw, 52px)/1.1 'Anton', Impact, sans-serif; letter-spacing: 0.02em; white-space: nowrap; }
         .drop-date { color: var(--red); text-shadow: 0 0 22px rgba(255, 32, 44, 0.85); animation: pulse 2.4s ease-in-out infinite; }
+        /* the drop countdown and the buy button */
+        .drop { margin: 18px 0 0; padding: 22px 16px 24px; border: 1px solid var(--line); background: rgba(13, 4, 5, 0.6); text-align: center; }
+        .drop[hidden] { display: none; }
+        .drop-title { font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; opacity: 0.8; margin-bottom: 12px; }
+        .drop-clock { display: flex; justify-content: center; gap: clamp(8px, 2vw, 22px); }
+        .drop-clock div { min-width: clamp(54px, 12vw, 104px); }
+        .drop-clock b { display: block; font: 400 clamp(38px, 8vw, 88px)/1 'Anton', Impact, sans-serif; color: var(--red); text-shadow: 0 0 22px rgba(255, 32, 44, 0.75); font-variant-numeric: tabular-nums; }
+        .drop-clock span { display: block; margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.6; }
+        .drop-buy { display: inline-block; margin-top: 6px; padding: 16px 46px; background: var(--red); color: #fff; text-decoration: none; font: 400 clamp(24px, 4vw, 34px)/1 'Anton', Impact, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 0 30px rgba(255, 32, 44, 0.55); }
+        .drop-buy[hidden] { display: none; }
+        .drop-note { margin: 12px 0 0; font-size: 14px; opacity: 0.75; }
+        .drop-note:empty { display: none; }
+        .drop-admin { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+        .drop-admin input[type="datetime-local"], .drop-admin input[type="text"] { padding: 6px 8px; background: #160608; color: #fff; border: 1px solid var(--line); font: inherit; }
+        .drop-admin input[type="text"] { flex: 1; min-width: 220px; }
+        .drop-admin button { padding: 7px 16px; background: var(--red); color: #fff; border: 0; font: inherit; font-weight: 700; cursor: pointer; }
+        .drop-admin .ok { color: #7dff9a; }
         @keyframes pulse { 50% { text-shadow: 0 0 6px rgba(255, 32, 44, 0.4); } }
 
         .series-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 44px 0 12px; }
@@ -162,7 +179,18 @@
     <section class="deal" aria-label="Условия">
         <div><small>Цена бокса</small><strong id="price">&nbsp;</strong></div>
         <div><small>Всего боксов</small><strong id="total">30</strong></div>
-        <div><small>Дата дропа</small><strong class="drop-date">XX.11.2026</strong></div>
+        <div><small>Дата дропа</small><strong class="drop-date" id="drop-date">Скоро</strong></div>
+    </section>
+    <section class="drop" id="drop" hidden aria-live="polite">
+        <div class="drop-title" id="drop-title">До дропа</div>
+        <div class="drop-clock" id="drop-clock">
+            <div><b id="dd">00</b><span>дней</span></div>
+            <div><b id="dh">00</b><span>часов</span></div>
+            <div><b id="dm">00</b><span>минут</span></div>
+            <div><b id="ds">00</b><span>секунд</span></div>
+        </div>
+        <a class="drop-buy" id="drop-buy" hidden>Купить</a>
+        <p class="drop-note" id="drop-note"></p>
     </section>
     <div class="series-head">
         <h2>Серии</h2>
@@ -174,6 +202,14 @@
     <div class="admin-bar" id="admin-bar" hidden>
         <b>Режим админа.</b> Нажмите на ячейку, чтобы загрузить или заменить фото, крестик убирает его.
         <span id="admin-preview" hidden>Покупатели страницу пока не видят.</span>
+        <div class="drop-admin">
+            <b>Дроп:</b>
+            <input type="datetime-local" id="drop-at" aria-label="Дата и время дропа (МСК)">
+            <label><input type="checkbox" id="drop-public"> показать таймер всем</label>
+            <input type="text" id="drop-url" placeholder="Ссылка на товар для кнопки «Купить» (можно позже)">
+            <button type="button" id="drop-save">Сохранить</button>
+            <span id="drop-saved"></span>
+        </div>
         <span class="err" id="admin-err" role="alert" hidden></span>
     </div>
 </main>
@@ -247,7 +283,59 @@
         $('progress').style.width = `${(state.cells.size / state.total) * 100}%`;
     }
 
+    // --- the drop: date in the conditions, a countdown, then the buy button ---
+    let dropTimer = null;
+    const pad = n => String(n).padStart(2, '0');
+    function renderDrop(drop) {
+        if (dropTimer) { clearInterval(dropTimer); dropTimer = null; }
+        if (!drop) { $('drop').hidden = true; $('drop-date').textContent = 'Скоро'; return; }
+        const at = new Date(drop.at);
+        const msk = { timeZone: 'Europe/Moscow' };
+        $('drop-date').textContent = `${at.toLocaleDateString('ru-RU', { ...msk, day: '2-digit', month: '2-digit' })} · ${at.toLocaleTimeString('ru-RU', { ...msk, hour: '2-digit', minute: '2-digit' })}`;
+        $('drop').hidden = false;
+        const tick = () => {
+            const left = Math.max(0, Math.floor((at.getTime() - Date.now()) / 1000));
+            const live = left === 0;
+            $('drop-clock').hidden = live;
+            $('drop-title').textContent = live ? 'Дроп начался' : 'До дропа';
+            $('drop-buy').hidden = !(live && drop.buy_url);
+            if (drop.buy_url) $('drop-buy').href = drop.buy_url;
+            $('drop-note').textContent = live && !drop.buy_url ? 'Товар появится здесь через пару минут' : (state.admin && !drop.public ? 'Таймер видят только админы' : '');
+            if (!live) {
+                $('dd').textContent = pad(Math.floor(left / 86400));
+                $('dh').textContent = pad(Math.floor(left % 86400 / 3600));
+                $('dm').textContent = pad(Math.floor(left % 3600 / 60));
+                $('ds').textContent = pad(left % 60);
+            } else if (dropTimer) { clearInterval(dropTimer); dropTimer = null; }
+        };
+        tick();
+        if (at.getTime() > Date.now()) dropTimer = setInterval(tick, 1000);
+        if (state.admin) {
+            const p = new Intl.DateTimeFormat('sv-SE', { ...msk, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(at);
+            $('drop-at').value = p.replace(' ', 'T');
+            $('drop-public').checked = !!drop.public;
+            $('drop-url').value = drop.buy_url || '';
+        }
+    }
+
+    $('drop-save').addEventListener('click', async () => {
+        $('drop-saved').textContent = '';
+        showError('');
+        try {
+            const res = await fetch('/api/mystery/admin/drop', {
+                method: 'PUT', headers: { ...auth, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ at: $('drop-at').value, public: $('drop-public').checked, buy_url: $('drop-url').value.trim() })
+            });
+            if (!res.ok) throw new Error(await failure(res, 'Не удалось сохранить дроп'));
+            renderDrop(await res.json());
+            $('drop-saved').innerHTML = '<span class="ok">Сохранено</span>';
+        } catch (e) {
+            showError(e.message);
+        }
+    });
+
     function apply(data) {
+        renderDrop(data.drop);
         state.total = data.total;
         state.cells = new Map(data.cells.map(c => [c.slot, { photo: c.photo, logo: !!c.logo }]));
         $('price').textContent = `${data.price.toLocaleString('ru-RU').replace(/ /g, ' ')} ₽`;

@@ -4737,3 +4737,15 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 .login-forgot-row input { flex: 1; min-width: 0; }
 .login-forgot .login-forgot-msg { margin: 8px 0 0; color: var(--ink); }
 .login-forgot .login-forgot-msg:empty { display: none; }
+
+/* sale rules of a product (admin form, product page, checkout) */
+.product-rules { padding: 12px; border: 1px dashed rgba(var(--ink-rgb), 0.25); border-radius: 10px; }
+.product-rules-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 8px; flex-wrap: wrap; }
+.product-rules-row label { font-size: 0.88rem; }
+.product-rules-row input { width: 140px; }
+.product-rule-check { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 0.88rem; cursor: pointer; }
+.product-rule-check input { width: 18px; height: 18px; flex: none; accent-color: var(--primary); }
+.pp-rules { margin: -16px 0 22px; padding: 0; list-style: none; font-size: 0.85rem; color: var(--muted); }
+.pp-rules li { margin: 3px 0; }
+.prepay-rule-note { grid-column: 1 / -1; margin: 0; font-size: 0.82rem; color: var(--pre); }
+.prepay-option-card.rule-off { display: none; }

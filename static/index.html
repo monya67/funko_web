@@ -65,7 +65,7 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/styles.css?v=1799300000000">
+    <link rel="stylesheet" href="/static/styles.css?v=1799400000000">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@700&family=Outfit:wght@300;400;500;600;700;800;900&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -1818,6 +1818,7 @@
             <div style="margin-bottom:18px;">
                 <label style="display:block; font-size:0.85rem; font-weight:600; color:var(--muted); margin-bottom:8px;">ВЫБЕРИТЕ ФОРМАТ ОПЛАТЫ:</label>
                 <div class="prepay-options-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <p class="prepay-rule-note hidden" id="prepay-rule-note">В корзине товар, который оформляется только по 100% предоплате</p>
                     <div class="prepay-option-card active" id="option-prepay-50" onclick="window.selectPaymentOption('50%')">
                         <div class="prepay-card-header">
                             <span class="prepay-radio"></span>
@@ -2098,6 +2099,17 @@
                     <div class="photo-hint">Пусто: не считается. Число: сколько можно продать, в предзаказе и в наличии; когда купят всё, товар станет «Распродан».</div>
                 </div>
 
+                <!-- sale rules for drops -->
+                <div class="input-group product-rules">
+                    <label>Правила продажи (для дропов и мистери боксов)</label>
+                    <div class="product-rules-row">
+                        <label for="product-max-per-client">Максимум на один аккаунт</label>
+                        <input type="number" id="product-max-per-client" min="1" step="1" placeholder="без лимита">
+                    </div>
+                    <label class="product-rule-check"><input type="checkbox" id="product-no-promo"><span>Промокоды на этот товар не действуют</span></label>
+                    <label class="product-rule-check"><input type="checkbox" id="product-full-prepay"><span>Только 100% предоплата (без варианта 50%)</span></label>
+                </div>
+
                 <div class="input-group">
                     <label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">
                         <input type="checkbox" id="product-hidden" style="width:18px; height:18px; margin-top:2px; flex:none; accent-color: var(--primary);">
@@ -2332,6 +2344,6 @@
     </div>
 
     <!-- Cache buster timestamp forces browser to reload fresh JS every time -->
-    <script src="/static/app.js?v=1799300000000"></script>
+    <script src="/static/app.js?v=1799400000000"></script>
 </body>
 </html>
