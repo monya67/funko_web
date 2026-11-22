@@ -4665,6 +4665,38 @@ tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
 #orders-tab.client-view #orders-pagination,
 #orders-tab.client-view:not(.show-filters) .filters-bar { display: none; }
 #orders-tab.client-view .filters-bar { margin-bottom: 16px; }
+
+.filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(var(--ink-rgb), 0.05);
+    border: 1px solid rgba(var(--ink-rgb), 0.14);
+    color: var(--gray-light);
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.filter-toggle:hover {
+    border-color: rgba(var(--ink-rgb), 0.28);
+    color: var(--ink);
+}
+.filter-toggle input[type="checkbox"] {
+    accent-color: var(--accent);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    margin: 0;
+}
+.filter-toggle:has(input:checked) {
+    border-color: rgba(229, 9, 20, 0.55);
+    background: rgba(229, 9, 20, 0.12);
+    color: var(--ink);
+}
 .cab { --cab-line: rgba(var(--ink-rgb), 0.1); }
 .cab-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .cab-title { font-family: var(--font-display); font-weight: 400; font-size: clamp(2rem, 6vw, 2.8rem); line-height: 1; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }

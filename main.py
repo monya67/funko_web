@@ -800,10 +800,10 @@ async def get_dashboard(user: dict = Depends(get_current_user)):
                 FROM clients ORDER BY id DESC
             """)
             orders = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = FALSE AND status <> 'Ожидает оплаты' ORDER BY id DESC"
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, created_at FROM orders WHERE archived = FALSE AND status <> 'Ожидает оплаты' ORDER BY id DESC"
             )
             archived = await db.fetch(
-                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost FROM orders WHERE archived = TRUE AND status <> 'Ожидает оплаты' ORDER BY id DESC"
+                "SELECT id, client_id, items, total_price, paid_amount, status, photo_id, archived, order_date, cost_price, delivery_cost, created_at FROM orders WHERE archived = TRUE AND status <> 'Ожидает оплаты' ORDER BY id DESC"
             )
             return {
                 "role": "admin",

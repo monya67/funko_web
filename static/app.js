@@ -169,7 +169,13 @@ function init() {
 
     if (token) {
         loadDashboardData().then(() => {
-            window.switchTab(initialTab, false);
+            const params = new URLSearchParams(window.location.search);
+            if (initialTab === 'catalog' && params.get('product')) {
+                handledUrlProduct = '';
+                openProductFromUrl(false);
+            } else {
+                window.switchTab(initialTab, false);
+            }
         }).catch(() => {
             handleLogout();
         });
@@ -682,7 +688,7 @@ window.switchTab = function(tabName, pushState = true) {
 window.addEventListener('popstate', (e) => {
     const tab = (e.state && e.state.tab) ? e.state.tab : getTabFromURL();
     if (tab === 'product' && e.state && e.state.product) {
-        window.openProductDetail(e.state.product);
+        window.openProductDetail(e.state.product, false);
         return;
     }
     window.switchTab(tab, false);
@@ -871,6 +877,48 @@ function formatDisplayDate(dateStr) {
     return dateStr;
 }
 
+function isExtendedOrderDate() {
+    return localStorage.getItem('funko_orders_date_ext') === '1';
+}
+
+function formatOrderDate(order) {
+    const base = formatDisplayDate(order?.order_date);
+    if (!isExtendedOrderDate() || base === '—') return base;
+    if (order?.order_date && /\d{2}:\d{2}/.test(order.order_date)) {
+        const m = String(order.order_date).match(/\d{2}:\d{2}/);
+        if (m) return `${base} ${m[0]}`;
+    }
+    if (!order?.created_at) return base;
+    const dt = new Date(order.created_at);
+    if (Number.isNaN(dt.getTime())) return base;
+    const time = dt.toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'Europe/Moscow'
+    });
+    return `${base} ${time}`;
+}
+
+function initExtendedDateToggles() {
+    const boxes = document.querySelectorAll('.date-ext-checkbox');
+    const enabled = isExtendedOrderDate();
+    boxes.forEach(cb => {
+        cb.checked = enabled;
+        if (cb.dataset.bound) return;
+        cb.dataset.bound = '1';
+        cb.addEventListener('change', (e) => {
+            const on = !!e.target.checked;
+            localStorage.setItem('funko_orders_date_ext', on ? '1' : '0');
+            document.querySelectorAll('.date-ext-checkbox').forEach(other => {
+                other.checked = on;
+            });
+            renderOrders();
+            renderArchivedOrders();
+        });
+    });
+}
+initExtendedDateToggles();
+
 // dd.mm.yyyy (or yyyy-mm-dd) -> "yyyymmdd", so dates sort by time and not as text; no date sorts as the oldest
 function dateSortKey(d) {
     const s = String(d || '').trim();
@@ -878,6 +926,16 @@ function dateSortKey(d) {
     if (m) return m[3] + m[2] + m[1];
     m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
     return m ? m[1] + m[2] + m[3] : '';
+}
+
+function orderDateSortKey(o) {
+    const base = dateSortKey(o?.order_date);
+    if (!base) return '';
+    if (isExtendedOrderDate() && o?.created_at) {
+        const ts = Date.parse(o.created_at);
+        if (!Number.isNaN(ts)) return `${base}|${String(ts).padStart(16, '0')}`;
+    }
+    return base;
 }
 
 function filterByDate(orders, yearId, monthId) {
@@ -955,7 +1013,7 @@ function sortOrders(orders, sortState) {
         let valA, valB;
         const k = sortState.key;
         if (k === 'id') { valA = a.id; valB = b.id; }
-        else if (k === 'date') { valA = dateSortKey(a.order_date); valB = dateSortKey(b.order_date); }
+        else if (k === 'date') { valA = orderDateSortKey(a); valB = orderDateSortKey(b); }
         else if (k === 'client') { valA = a.client_id || 0; valB = b.client_id || 0; }
         else if (k === 'price') { 
             valA = a.total_price || 0; 
@@ -1156,7 +1214,7 @@ function renderOrders() {
         }
         html += `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>`;
         html += `<td>${order.id}</td>`;
-        html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
+        html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatOrderDate(order)}</td>`;
         if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
         html += makePhotoCell(order.photo_id);
         html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
@@ -1240,7 +1298,7 @@ function renderArchivedOrders() {
         }
         html += `<td style="text-align:center;color:var(--gray-light);font-size:0.85rem;font-weight:600;">${startIdx + i + 1}</td>`;
         html += `<td>${order.id}</td>`;
-        html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatDisplayDate(order.order_date)}</td>`;
+        html += `<td style="white-space:nowrap;font-size:0.85rem;color:var(--gray-light);">${formatOrderDate(order)}</td>`;
         if (role === 'admin') html += `<td class="admin-only">${order.client_id}</td>`;
         html += makePhotoCell(order.photo_id);
         html += `<td>${order.items.replace(/\n/g, '<br>')}</td>`;
@@ -1397,7 +1455,7 @@ function renderAccounting() {
         let valA, valB;
         const k = accountingSort.key;
         if (k === 'id') { valA = a.id; valB = b.id; }
-        else if (k === 'date') { valA = dateSortKey(a.order_date); valB = dateSortKey(b.order_date); }
+        else if (k === 'date') { valA = orderDateSortKey(a); valB = orderDateSortKey(b); }
         else if (k === 'price') { valA = a.price; valB = b.price; }
         else if (k === 'cost') { valA = a.cost; valB = b.cost; }
         else if (k === 'delivery') { valA = a.delivery; valB = b.delivery; }
@@ -1624,9 +1682,9 @@ function closeModals() {
     const overlay = document.getElementById('modal-overlay');
     if (overlay) overlay.classList.add('hidden');
     document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
-    // Clear ?product= from URL if product detail was open
+    // Clear ?product= from URL only if product detail tab is not active
     const url = new URL(window.location.href);
-    if (url.searchParams.has('product')) {
+    if (url.searchParams.has('product') && !document.getElementById('product-tab')?.classList.contains('active')) {
         url.searchParams.delete('product');
         history.pushState({ tab: 'catalog' }, '', url.toString());
     }
@@ -2519,6 +2577,7 @@ function renderCatalog() {
             emptyMsg.classList.remove('hidden');
         }
         updatePaginationUI('catalog', 0);
+        openProductFromUrl(false);
         return;
     }
     if (emptyMsg) emptyMsg.classList.add('hidden');
@@ -2546,7 +2605,7 @@ function renderCatalog() {
 // --- Product Page ---
 window._ppCurrentId = null;
 
-window.openProductDetail = function(productId) {
+window.openProductDetail = function(productId, pushState = true) {
     const p = findProduct(productId);
     if (!p) return;
     window._ppCurrentId = productId;
@@ -2630,7 +2689,10 @@ window.openProductDetail = function(productId) {
 
     // Update URL and switch to product page tab
     const urlKey = new URLSearchParams(window.location.search).get('k') || (p.hidden && p.link_key ? p.link_key : '');
-    history.pushState({ tab: 'product', product: productId }, '', `/catalog?product=${productId}${urlKey ? `&k=${encodeURIComponent(urlKey)}` : ''}`);
+    const targetUrl = `/catalog?product=${productId}${urlKey ? `&k=${encodeURIComponent(urlKey)}` : ''}`;
+    if (pushState && window.location.pathname + window.location.search !== targetUrl) {
+        history.pushState({ tab: 'product', product: productId }, '', targetUrl);
+    }
     window.switchTab('product', false);
 };
 
@@ -4949,20 +5011,20 @@ window.renderProductsAdmin = renderProductsAdmin;
 document.getElementById('products-add-btn')?.addEventListener('click', () => window.openAddProductModal());
 
 let handledUrlProduct = '';
-async function openProductFromUrl() {
+async function openProductFromUrl(pushState = true) {
     const params = new URLSearchParams(window.location.search);
     const id = parseInt(params.get('product') || '', 10);
     if (!id) { handledUrlProduct = ''; return; }
     const signature = `${id}|${params.get('k') || ''}`;
     if (handledUrlProduct === signature) return;
     handledUrlProduct = signature;
-    if (findProduct(id)) { window.openProductDetail(id); return; }
+    if (findProduct(id)) { window.openProductDetail(id, pushState); return; }
     try {
         const res = await fetch(`/api/catalog/${id}?k=${encodeURIComponent(params.get('k') || '')}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         if (!res.ok) return;
         linkedProducts.push(await res.json());
-        window.openProductDetail(id);
+        window.openProductDetail(id, pushState);
     } catch (e) { /* offline: stay on the catalog */ }
 }
