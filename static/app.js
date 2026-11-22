@@ -2388,7 +2388,7 @@ function productCard(p) {
         <div class="product-card-body">
             <div class="product-card-brand">${p.category || ''}</div>
             <div class="product-card-title" title="${p.name}">${p.figure_number ? `<span class="card-number">#${p.figure_number}</span> ` : ''}${p.name}</div>
-            ${st.sold ? '' : '<div class="card-prepay">Предоплата 50%</div>'}
+            ${st.sold ? '' : `<div class="card-prepay">${p.full_prepay ? 'Оплата 100%' : 'Предоплата 50%'}</div>`}
             ${st.few ? `<div class="card-left">Осталось ${st.qty} шт.</div>` : ''}
             <div class="product-card-price-row">
                 <div class="price-group">${st.sold ? '<span class="price-sold">Распродан</span>' : `<span class="price-final">${finalPrice} ₽</span>${oldPrice}`}</div>
@@ -2590,7 +2590,10 @@ window.openProductDetail = function(productId) {
     }
 
     const half = Math.round((p.final_price || p.price) * 0.5).toLocaleString('ru');
-    document.getElementById('pp-prepay').innerHTML = `<strong>Предоплата 50%</strong><span>Внесите ${half} ₽ сейчас, остальное при получении. Цена фиксируется после предоплаты.</span>`;
+    const full = (p.final_price || p.price).toLocaleString('ru');
+    document.getElementById('pp-prepay').innerHTML = p.full_prepay
+        ? `<strong>Оплата 100%</strong><span>Этот товар оформляется только с полной оплатой: ${full} ₽ при заказе.</span>`
+        : `<strong>Предоплата 50%</strong><span>Внесите ${half} ₽ сейчас, остальное при получении. Цена фиксируется после предоплаты.</span>`;
     document.getElementById('pp-stock').innerHTML = p.in_stock
         ? `<span style="color:var(--ok);">● В наличии</span>`
         : `<span style="color:var(--warn);">● Под заказ</span>`;
@@ -3348,9 +3351,13 @@ function renderCartModal() {
         `;
     }).join('');
 
-    const prepay50 = Math.round(totalPrice * 0.5);
+    // a product sold only with full payment makes the whole cart paid in full
+    const fullOnly = cartNeedsFullPrepay();
+    const prepay = fullOnly ? totalPrice : Math.round(totalPrice * 0.5);
     if (totalEl) totalEl.textContent = `${totalPrice.toLocaleString('ru')} ₽`;
-    if (prepayEl) prepayEl.textContent = `${prepay50.toLocaleString('ru')} ₽`;
+    if (prepayEl) prepayEl.textContent = `${prepay.toLocaleString('ru')} ₽`;
+    const prepayLabel = document.getElementById('cart-prepay-label');
+    if (prepayLabel) prepayLabel.textContent = fullOnly ? 'Оплата 100% при заказе:' : 'Предоплата 50% при заказе:';
 }
 
 window.openCartModal = function() {
@@ -3373,7 +3380,7 @@ function promoGoods() {
     return funkoCart.filter(i => !i.no_promo).reduce((sum, i) => sum + (i.final_price || i.price) * i.qty, 0);
 }
 
-const cartNeedsFullPrepay = () => funkoCart.some(i => i.full_prepay);
+function cartNeedsFullPrepay() { return funkoCart.some(i => i.full_prepay); }
 
 // a percent code follows the cart; rubles stay as they are
 function promoAmountFor(promo, goods) {
