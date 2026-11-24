@@ -118,6 +118,10 @@
         .soldout .cell.filled::after { content: 'SOLD OUT'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-12deg); padding: 6px 12px; border: 2px solid var(--red); background: rgba(13, 4, 5, 0.82); color: var(--red); font: 400 clamp(18px, 2.6vw, 30px)/1 'Anton', Impact, sans-serif; letter-spacing: 0.08em; white-space: nowrap; pointer-events: none; }
         .soldout-badge { display: none; margin: 6px 0 14px; font: 400 clamp(22px, 3.4vw, 34px)/1 'Anton', Impact, sans-serif; letter-spacing: 0.08em; color: var(--red); text-shadow: 0 0 18px rgba(255, 32, 44, 0.7); }
         .soldout .soldout-badge { display: block; }
+        /* all distributed: the buy button turns into a sold-out label */
+        .drop-soldout { display: none; margin-top: 6px; padding: 16px 46px; border: 2px solid var(--red); color: var(--red); font: 400 clamp(24px, 4vw, 34px)/1 'Anton', Impact, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; }
+        .soldout .drop-buy { display: none !important; }
+        .soldout .drop-soldout { display: inline-block; }
         button.cell { cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; }
         button.cell:hover { transform: translateY(-3px); border-color: var(--red); }
         .remove {
@@ -194,6 +198,7 @@
             <div><b id="ds">00</b><span>секунд</span></div>
         </div>
         <a class="drop-buy" id="drop-buy" hidden>Купить</a>
+        <span class="drop-soldout">Всё распродано</span>
         <p class="drop-note" id="drop-note"></p>
     </section>
     <div class="series-head">
